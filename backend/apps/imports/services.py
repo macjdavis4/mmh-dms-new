@@ -192,6 +192,11 @@ class Plan:
 
     @property
     def change_labels(self) -> list[str]:
+        """What an update changes. For a new unit everything is new, so only
+        the notable extras (a new customer, scans) are listed."""
+        if self.action == ImportRow.Plan.CREATE:
+            extras = [f"new customer “{self.new_customer}”"] if self.new_customer else []
+            return extras + [f"card scan {s.original_name}" for s in self.scans]
         labels = [k for k in self.unit_changes if k not in {"needs_review", "review_note"}]
         labels += [f"{kind} {f}" for kind, fields in self.component_changes.items() for f in fields]
         if self.replace_forks:
@@ -523,7 +528,7 @@ def summarize(batch: ImportBatch) -> dict[str, int]:
         "status", "plan", "result", "undo_result"
     ):
         counts[row_status] += 1
-        if plan:
+        if plan and row_status != ImportRow.Check.ERROR:  # rows with errors won't be imported
             counts[f"plan_{plan}"] += 1
         if result:
             counts[f"result_{result}"] += 1
