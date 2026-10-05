@@ -5,9 +5,10 @@ from typing import Any
 
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import OuterRef, Q, QuerySet, Subquery
-from django.http import FileResponse, Http404
+from django.http import FileResponse, Http404, HttpResponse
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import BasePermission
 from rest_framework.request import Request
@@ -17,6 +18,7 @@ from apps.accounts.permissions import HasRole
 from apps.accounts.roles import Role
 from apps.core.api import RequiresFlag, SoftDeleteViewSetMixin
 from apps.core.models import AuditLog
+from apps.core.pdf import pdf_response, safe_filename
 from apps.core.views import AuditLogSerializer
 
 from . import services
@@ -31,6 +33,7 @@ from .models import (
     UnitFile,
     normalize_serial,
 )
+from .pdf import spec_sheet_pdf
 from .search import every_word
 from .serializers import (
     HourReadingSerializer,
@@ -252,6 +255,19 @@ class UnitViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet[Unit]):
             unit, upload, kind=kind, caption=str(request.data.get("caption", ""))[:200]
         )
         return Response(UnitFileSerializer(record).data, status=status.HTTP_201_CREATED)
+
+    # --- Printout ---------------------------------------------------------------------------------
+    @action(detail=True, methods=["get"], url_path="spec-sheet")
+    def spec_sheet(self, request: Request, pk: str | None = None) -> HttpResponse:
+        """Printable spec sheet. `?price=1` adds the asking price (admin and sales only)."""
+        unit = self.get_object()
+        price = request.query_params.get("price") == "1"
+        if price and not can_see_pricing({"request": request}):
+            raise PermissionDenied("Only admin and sales can print prices.")
+        name = "-".join(x for x in [unit.make, unit.model, unit.serial_number] if x) or "unit"
+        return pdf_response(
+            spec_sheet_pdf(unit, price=price), safe_filename(f"{name}-spec-sheet.pdf")
+        )
 
     # --- History ----------------------------------------------------------------------------------
     @action(detail=True, methods=["get"])

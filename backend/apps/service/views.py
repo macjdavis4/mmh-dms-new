@@ -5,6 +5,7 @@ from typing import Any
 from django.contrib.auth import get_user_model
 from django.db.models import DecimalField, Q, QuerySet, Sum, Value
 from django.db.models.functions import Coalesce
+from django.http import HttpResponse
 from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
@@ -15,10 +16,12 @@ from rest_framework.response import Response
 from apps.accounts.permissions import HasRole
 from apps.accounts.roles import Role
 from apps.core.api import RequiresFlag, SoftDeleteViewSetMixin
+from apps.core.pdf import pdf_response
 from apps.units.models import OwnershipRecord
 
 from . import maintenance, services
 from .models import LaborLine, MaintenancePlan, WorkOrder
+from .pdf import work_order_pdf
 from .serializers import (
     LaborCreateSerializer,
     LaborSerializer,
@@ -155,6 +158,12 @@ class WorkOrderViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet[WorkOrder])
         data.is_valid(raise_exception=True)
         line = services.add_labor(work_order, **data.validated_data)
         return Response(LaborSerializer(line).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["get"])
+    def pdf(self, request: Request, pk: str | None = None) -> HttpResponse:
+        """The printable work order (opens in the browser's PDF viewer)."""
+        work_order = self.get_object()
+        return pdf_response(work_order_pdf(work_order), f"{work_order.number}.pdf")
 
     @action(detail=False, methods=["get"])
     def mechanics(self, request: Request) -> Response:
