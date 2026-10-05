@@ -57,7 +57,7 @@ services:
   worker:
     build: { context: ., target: dev }
     environment: *backend-env
-    command: sh -c "python manage.py wait_for_db && python manage.py procrastinate worker --queues=default,maintenance"
+    command: sh -c "python manage.py wait_for_db && python manage.py procrastinate worker --queues=default,maintenance,imports"
     volumes: [./backend:/app/backend]
     depends_on:
       backend: { condition: service_started }

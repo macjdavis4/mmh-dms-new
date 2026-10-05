@@ -1,0 +1,740 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dms.maine-material.com/api/v1/import/v1/schema.json",
+  "title": "Maine Material Handling unit card import (v1)",
+  "type": "object",
+  "required": [
+    "units"
+  ],
+  "properties": {
+    "units": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1000,
+      "items": {
+        "$ref": "#/$defs/unit"
+      }
+    },
+    "reference": {
+      "type": "string",
+      "maxLength": 100,
+      "description": "Your own id for this batch."
+    },
+    "dry_run": {
+      "type": "boolean",
+      "default": false,
+      "description": "Check only; change nothing."
+    },
+    "on_existing": {
+      "type": "string",
+      "enum": [
+        "update",
+        "skip"
+      ],
+      "default": "update"
+    },
+    "skip_invalid": {
+      "type": "boolean",
+      "default": false,
+      "description": "Import the good rows even if some have errors."
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "unit": {
+      "type": "object",
+      "description": "One unit card. Same keys as the CSV columns. Blank or missing values are left alone.",
+      "properties": {
+        "customer_name": {
+          "type": "string",
+          "description": "Customer as written on the card. Matched to an existing customer by name; a new customer is added if there's no match.",
+          "maxLength": 200
+        },
+        "card_date": {
+          "type": "string",
+          "description": "Date on the card. 2024-03-12 or 3/12/2024.",
+          "examples": [
+            "2024-03-12"
+          ]
+        },
+        "mechanic": {
+          "type": "string",
+          "description": "Mechanic as written on the card.",
+          "maxLength": 100
+        },
+        "work_order_number": {
+          "type": "string",
+          "description": "Work order number on the card.",
+          "maxLength": 40
+        },
+        "condition": {
+          "type": "string",
+          "enum": [
+            "new",
+            "used"
+          ],
+          "description": "new or used. Blank means used."
+        },
+        "hour_meter": {
+          "type": [
+            "number",
+            "string"
+          ],
+          "description": "Hour meter reading on the card. Saved as a dated reading (card date, or the import date)."
+        },
+        "unit_make": {
+          "type": "string",
+          "description": "e.g. Hyundai, Doosan.",
+          "maxLength": 60
+        },
+        "unit_model": {
+          "type": "string",
+          "description": "e.g. 35LN-9A.",
+          "maxLength": 80
+        },
+        "unit_serial": {
+          "type": "string",
+          "description": "Unit serial number. Used to recognise the unit when the same card is imported again.",
+          "maxLength": 80
+        },
+        "stock_number": {
+          "type": "string",
+          "description": "Our stock number, if it has one. Used to recognise the unit when there's no serial.",
+          "maxLength": 40
+        },
+        "year": {
+          "type": [
+            "number",
+            "string"
+          ],
+          "description": "Model year, e.g. 2019.",
+          "minimum": 1940,
+          "maximum": 2100
+        },
+        "fuel_type": {
+          "type": "string",
+          "enum": [
+            "diesel",
+            "dual",
+            "electric",
+            "gasoline",
+            "lpg",
+            "other"
+          ],
+          "description": "lpg, gasoline, diesel, dual, electric or other."
+        },
+        "capacity_lbs": {
+          "type": [
+            "number",
+            "string"
+          ],
+          "description": "Rated capacity in pounds, e.g. 5000.",
+          "minimum": 0,
+          "maximum": 200000
+        },
+        "engine_make": {
+          "type": "string",
+          "description": "Engine make.",
+          "maxLength": 60
+        },
+        "engine_model": {
+          "type": "string",
+          "description": "Engine model.",
+          "maxLength": 80
+        },
+        "engine_serial": {
+          "type": "string",
+          "description": "Engine serial.",
+          "maxLength": 80
+        },
+        "alternator_make": {
+          "type": "string",
+          "description": "Generator / alternator make.",
+          "maxLength": 60
+        },
+        "alternator_model": {
+          "type": "string",
+          "description": "Generator / alternator model.",
+          "maxLength": 80
+        },
+        "alternator_serial": {
+          "type": "string",
+          "description": "Generator / alternator serial.",
+          "maxLength": 80
+        },
+        "controller_make": {
+          "type": "string",
+          "description": "Electrical controller make.",
+          "maxLength": 60
+        },
+        "controller_model": {
+          "type": "string",
+          "description": "Electrical controller model.",
+          "maxLength": 80
+        },
+        "controller_serial": {
+          "type": "string",
+          "description": "Electrical controller serial.",
+          "maxLength": 80
+        },
+        "ignition_make": {
+          "type": "string",
+          "description": "Ignition system make.",
+          "maxLength": 60
+        },
+        "ignition_model": {
+          "type": "string",
+          "description": "Ignition system model.",
+          "maxLength": 80
+        },
+        "ignition_serial": {
+          "type": "string",
+          "description": "Ignition system serial.",
+          "maxLength": 80
+        },
+        "fuel_system_make": {
+          "type": "string",
+          "description": "Fuel system make.",
+          "maxLength": 60
+        },
+        "fuel_system_model": {
+          "type": "string",
+          "description": "Fuel system model.",
+          "maxLength": 80
+        },
+        "fuel_system_serial": {
+          "type": "string",
+          "description": "Fuel system serial.",
+          "maxLength": 80
+        },
+        "hydraulic_pump_make": {
+          "type": "string",
+          "description": "Hydraulic pump make.",
+          "maxLength": 60
+        },
+        "hydraulic_pump_model": {
+          "type": "string",
+          "description": "Hydraulic pump model.",
+          "maxLength": 80
+        },
+        "hydraulic_pump_serial": {
+          "type": "string",
+          "description": "Hydraulic pump serial.",
+          "maxLength": 80
+        },
+        "control_valve_make": {
+          "type": "string",
+          "description": "Control valve make.",
+          "maxLength": 60
+        },
+        "control_valve_model": {
+          "type": "string",
+          "description": "Control valve model.",
+          "maxLength": 80
+        },
+        "control_valve_serial": {
+          "type": "string",
+          "description": "Control valve serial.",
+          "maxLength": 80
+        },
+        "control_valve_spools": {
+          "type": "string",
+          "enum": [
+            "2SP",
+            "3SP",
+            "4SP"
+          ],
+          "description": "2SP, 3SP or 4SP."
+        },
+        "transmission_make": {
+          "type": "string",
+          "description": "Transmission make.",
+          "maxLength": 60
+        },
+        "transmission_model": {
+          "type": "string",
+          "description": "Transmission model.",
+          "maxLength": 80
+        },
+        "transmission_serial": {
+          "type": "string",
+          "description": "Transmission serial.",
+          "maxLength": 80
+        },
+        "mast_make": {
+          "type": "string",
+          "description": "Mast manufacturer, e.g. Hyundai.",
+          "maxLength": 60
+        },
+        "mast_type": {
+          "type": "string",
+          "description": "e.g. TF470.",
+          "maxLength": 60
+        },
+        "mast_size": {
+          "type": "string",
+          "description": "As written, e.g. 69MN-T4715.",
+          "maxLength": 60
+        },
+        "mast_lift_height_in": {
+          "type": [
+            "number",
+            "string"
+          ],
+          "description": "Maximum fork height in inches.",
+          "minimum": 0,
+          "maximum": 1200
+        },
+        "mast_lowered_height_in": {
+          "type": [
+            "number",
+            "string"
+          ],
+          "description": "Lowered (collapsed) height in inches.",
+          "minimum": 0,
+          "maximum": 1200
+        },
+        "lift_cylinder": {
+          "type": "string",
+          "description": "Lift cylinder number, as written.",
+          "maxLength": 100
+        },
+        "forks": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "Fork dimensions as written, e.g. 1.75 x 4 x 48 STD. Several sets: separate with ; (the same size twice counts as 2)."
+        },
+        "carriage": {
+          "type": "string",
+          "description": "Carriage, as written.",
+          "maxLength": 100
+        },
+        "backrest_height": {
+          "type": "string",
+          "description": "Backrest height, as written.",
+          "maxLength": 40
+        },
+        "backrest_width": {
+          "type": "string",
+          "description": "Backrest width, as written.",
+          "maxLength": 40
+        },
+        "tilt_forward_deg": {
+          "type": [
+            "number",
+            "string"
+          ],
+          "description": "Forward tilt in degrees, e.g. 6.",
+          "minimum": 0,
+          "maximum": 90
+        },
+        "tilt_back_deg": {
+          "type": [
+            "number",
+            "string"
+          ],
+          "description": "Back tilt in degrees, e.g. 10.",
+          "minimum": 0,
+          "maximum": 90
+        },
+        "tilt_reference": {
+          "type": "string",
+          "description": "Tilt reference number.",
+          "maxLength": 60
+        },
+        "tire_type": {
+          "type": "string",
+          "description": "e.g. solid, pneumatic, cushion.",
+          "maxLength": 40
+        },
+        "tire_drive_size": {
+          "type": "string",
+          "description": "e.g. 8.15-15.",
+          "maxLength": 40
+        },
+        "tire_steer_size": {
+          "type": "string",
+          "description": "e.g. 6.50-10.",
+          "maxLength": 40
+        },
+        "tire_notes": {
+          "type": "string",
+          "description": "Anything else, e.g. rim size.",
+          "maxLength": 200
+        },
+        "battery_mfg": {
+          "type": "string",
+          "description": "Battery manufacturer.",
+          "maxLength": 60
+        },
+        "battery_model": {
+          "type": "string",
+          "description": "Battery model.",
+          "maxLength": 60
+        },
+        "battery_serial": {
+          "type": "string",
+          "description": "Battery serial.",
+          "maxLength": 60
+        },
+        "battery_volts": {
+          "type": [
+            "number",
+            "string"
+          ],
+          "description": "e.g. 36 or 48.",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "battery_amp_hours": {
+          "type": [
+            "number",
+            "string"
+          ],
+          "description": "Amp-hours, e.g. 750.",
+          "minimum": 0,
+          "maximum": 100000
+        },
+        "battery_size": {
+          "type": "string",
+          "description": "W x L x H as written.",
+          "maxLength": 60
+        },
+        "battery_weight_lbs": {
+          "type": [
+            "number",
+            "string"
+          ],
+          "description": "Battery weight in pounds.",
+          "minimum": 0,
+          "maximum": 20000
+        },
+        "charger_make": {
+          "type": "string",
+          "description": "Charger make.",
+          "maxLength": 60
+        },
+        "charger_model": {
+          "type": "string",
+          "description": "Charger model.",
+          "maxLength": 60
+        },
+        "charger_serial": {
+          "type": "string",
+          "description": "Charger serial.",
+          "maxLength": 60
+        },
+        "attachment_1_mfg": {
+          "type": "string",
+          "description": "Attachment 1 manufacturer, e.g. Cascade.",
+          "maxLength": 60
+        },
+        "attachment_1_type": {
+          "type": "string",
+          "description": "Attachment 1 type, e.g. SS/FP (side shift / fork positioner).",
+          "maxLength": 80
+        },
+        "attachment_1_model": {
+          "type": "string",
+          "description": "Attachment 1 model.",
+          "maxLength": 80
+        },
+        "attachment_1_serial": {
+          "type": "string",
+          "description": "Attachment 1 serial.",
+          "maxLength": 80
+        },
+        "attachment_1_date_code": {
+          "type": "string",
+          "description": "Attachment 1 date code.",
+          "maxLength": 40
+        },
+        "attachment_1_hose_reel": {
+          "type": [
+            "boolean",
+            "string"
+          ],
+          "description": "yes or no."
+        },
+        "attachment_1_internal_hose": {
+          "type": [
+            "boolean",
+            "string"
+          ],
+          "description": "yes or no."
+        },
+        "attachment_1_reel_number": {
+          "type": "string",
+          "description": "Reel number.",
+          "maxLength": 60
+        },
+        "attachment_1_side": {
+          "type": "string",
+          "enum": [
+            "LH",
+            "RH"
+          ],
+          "description": "LH or RH."
+        },
+        "attachment_2_mfg": {
+          "type": "string",
+          "description": "Attachment 2 manufacturer, e.g. Cascade.",
+          "maxLength": 60
+        },
+        "attachment_2_type": {
+          "type": "string",
+          "description": "Attachment 2 type, e.g. SS/FP (side shift / fork positioner).",
+          "maxLength": 80
+        },
+        "attachment_2_model": {
+          "type": "string",
+          "description": "Attachment 2 model.",
+          "maxLength": 80
+        },
+        "attachment_2_serial": {
+          "type": "string",
+          "description": "Attachment 2 serial.",
+          "maxLength": 80
+        },
+        "attachment_2_date_code": {
+          "type": "string",
+          "description": "Attachment 2 date code.",
+          "maxLength": 40
+        },
+        "attachment_2_hose_reel": {
+          "type": [
+            "boolean",
+            "string"
+          ],
+          "description": "yes or no."
+        },
+        "attachment_2_internal_hose": {
+          "type": [
+            "boolean",
+            "string"
+          ],
+          "description": "yes or no."
+        },
+        "attachment_2_reel_number": {
+          "type": "string",
+          "description": "Reel number.",
+          "maxLength": 60
+        },
+        "attachment_2_side": {
+          "type": "string",
+          "enum": [
+            "LH",
+            "RH"
+          ],
+          "description": "LH or RH."
+        },
+        "attachment_3_mfg": {
+          "type": "string",
+          "description": "Attachment 3 manufacturer, e.g. Cascade.",
+          "maxLength": 60
+        },
+        "attachment_3_type": {
+          "type": "string",
+          "description": "Attachment 3 type, e.g. SS/FP (side shift / fork positioner).",
+          "maxLength": 80
+        },
+        "attachment_3_model": {
+          "type": "string",
+          "description": "Attachment 3 model.",
+          "maxLength": 80
+        },
+        "attachment_3_serial": {
+          "type": "string",
+          "description": "Attachment 3 serial.",
+          "maxLength": 80
+        },
+        "attachment_3_date_code": {
+          "type": "string",
+          "description": "Attachment 3 date code.",
+          "maxLength": 40
+        },
+        "attachment_3_hose_reel": {
+          "type": [
+            "boolean",
+            "string"
+          ],
+          "description": "yes or no."
+        },
+        "attachment_3_internal_hose": {
+          "type": [
+            "boolean",
+            "string"
+          ],
+          "description": "yes or no."
+        },
+        "attachment_3_reel_number": {
+          "type": "string",
+          "description": "Reel number.",
+          "maxLength": 60
+        },
+        "attachment_3_side": {
+          "type": "string",
+          "enum": [
+            "LH",
+            "RH"
+          ],
+          "description": "LH or RH."
+        },
+        "attachment_4_mfg": {
+          "type": "string",
+          "description": "Attachment 4 manufacturer, e.g. Cascade.",
+          "maxLength": 60
+        },
+        "attachment_4_type": {
+          "type": "string",
+          "description": "Attachment 4 type, e.g. SS/FP (side shift / fork positioner).",
+          "maxLength": 80
+        },
+        "attachment_4_model": {
+          "type": "string",
+          "description": "Attachment 4 model.",
+          "maxLength": 80
+        },
+        "attachment_4_serial": {
+          "type": "string",
+          "description": "Attachment 4 serial.",
+          "maxLength": 80
+        },
+        "attachment_4_date_code": {
+          "type": "string",
+          "description": "Attachment 4 date code.",
+          "maxLength": 40
+        },
+        "attachment_4_hose_reel": {
+          "type": [
+            "boolean",
+            "string"
+          ],
+          "description": "yes or no."
+        },
+        "attachment_4_internal_hose": {
+          "type": [
+            "boolean",
+            "string"
+          ],
+          "description": "yes or no."
+        },
+        "attachment_4_reel_number": {
+          "type": "string",
+          "description": "Reel number.",
+          "maxLength": 60
+        },
+        "attachment_4_side": {
+          "type": "string",
+          "enum": [
+            "LH",
+            "RH"
+          ],
+          "description": "LH or RH."
+        },
+        "special_equipment": {
+          "type": "string",
+          "description": "Special equipment, as written.",
+          "maxLength": 5000
+        },
+        "field_modifications": {
+          "type": "string",
+          "description": "Field modifications, as written.",
+          "maxLength": 5000
+        },
+        "notes": {
+          "type": "string",
+          "description": "Any other notes.",
+          "maxLength": 5000
+        },
+        "owner": {
+          "type": "string",
+          "enum": [
+            "customer",
+            "dealer"
+          ],
+          "description": "customer or stock. Blank: customer if customer_name is filled in, otherwise our stock."
+        },
+        "stock_status": {
+          "type": "string",
+          "enum": [
+            "available",
+            "in_prep",
+            "on_hold",
+            "sold"
+          ],
+          "description": "For our stock: available, on hold, in prep or sold."
+        },
+        "cost": {
+          "type": [
+            "number",
+            "string"
+          ],
+          "description": "What we paid. Admin and sales only; ignored for others."
+        },
+        "asking_price": {
+          "type": [
+            "number",
+            "string"
+          ],
+          "description": "Asking price. Admin and sales only."
+        },
+        "sale_price": {
+          "type": [
+            "number",
+            "string"
+          ],
+          "description": "Sold for. Admin and sales only."
+        },
+        "needs_review": {
+          "type": [
+            "boolean",
+            "string"
+          ],
+          "description": "yes to flag the card for a second look."
+        },
+        "review_note": {
+          "type": "string",
+          "description": "Why it needs a second look.",
+          "maxLength": 300
+        },
+        "source_image_filename": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "File name of the scanned card uploaded with this import, e.g. card-0412.jpg. Several: separate with ;."
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "unit_serial"
+          ]
+        },
+        {
+          "required": [
+            "stock_number"
+          ]
+        }
+      ],
+      "additionalProperties": false
+    }
+  }
+}

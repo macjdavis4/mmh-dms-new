@@ -9,8 +9,7 @@ from datetime import date
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
-from django.core.files.base import ContentFile
-from django.core.files.uploadedfile import UploadedFile
+from django.core.files.base import ContentFile, File
 from django.db import transaction
 from PIL import Image, ImageOps, UnidentifiedImageError
 
@@ -109,7 +108,41 @@ def _sniff(head: bytes) -> str | None:
 
 
 @transaction.atomic
-def add_file(unit: Unit, upload: UploadedFile, *, kind: str, caption: str = "") -> UnitFile:
+@dataclass
+class Inspected:
+    content_type: str
+    width: int | None
+    height: int | None
+    thumbnail: bytes | None
+
+
+def inspect_upload(data: bytes) -> Inspected:
+    """Work out what a file really is from its contents (never its name).
+    PDFs pass through; images are verified and get a WebP thumbnail."""
+    content_type = _sniff(data[:8])
+    if content_type is not None:
+        return Inspected(content_type, None, None, None)
+    try:
+        Image.MAX_IMAGE_PIXELS = MAX_PIXELS
+        with Image.open(io.BytesIO(data)) as probe:
+            probe.verify()
+        with Image.open(io.BytesIO(data)) as img:
+            fmt = img.format or ""
+            if fmt not in IMAGE_TYPES:
+                raise ValidationError({"file": "Use a JPEG, PNG or WebP photo, or a PDF."})
+            upright = ImageOps.exif_transpose(img)
+            width, height = upright.size
+            upright.thumbnail((THUMB_EDGE, THUMB_EDGE))
+            buf = io.BytesIO()
+            upright.convert("RGB").save(buf, "WEBP", quality=78, method=4)
+            return Inspected(IMAGE_TYPES[fmt], width, height, buf.getvalue())
+    except (UnidentifiedImageError, Image.DecompressionBombError, OSError) as exc:
+        raise ValidationError(
+            {"file": "That file isn't a photo or PDF we can read. Use JPEG, PNG, WebP or PDF."}
+        ) from exc
+
+
+def add_file(unit: Unit, upload: File, *, kind: str, caption: str = "") -> UnitFile:  # type: ignore[type-arg]
     """Validate by content (not by file name), store, and make a thumbnail."""
     if upload.size is None or upload.size == 0:
         raise ValidationError({"file": "The file is empty."})
@@ -117,29 +150,13 @@ def add_file(unit: Unit, upload: UploadedFile, *, kind: str, caption: str = "") 
         raise ValidationError({"file": "Files can be up to 25 MB."})
 
     data = upload.read()
-    content_type = _sniff(data[:8])
-    width = height = None
-    thumb_bytes: bytes | None = None
-    if content_type is None:
-        try:
-            Image.MAX_IMAGE_PIXELS = MAX_PIXELS
-            with Image.open(io.BytesIO(data)) as probe:
-                probe.verify()
-            with Image.open(io.BytesIO(data)) as img:
-                fmt = img.format or ""
-                if fmt not in IMAGE_TYPES:
-                    raise ValidationError({"file": "Use a JPEG, PNG or WebP photo, or a PDF."})
-                content_type = IMAGE_TYPES[fmt]
-                upright = ImageOps.exif_transpose(img)
-                width, height = upright.size
-                upright.thumbnail((THUMB_EDGE, THUMB_EDGE))
-                buf = io.BytesIO()
-                upright.convert("RGB").save(buf, "WEBP", quality=78, method=4)
-                thumb_bytes = buf.getvalue()
-        except (UnidentifiedImageError, Image.DecompressionBombError, OSError) as exc:
-            raise ValidationError(
-                {"file": "That file isn't a photo or PDF we can read. Use JPEG, PNG, WebP or PDF."}
-            ) from exc
+    inspected = inspect_upload(data)
+    content_type, width, height, thumb_bytes = (
+        inspected.content_type,
+        inspected.width,
+        inspected.height,
+        inspected.thumbnail,
+    )
     if kind == UnitFile.Kind.PHOTO and not content_type.startswith("image/"):
         raise ValidationError({"file": "Photos must be images (JPEG, PNG or WebP)."})
 

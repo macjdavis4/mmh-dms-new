@@ -9,7 +9,7 @@ case "${1:-web}" in
   worker)
     # Background jobs and the nightly schedule. Uses the direct (non-pooled)
     # database connection, set as DATABASE_URL for this container.
-    exec python manage.py procrastinate worker --queues=default,maintenance
+    exec python manage.py procrastinate worker --queues=default,maintenance,imports
     ;;
   migrate)
     # In production this runs as the database owner (ADMIN_DATABASE_URL),

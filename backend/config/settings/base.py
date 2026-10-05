@@ -65,6 +65,7 @@ INSTALLED_APPS = [
     "apps.ops",
     "apps.customers",
     "apps.units",
+    "apps.imports",
 ]
 
 MIDDLEWARE = [
@@ -202,6 +203,7 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "login": "10/min",
         "otp": "10/min",
+        "import-api": "30/min",
     },
     "EXCEPTION_HANDLER": "apps.core.exceptions.exception_handler",
     "UNAUTHENTICATED_USER": "django.contrib.auth.models.AnonymousUser",

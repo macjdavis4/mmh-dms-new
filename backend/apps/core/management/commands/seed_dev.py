@@ -38,10 +38,9 @@ USERS = [
 ]
 
 # Finished features: switched on in demo data even if an older seed left them off.
-LIVE_FLAGS = ["customers-units"]
+LIVE_FLAGS = ["customers-units", "batch-import"]
 
 FLAGS = [
-    ("batch-import", "Phase 3: CSV and API import of unit cards"),
     ("service", "Phase 4: work orders and planned maintenance"),
 ]
 
