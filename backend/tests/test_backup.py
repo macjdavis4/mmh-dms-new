@@ -36,8 +36,10 @@ class FakeS3:
 @pytest.fixture
 def db_url(settings: Any) -> None:
     s = connection.settings_dict
+    host = s["HOST"] or "localhost"
+    port = s["PORT"] or 5432
     settings.BACKUP_DATABASE_URL = (
-        f"postgres://{s['USER']}:{s['PASSWORD']}@{s['HOST'] or 'localhost'}:{s['PORT'] or 5432}/{s['NAME']}"
+        f"postgres://{s['USER']}:{s['PASSWORD']}@{host}:{port}/{s['NAME']}"
     )
 
 
@@ -74,7 +76,9 @@ def test_encrypted_backup_round_trip(
     enc.write_bytes(dump_bytes)
     plain = tmp_path / "db.dump"
     subprocess.run(["age", "-d", "-i", str(key_file), "-o", str(plain), str(enc)], check=True)
-    listing = subprocess.run(["pg_restore", "--list", str(plain)], check=True, capture_output=True, text=True)
+    listing = subprocess.run(
+        ["pg_restore", "--list", str(plain)], check=True, capture_output=True, text=True
+    )
     assert "TABLE DATA public accounts_user" in listing.stdout
 
     manifest_key = run.object_key.replace(".dump.age", ".counts.json")
@@ -96,7 +100,9 @@ def test_production_refuses_unencrypted_backup(settings: Any) -> None:
 
 
 @pytest.mark.django_db
-def test_failed_backup_is_recorded(settings: Any, db_url: None, tmp_path: Path, monkeypatch: Any) -> None:
+def test_failed_backup_is_recorded(
+    settings: Any, db_url: None, tmp_path: Path, monkeypatch: Any
+) -> None:
     settings.BACKUP_AGE_RECIPIENT = ""
 
     class Broken(FakeS3):

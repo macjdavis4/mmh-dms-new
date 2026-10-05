@@ -59,7 +59,9 @@ def test_soft_delete_hides_row_and_restore_brings_it_back(make_user: Any) -> Non
     gone.restore()
     assert User.objects.filter(pk=user.pk).exists()
     actions = list(
-        AuditLog.objects.filter(object_id=str(user.pk)).order_by("id").values_list("action", flat=True)
+        AuditLog.objects.filter(object_id=str(user.pk))
+        .order_by("id")
+        .values_list("action", flat=True)
     )
     assert actions[-2:] == ["soft_delete", "restore"]
 

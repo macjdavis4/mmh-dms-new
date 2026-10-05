@@ -274,7 +274,8 @@ CONTENT_SECURITY_POLICY = {
     "DIRECTIVES": {
         "default-src": ["'self'"],
         "script-src": ["'self'"],
-        "style-src": ["'self'"],
+        # Radix (scroll lock) and Sonner inject small <style> tags at runtime.
+        "style-src": ["'self'", "'unsafe-inline'"],
         "img-src": ["'self'", "data:", "blob:", *env_list("CSP_IMG_SRC_EXTRA")],
         "font-src": ["'self'"],
         "connect-src": ["'self'", *_sentry_origin(SENTRY_FRONTEND_DSN)],

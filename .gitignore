@@ -42,3 +42,4 @@ override.tf.json
 .DS_Store
 .idea/
 .vscode/
+frontend/e2e/.auth/

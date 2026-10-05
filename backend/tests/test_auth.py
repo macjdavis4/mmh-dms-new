@@ -117,7 +117,10 @@ def test_recovery_code_works_once(make_user: Any) -> None:
 
     again = APIClient()
     login(again, user.email)
-    assert again.post("/api/v1/auth/login/verify", {"code": "abcd-1234"}, format="json").status_code == 400
+    assert (
+        again.post("/api/v1/auth/login/verify", {"code": "abcd-1234"}, format="json").status_code
+        == 400
+    )
 
 
 @pytest.mark.django_db
@@ -185,7 +188,12 @@ def test_other_roles_can_turn_2fa_on_and_off(make_user: Any) -> None:
     assert client.get("/api/v1/auth/me").json()["two_factor"]["required"] is False
     client.post("/api/v1/auth/2fa/setup")
     device = TOTPDevice.objects.get(user=user, confirmed=False)
-    assert client.post("/api/v1/auth/2fa/confirm", {"code": code_for(device)}, format="json").status_code == 200
+    assert (
+        client.post(
+            "/api/v1/auth/2fa/confirm", {"code": code_for(device)}, format="json"
+        ).status_code
+        == 200
+    )
     wrong = client.post("/api/v1/auth/2fa/disable", {"password": "bad"}, format="json")
     assert wrong.status_code == 400
     ok = client.post("/api/v1/auth/2fa/disable", {"password": PASSWORD}, format="json")
@@ -213,7 +221,9 @@ def test_password_change(make_user: Any) -> None:
     )
     assert bad.status_code == 400
     weak = client.post(
-        "/api/v1/auth/password", {"current_password": PASSWORD, "new_password": "short"}, format="json"
+        "/api/v1/auth/password",
+        {"current_password": PASSWORD, "new_password": "short"},
+        format="json",
     )
     assert weak.status_code == 400
     assert "new_password" in weak.json()["fields"]

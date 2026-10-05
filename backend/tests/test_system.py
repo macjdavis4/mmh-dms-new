@@ -18,7 +18,11 @@ def test_read_only_mode_blocks_writes_but_not_sign_in_or_switching_it_off(
 ) -> None:
     res = admin_client.patch(
         "/api/v1/admin/site-settings",
-        {"read_only_mode": True, "banner_message": "Database maintenance until 6 PM", "banner_level": "warning"},
+        {
+            "read_only_mode": True,
+            "banner_message": "Database maintenance until 6 PM",
+            "banner_level": "warning",
+        },
         format="json",
     )
     assert res.status_code == 200
@@ -27,7 +31,9 @@ def test_read_only_mode_blocks_writes_but_not_sign_in_or_switching_it_off(
     assert status["banner_message"] == "Database maintenance until 6 PM"
 
     blocked = admin_client.post(
-        "/api/v1/admin/users", {"email": "x@example.com", "role": "parts", "password": "Long-Enough-Pass-77"}, format="json"
+        "/api/v1/admin/users",
+        {"email": "x@example.com", "role": "parts", "password": "Long-Enough-Pass-77"},
+        format="json",
     )
     assert blocked.status_code == 503
     assert blocked.json()["code"] == "read_only"
@@ -35,13 +41,22 @@ def test_read_only_mode_blocks_writes_but_not_sign_in_or_switching_it_off(
     user = make_user()
     from .conftest import PASSWORD
 
-    login = APIClient().post("/api/v1/auth/login", {"email": user.email, "password": PASSWORD}, format="json")
+    login = APIClient().post(
+        "/api/v1/auth/login", {"email": user.email, "password": PASSWORD}, format="json"
+    )
     assert login.status_code == 200
 
-    off = admin_client.patch("/api/v1/admin/site-settings", {"read_only_mode": False}, format="json")
+    off = admin_client.patch(
+        "/api/v1/admin/site-settings", {"read_only_mode": False}, format="json"
+    )
     assert off.status_code == 200
     assert not SiteSettings.is_read_only()
-    assert AuditLog.objects.filter(action="update", changed_fields__contains=["read_only_mode"]).count() == 2
+    assert (
+        AuditLog.objects.filter(
+            action="update", changed_fields__contains=["read_only_mode"]
+        ).count()
+        == 2
+    )
 
 
 @pytest.mark.django_db
@@ -97,7 +112,9 @@ def test_spa_index_has_security_headers_and_config(
     client: Client, tmp_path: Path, monkeypatch: Any
 ) -> None:
     index = tmp_path / "index.html"
-    index.write_text('<html><head><meta name="mmh-config" content="{{ mmh_config }}"></head></html>')
+    index.write_text(
+        '<html><head><meta name="mmh-config" content="{{ mmh_config }}"></head></html>'
+    )
     monkeypatch.setattr(views, "_INDEX", index)
     res = client.get("/units/123")
     assert res.status_code == 200

@@ -39,16 +39,22 @@ def test_create_user_with_role(admin_client: APIClient) -> None:
 def test_create_user_validation(admin_client: APIClient, make_user: Any) -> None:
     make_user(email="taken@example.com")
     dup = admin_client.post(
-        URL, {"email": "TAKEN@example.com", "role": "parts", "password": "Long-Enough-Pass-77"}, format="json"
+        URL,
+        {"email": "TAKEN@example.com", "role": "parts", "password": "Long-Enough-Pass-77"},
+        format="json",
     )
     assert dup.status_code == 400
     assert "email" in dup.json()["fields"]
-    weak = admin_client.post(URL, {"email": "a@example.com", "role": "parts", "password": "123"}, format="json")
+    weak = admin_client.post(
+        URL, {"email": "a@example.com", "role": "parts", "password": "123"}, format="json"
+    )
     assert "password" in weak.json()["fields"]
     no_pw = admin_client.post(URL, {"email": "b@example.com", "role": "parts"}, format="json")
     assert "password" in no_pw.json()["fields"]
     bad_role = admin_client.post(
-        URL, {"email": "c@example.com", "role": "owner", "password": "Long-Enough-Pass-77"}, format="json"
+        URL,
+        {"email": "c@example.com", "role": "owner", "password": "Long-Enough-Pass-77"},
+        format="json",
     )
     assert "role" in bad_role.json()["fields"]
 
@@ -115,7 +121,9 @@ def test_reset_two_factor(admin_client: APIClient, make_user: Any) -> None:
 @pytest.mark.django_db
 def test_admin_sets_new_password(admin_client: APIClient, make_user: Any) -> None:
     user = make_user()
-    res = admin_client.patch(f"{URL}/{user.pk}", {"password": "Fresh-Password-For-You-1"}, format="json")
+    res = admin_client.patch(
+        f"{URL}/{user.pk}", {"password": "Fresh-Password-For-You-1"}, format="json"
+    )
     assert res.status_code == 200
     user.refresh_from_db()
     assert user.check_password("Fresh-Password-For-You-1")

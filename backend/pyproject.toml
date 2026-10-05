@@ -17,7 +17,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S105", "S106", "S311"]
+"tests/**" = ["S105", "S106", "S311", "S603", "S607", "PT012", "PT018", "SIM117"]
 "*/migrations/*" = ["E501", "RUF"]
 "config/settings/*" = ["S105"]
 "apps/ops/backup.py" = ["S603", "S607"]  # runs pg_dump/age with fixed argv
