@@ -136,6 +136,14 @@ The database refuses it, so this can only be a near-miss (for example `O` vs `0`
 - Sales tax defaults to `SALES_TAX_RATE` (5.5) for new quotes; each quote keeps its own rate.
 - Quote numbers come from `sales_quote_number_seq` (Q-30001 up) and sale numbers from `sales_sale_number_seq` (S-40001 up). Gaps are normal (a failed save still uses a number).
 
+### Parts catalog
+
+- Parts staff and admins keep the catalog; everyone can look parts up. Switch it off with the `parts` flag.
+- **"Already in the catalog" but nobody can find it**: the part was removed. Open *Parts*, tick *Show replaced parts* and search, or ask an admin to restore it (*django-admin*), rather than adding it again.
+- **Search doesn't find a number**: add it as another brand's number on the part (*Edit part → Other brands' numbers*). Search ignores dashes, spaces and case.
+- **A maker changed a number**: add the new part, then edit the old one and set *Replaced by*. Don't edit the old number in place; history and invoices refer to it.
+- A bin can't be removed while parts are in it; move them to another bin first.
+
 ## Read-only mode and the maintenance banner
 
 *Admin → Site settings*. Read-only mode blocks every change for everyone (sign-in still works) and shows a notice on every screen. Use it during database maintenance or a restore. The banner can show any message in information, warning or critical style, including on the sign-in page.

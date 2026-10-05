@@ -279,6 +279,15 @@ Nothing to set up. Worth checking:
 
 ---
 
+## Phase 9: parts catalog
+
+Nothing to set up. To get ready for the stock ledger (Phase 10):
+
+1. [ ] Write down your bin codes (aisle-shelf-level, e.g. A-03-2) and add them under *Parts → Bins*.
+2. [ ] If you have a parts list in a spreadsheet (part number, description, price, bin), send it to me: a parts import is quicker than typing them in, and I can add one.
+
+---
+
 ## Ongoing
 
 | When | What |
