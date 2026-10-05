@@ -1,4 +1,5 @@
 import {
+  CalendarClock,
   FileUp,
   Gauge,
   KeyRound,
@@ -58,7 +59,14 @@ export const NAV: NavSection[] = [
         to: "/service",
         icon: Wrench,
         flag: "service",
-        description: "Work orders, planned maintenance and what's due soon.",
+        description: "Work orders for customer units and our own stock.",
+      },
+      {
+        label: "Maintenance due",
+        to: "/service/maintenance",
+        icon: CalendarClock,
+        flag: "service",
+        description: "Planned services that are overdue or due soon.",
       },
       {
         label: "Sales",
@@ -111,4 +119,11 @@ export function navFor(role: Role, flags?: Record<string, boolean>): NavSection[
 
 export function findNavItem(path: string): NavItem | undefined {
   return NAV.flatMap((s) => s.items).find((i) => i.to === path);
+}
+
+/** The nav item to highlight: the most specific one whose path the page is
+ * under ("/service/maintenance" wins over "/service"). */
+export function activeNavPath(pathname: string, paths: string[]): string | undefined {
+  const matches = paths.filter((p) => (p === "/" ? pathname === "/" : pathname === p || pathname.startsWith(`${p}/`)));
+  return matches.sort((a, b) => b.length - a.length)[0];
 }

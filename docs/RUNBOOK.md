@@ -109,6 +109,8 @@ The database refuses it, so this can only be a near-miss (for example `O` vs `0`
 ### Work orders
 
 - A work order is never deleted, only cancelled (and can be reopened). Only an admin can remove one; removed ones come back with *restore*.
+- Planned maintenance counts from each unit's latest hour meter reading. If a plan looks wrongly overdue by hours, check the unit's hour readings for a typo (e.g. 99,999).
+- A plan done outside the system (e.g. by another shop): edit the plan and set *Last done on* and *Hour meter then*.
 - A wrong hour meter reading on a work order: correct the number in the work order's details. The old reading is replaced (and kept in the change history).
 
 ## Read-only mode and the maintenance banner

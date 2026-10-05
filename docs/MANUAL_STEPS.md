@@ -242,6 +242,10 @@ Full column list: `docs/IMPORT_FORMAT.md`. The scanning-app API needs a key from
 
 Nothing to set up. Make sure each mechanic has a user with the **Service** role (*Admin → Users*); only service and admin users can be assigned work or log time.
 
+## Phase 5: planned maintenance
+
+Nothing to set up. For each customer unit on a service contract, open the unit and **Add plan** (the common ones are one click). Set *Last done on* and *Hour meter then* from the last service sticker or invoice, so the due dates start right.
+
 ---
 
 ## Ongoing

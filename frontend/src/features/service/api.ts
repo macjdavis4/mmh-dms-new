@@ -61,6 +61,7 @@ function useRefresh() {
     if (wo) qc.setQueryData(woKeys.detail(wo.id), wo);
     void qc.invalidateQueries({ queryKey: woKeys.all });
     void qc.invalidateQueries({ queryKey: ["units"] }); // hours and service history
+    void qc.invalidateQueries({ queryKey: ["maintenance-plans"] }); // completing marks a plan done
   };
 }
 

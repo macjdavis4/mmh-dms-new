@@ -27,6 +27,44 @@ def next_number() -> str:
     return f"WO-{value}"
 
 
+class MaintenancePlan(SoftDeleteModel):
+    """Planned maintenance for one unit: every N hours and/or every N days,
+    whichever comes first, counted from when it was last done."""
+
+    unit = models.ForeignKey(Unit, on_delete=models.PROTECT, related_name="maintenance_plans")
+    name = models.CharField(max_length=100)  # e.g. "250-hour service"
+    tasks = models.TextField(
+        blank=True, default=""
+    )  # what to do; becomes the work order's complaint
+    interval_hours = models.PositiveIntegerField(null=True, blank=True)
+    interval_days = models.PositiveIntegerField(null=True, blank=True)
+    last_done_on = models.DateField(default=timezone.localdate)
+    last_done_hours = models.DecimalField(
+        max_digits=9, decimal_places=1, null=True, blank=True, validators=[MinValueValidator(0)]
+    )
+    active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["name"]
+        constraints = [
+            models.CheckConstraint(condition=~Q(name=""), name="plan_name_not_blank"),
+            models.CheckConstraint(
+                # Spelled out with isnull: a comparison with NULL is never false in SQL.
+                condition=Q(interval_hours__isnull=False, interval_hours__gt=0)
+                | Q(interval_days__isnull=False, interval_days__gt=0),
+                name="plan_has_an_interval",
+            ),
+            # Counting by hours needs a starting hour meter reading.
+            models.CheckConstraint(
+                condition=Q(interval_hours__isnull=True) | Q(last_done_hours__isnull=False),
+                name="plan_hours_need_a_start",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.name} · {self.unit}"
+
+
 class WorkOrder(SoftDeleteModel):
     class Status(models.TextChoices):
         OPEN = "open", "Open"
@@ -77,6 +115,16 @@ class WorkOrder(SoftDeleteModel):
         HourMeterReading, null=True, blank=True, on_delete=models.PROTECT, related_name="work_order"
     )
     notes = models.TextField(blank=True, default="")
+    # Set when the work order was made for a maintenance plan. Completing it
+    # marks the plan done; the plan's previous "last done" is kept here so
+    # reopening the work order can put it back.
+    maintenance_plan = models.ForeignKey(
+        MaintenancePlan, null=True, blank=True, on_delete=models.PROTECT, related_name="work_orders"
+    )
+    plan_prev_done_on = models.DateField(null=True, blank=True, editable=False)
+    plan_prev_done_hours = models.DecimalField(
+        max_digits=9, decimal_places=1, null=True, blank=True, editable=False
+    )
 
     class Meta:
         ordering = ["-opened_on", "-number"]

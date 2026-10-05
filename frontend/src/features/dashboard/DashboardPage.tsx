@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { canEditWorkOrders, useWorkOrderCounts } from "@/features/service/api";
+import { useDuePlans } from "@/features/service/maintenance";
 import { canEditUnits } from "@/features/units/permissions";
 import { api, type Paginated } from "@/lib/api";
 import { isOn, useFlags } from "@/lib/flags";
@@ -35,7 +36,6 @@ function greeting(now = new Date()): string {
 type Tile = { label: string; icon: typeof Truck; phase: number; to?: string; count?: number | undefined };
 
 const TILES: Tile[] = [
-  { label: "PM due in 30 days", icon: Activity, phase: 5 },
   { label: "Low-stock parts", icon: PackageCheck, phase: 10 },
 ];
 
@@ -138,9 +138,19 @@ export function DashboardPage() {
   const serviceTile: Tile = serviceOn
     ? { label: "Open work orders", icon: Wrench, phase: 4, to: "/service", count: workOrders.data?.open }
     : { label: "Open work orders", icon: Wrench, phase: 4 };
+  const due = useDuePlans(false, serviceOn);
+  const pmTile: Tile = serviceOn
+    ? {
+        label: "PM due in 30 days",
+        icon: Activity,
+        phase: 5,
+        to: "/service/maintenance",
+        count: due.data ? due.data.counts.overdue + due.data.counts.due_soon : undefined,
+      }
+    : { label: "PM due in 30 days", icon: Activity, phase: 5 };
   const tiles: Tile[] = unitsOn
-    ? [{ label: "Units in stock", icon: Truck, phase: 2, to: "/units", count: stock.data }, serviceTile, ...TILES]
-    : [{ label: "Units in stock", icon: Truck, phase: 2 }, serviceTile, ...TILES];
+    ? [{ label: "Units in stock", icon: Truck, phase: 2, to: "/units", count: stock.data }, serviceTile, pmTile, ...TILES]
+    : [{ label: "Units in stock", icon: Truck, phase: 2 }, serviceTile, pmTile, ...TILES];
   const actions: QuickAction[] = [...QUICK_ACTIONS];
   if (serviceOn && canEditWorkOrders(user.role)) {
     actions.unshift({ label: "New work order", icon: ClipboardPlus, to: "/service/new", hint: "Open a job on a unit" });

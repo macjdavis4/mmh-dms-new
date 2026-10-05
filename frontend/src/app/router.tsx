@@ -79,6 +79,10 @@ export const routes = [
         lazy: async () => ({ Component: (await import("@/features/service/WorkOrdersPage")).WorkOrdersPage }),
       },
       {
+        path: "service/maintenance",
+        lazy: async () => ({ Component: (await import("@/features/service/MaintenancePage")).MaintenancePage }),
+      },
+      {
         path: "service/new",
         lazy: async () => ({ Component: (await import("@/features/service/NewWorkOrderPage")).NewWorkOrderPage }),
       },

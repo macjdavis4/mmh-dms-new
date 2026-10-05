@@ -286,7 +286,8 @@ function WorkOrderView({ wo }: { wo: WorkOrder }) {
             <WorkOrderStatusBadge status={wo.status} label={wo.status_label} />
           </div>
           <p className="text-muted-foreground mt-1 text-sm">
-            {wo.kind_label} · {wo.location_label} · opened {formatDate(wo.opened_on)}
+            {wo.kind_label}
+            {wo.maintenance_plan_name && ` (${wo.maintenance_plan_name})`} · {wo.location_label} · opened {formatDate(wo.opened_on)}
             {wo.created_by_name && ` by ${wo.created_by_name}`}
             {wo.completed_at && ` · completed ${formatDateTime(wo.completed_at)}`}
             {due && <span className={cn("font-semibold", due.late && "text-destructive")}> · {due.text}</span>}

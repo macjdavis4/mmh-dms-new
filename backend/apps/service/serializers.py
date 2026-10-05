@@ -9,7 +9,7 @@ from rest_framework import serializers
 from apps.customers.models import Customer
 from apps.units.models import Unit
 
-from .models import LaborLine, WorkOrder
+from .models import LaborLine, MaintenancePlan, WorkOrder
 
 User = get_user_model()
 
@@ -115,6 +115,7 @@ class WorkOrderSerializer(WorkOrderListSerializer):
     hour_meter = serializers.SerializerMethodField()
     location_label = serializers.CharField(source="get_location_display", read_only=True)
     created_by_name = serializers.SerializerMethodField()
+    maintenance_plan_name = serializers.SerializerMethodField()
 
     class Meta(WorkOrderListSerializer.Meta):
         fields = [
@@ -128,12 +129,16 @@ class WorkOrderSerializer(WorkOrderListSerializer):
             "hours",
             "hour_meter",
             "labor",
+            "maintenance_plan",
+            "maintenance_plan_name",
             "is_deleted",
             "created_at",
             "created_by_name",
             "updated_at",
         ]
         read_only_fields = [
+            "maintenance_plan",
+            "maintenance_plan_name",
             "id",
             "number",
             "unit_summary",
@@ -162,6 +167,9 @@ class WorkOrderSerializer(WorkOrderListSerializer):
         if r is None or r.deleted_at is not None:
             return None
         return {"hours": str(r.hours), "reading_date": r.reading_date.isoformat()}
+
+    def get_maintenance_plan_name(self, obj: WorkOrder) -> str:
+        return obj.maintenance_plan.name if obj.maintenance_plan else ""
 
     def get_created_by_name(self, obj: WorkOrder) -> str:
         return _name(obj.created_by)  # type: ignore[attr-defined]
@@ -202,3 +210,72 @@ class LaborCreateSerializer(serializers.Serializer[Any]):
     description = serializers.CharField(
         max_length=300, required=False, allow_blank=True, default=""
     )
+
+
+class MaintenancePlanSerializer(serializers.ModelSerializer[MaintenancePlan]):
+    """`status` comes from the view (it needs the unit's current hours)."""
+
+    unit = serializers.PrimaryKeyRelatedField(queryset=Unit.objects.all())
+    unit_summary = serializers.SerializerMethodField()
+    owner_name = serializers.SerializerMethodField()
+    status = serializers.SerializerMethodField()
+
+    class Meta:
+        model = MaintenancePlan
+        fields = [
+            "id",
+            "unit",
+            "unit_summary",
+            "owner_name",
+            "name",
+            "tasks",
+            "interval_hours",
+            "interval_days",
+            "last_done_on",
+            "last_done_hours",
+            "active",
+            "status",
+            "created_at",
+        ]
+        read_only_fields = ["id", "unit_summary", "owner_name", "status", "created_at"]
+
+    def get_unit_summary(self, obj: MaintenancePlan) -> dict[str, Any]:
+        return unit_summary(obj.unit)
+
+    def get_owner_name(self, obj: MaintenancePlan) -> str:
+        return str(self.context.get("owners", {}).get(obj.unit_id, ""))
+
+    def get_status(self, obj: MaintenancePlan) -> dict[str, Any] | None:
+        st = self.context.get("statuses", {}).get(obj.pk)
+        return st.as_dict() if st is not None else None
+
+    def validate_unit(self, unit: Unit) -> Unit:
+        if self.instance is not None and unit.pk != self.instance.unit_id:
+            raise serializers.ValidationError(
+                "A plan belongs to its unit; add a new plan on the other unit."
+            )
+        return unit
+
+    def validate_name(self, value: str) -> str:
+        if not value.strip():
+            raise serializers.ValidationError("Give the plan a name, e.g. “250-hour service”.")
+        return value.strip()
+
+    def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
+        def current(key: str) -> Any:
+            return attrs[key] if key in attrs else getattr(self.instance, key, None)
+
+        hours, days = current("interval_hours"), current("interval_days")
+        if not hours and not days:
+            raise serializers.ValidationError(
+                {"interval_hours": "Set every how many hours, every how many days, or both."}
+            )
+        if hours and current("last_done_hours") is None:
+            unit = current("unit")
+            latest = unit.hour_readings.first() if unit is not None else None
+            if latest is None:
+                raise serializers.ValidationError(
+                    {"last_done_hours": "Enter the hour meter reading when it was last done."}
+                )
+            attrs["last_done_hours"] = latest.hours
+        return attrs

@@ -13,7 +13,7 @@ from apps.accounts.models import User
 from apps.units.models import Unit
 
 from . import services
-from .models import WorkOrder
+from .models import MaintenancePlan, WorkOrder
 
 WORK_ORDERS: list[dict[str, Any]] = [
     {
@@ -100,3 +100,59 @@ def load_demo_work_orders() -> None:
             services.change_status(work_order, "on_hold", reason=spec["hold_reason"])
         elif spec["status"] != "open":
             services.change_status(work_order, spec["status"])
+
+
+PLANS: list[dict[str, Any]] = [
+    {
+        "serial": "HHKHFV30K00057",
+        "name": "250-hour service",
+        "tasks": "Engine oil and filter, check fluids, grease chassis and mast, inspect forks and chains.",
+        "hours": 250,
+        "days": 90,
+        "done_days_ago": 60,
+        "done_hours": "8800",
+    },
+    {
+        "serial": "HHKHHN04L0094",
+        "name": "Annual safety inspection",
+        "tasks": "OSHA annual inspection checklist; brakes, horn, lights, seat belt, data plate.",
+        "days": 365,
+        "done_days_ago": 345,
+    },
+    {
+        "serial": "FGA25-70988",
+        "name": "500-hour service",
+        "tasks": "Hydraulic filter, transmission fluid, air filter, LPG system check.",
+        "hours": 500,
+        "days": 180,
+        "done_days_ago": 20,
+        "done_hours": "10100",
+    },
+    {
+        "serial": "HHKHBT08J00221",
+        "name": "Battery and charger check",
+        "tasks": "Water level, specific gravity, cables and connectors, charger output.",
+        "days": 30,
+        "done_days_ago": 41,
+    },
+]
+
+
+def load_demo_plans() -> None:
+    today = timezone.localdate()
+    for spec in PLANS:
+        unit = Unit.objects.filter(serial_number=spec["serial"]).first()
+        if (
+            unit is None
+            or MaintenancePlan.all_objects.filter(unit=unit, name=spec["name"]).exists()
+        ):
+            continue
+        MaintenancePlan.objects.create(
+            unit=unit,
+            name=spec["name"],
+            tasks=spec["tasks"],
+            interval_hours=spec.get("hours"),
+            interval_days=spec.get("days"),
+            last_done_on=today - timedelta(days=spec["done_days_ago"]),
+            last_done_hours=Decimal(spec["done_hours"]) if "done_hours" in spec else None,
+        )
