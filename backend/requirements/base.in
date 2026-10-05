@@ -15,4 +15,4 @@ django-storages[s3]>=1.14,<2
 boto3>=1.38
 sentry-sdk[django]>=2.30,<3
 python-json-logger>=3.3,<5
-django-stubs-ext>=5.2,<5.3   # makes Django generics subscriptable for type hints
+django-stubs-ext>=6.1.1,<6.2   # makes Django generics subscriptable for type hints
