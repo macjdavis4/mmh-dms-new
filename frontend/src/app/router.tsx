@@ -74,7 +74,19 @@ export const routes = [
           },
         ],
       },
-      ...["service", "parts"].map((path) => ({
+      {
+        path: "service",
+        lazy: async () => ({ Component: (await import("@/features/service/WorkOrdersPage")).WorkOrdersPage }),
+      },
+      {
+        path: "service/new",
+        lazy: async () => ({ Component: (await import("@/features/service/NewWorkOrderPage")).NewWorkOrderPage }),
+      },
+      {
+        path: "service/:id",
+        lazy: async () => ({ Component: (await import("@/features/service/WorkOrderPage")).WorkOrderPage }),
+      },
+      ...["parts"].map((path) => ({
         path,
         element: <ComingSoonPage />,
       })),

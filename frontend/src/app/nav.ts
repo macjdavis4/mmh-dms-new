@@ -57,7 +57,7 @@ export const NAV: NavSection[] = [
         label: "Service",
         to: "/service",
         icon: Wrench,
-        comingInPhase: 4,
+        flag: "service",
         description: "Work orders, planned maintenance and what's due soon.",
       },
       {
