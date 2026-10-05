@@ -82,7 +82,7 @@ export const NAV: NavSection[] = [
         to: "/sales",
         icon: ShoppingCart,
         roles: ["admin", "sales"],
-        comingInPhase: 8,
+        flag: "sales",
         description: "Quotes, sales and trade-ins.",
       },
       {

@@ -27,6 +27,7 @@ export function useCustomer(id: string) {
   return useQuery({
     queryKey: customerKeys.detail(id),
     queryFn: () => api<Customer>(`/api/v1/customers/${id}`),
+    enabled: Boolean(id),
   });
 }
 
