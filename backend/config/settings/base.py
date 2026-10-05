@@ -67,6 +67,7 @@ INSTALLED_APPS = [
     "apps.units",
     "apps.imports",
     "apps.service",
+    "apps.sales",
 ]
 
 MIDDLEWARE = [
@@ -344,4 +345,6 @@ COMPANY_NAME = env("COMPANY_NAME", "Maine Material Handling")
 COMPANY_ADDRESS = env("COMPANY_ADDRESS", "Bangor, Maine")
 COMPANY_PHONE = env("COMPANY_PHONE", "")
 COMPANY_WEBSITE = env("COMPANY_WEBSITE", "maine-material.com")
+# Maine sales tax, percent. Each quote keeps its own rate; this is only the default.
+SALES_TAX_RATE = env("SALES_TAX_RATE", "5.5")
 PDF_COMPRESS = True  # tests turn this off so the text can be checked
