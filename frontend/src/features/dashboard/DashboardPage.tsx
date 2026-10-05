@@ -35,15 +35,15 @@ type Tile = { label: string; icon: typeof Truck; phase: number; to?: string; cou
 
 const TILES: Tile[] = [
   { label: "Open work orders", icon: Wrench, phase: 4 },
-  { label: "PM due in 30 days", icon: Activity, phase: 4 },
-  { label: "Low-stock parts", icon: PackageCheck, phase: 6 },
+  { label: "PM due in 30 days", icon: Activity, phase: 5 },
+  { label: "Low-stock parts", icon: PackageCheck, phase: 10 },
 ];
 
 type QuickAction = { label: string; icon: typeof Truck; to: string; phase?: number; hint?: string };
 
 const QUICK_ACTIONS: QuickAction[] = [
   { label: "New work order", icon: ClipboardPlus, to: "/service", phase: 4 },
-  { label: "Receive a parts invoice", icon: PackageCheck, to: "/parts", phase: 6 },
+  { label: "Receive a parts invoice", icon: PackageCheck, to: "/parts", phase: 11 },
 ];
 
 function StatusRow({ ok, label, detail }: { ok: boolean; label: string; detail: string }) {

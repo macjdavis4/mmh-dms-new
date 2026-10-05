@@ -65,14 +65,14 @@ export const NAV: NavSection[] = [
         to: "/sales",
         icon: ShoppingCart,
         roles: ["admin", "sales"],
-        comingInPhase: 5,
+        comingInPhase: 8,
         description: "Quotes, sales and trade-ins.",
       },
       {
         label: "Parts",
         to: "/parts",
         icon: Package,
-        comingInPhase: 6,
+        comingInPhase: 9,
         description: "Parts catalog, stock levels and invoice receiving.",
       },
       {

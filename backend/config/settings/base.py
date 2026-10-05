@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     "apps.customers",
     "apps.units",
     "apps.imports",
+    "apps.service",
 ]
 
 MIDDLEWARE = [
