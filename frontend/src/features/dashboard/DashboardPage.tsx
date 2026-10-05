@@ -44,7 +44,6 @@ type QuickAction = { label: string; icon: typeof Truck; to: string; phase?: numb
 const QUICK_ACTIONS: QuickAction[] = [
   { label: "New work order", icon: ClipboardPlus, to: "/service", phase: 4 },
   { label: "Receive a parts invoice", icon: PackageCheck, to: "/parts", phase: 6 },
-  { label: "Import unit cards", icon: FileUp, to: "/imports", phase: 3 },
 ];
 
 function StatusRow({ ok, label, detail }: { ok: boolean; label: string; detail: string }) {
@@ -139,6 +138,9 @@ export function DashboardPage() {
     ? [{ label: "Units in stock", icon: Truck, phase: 2, to: "/units", count: stock.data }, ...TILES]
     : [{ label: "Units in stock", icon: Truck, phase: 2 }, ...TILES];
   const actions: QuickAction[] = [...QUICK_ACTIONS];
+  if (isOn(flags.data?.flags, "batch-import") && ["admin", "sales", "service"].includes(user.role)) {
+    actions.push({ label: "Import unit cards", icon: FileUp, to: "/imports/new", hint: "Upload a spreadsheet of cards" });
+  }
   if (unitsOn) {
     actions.splice(
       1,

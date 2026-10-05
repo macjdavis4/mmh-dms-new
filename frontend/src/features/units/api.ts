@@ -1,8 +1,8 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useDebounced } from "@/hooks/useDebounced";
-import { api, ApiError, type Paginated } from "@/lib/api";
-import { readCookie } from "@/lib/api";
+import { api, type Paginated } from "@/lib/api";
+import { uploadForm } from "@/lib/upload";
 import type { AuditEntry, HourReading, OwnershipRecord, Unit, UnitFacets, UnitFile, UnitRow } from "@/lib/types";
 
 export const unitKeys = {
@@ -165,37 +165,7 @@ export function uploadUnitFile(
   kind: UnitFile["kind"],
   onProgress: (fraction: number) => void,
 ): Promise<UnitFile> {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", `/api/v1/units/${unitId}/files`);
-    xhr.withCredentials = true;
-    xhr.setRequestHeader("X-CSRFToken", readCookie("mmh_csrftoken") ?? "");
-    xhr.setRequestHeader("Accept", "application/json");
-    xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(e.loaded / e.total);
-    xhr.onload = () => {
-      let body: { code?: string; detail?: string; fields?: Record<string, string[]> } = {};
-      try {
-        body = JSON.parse(xhr.responseText) as typeof body;
-      } catch {
-        // non-JSON error page
-      }
-      if (xhr.status >= 200 && xhr.status < 300) resolve(body as unknown as UnitFile);
-      else
-        reject(
-          new ApiError(
-            xhr.status,
-            body.code ?? "upload_failed",
-            body.fields?.file?.[0] ?? body.detail ?? "Upload failed. Try again.",
-            body.fields ?? {},
-          ),
-        );
-    };
-    xhr.onerror = () => reject(new ApiError(0, "network", "Upload failed: check your connection."));
-    const form = new FormData();
-    form.append("file", file);
-    form.append("kind", kind);
-    xhr.send(form);
-  });
+  return uploadForm<UnitFile>(`/api/v1/units/${unitId}/files`, { file, kind }, onProgress);
 }
 
 export function useUploadInvalidation(unitId: string) {

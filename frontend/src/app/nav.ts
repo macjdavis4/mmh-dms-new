@@ -1,6 +1,7 @@
 import {
   FileUp,
   Gauge,
+  KeyRound,
   type LucideIcon,
   Package,
   ScrollText,
@@ -79,7 +80,7 @@ export const NAV: NavSection[] = [
         to: "/imports",
         icon: FileUp,
         roles: ["admin", "sales", "service"],
-        comingInPhase: 3,
+        flag: "batch-import",
         description: "Batch import of the paper unit cards from CSV or the scanning app.",
       },
     ],
@@ -90,6 +91,7 @@ export const NAV: NavSection[] = [
       { label: "Users", to: "/admin/users", icon: UserRound, roles: ["admin"] },
       { label: "Site settings", to: "/admin/settings", icon: Settings2, roles: ["admin"] },
       { label: "Audit log", to: "/admin/audit", icon: ScrollText, roles: ["admin"] },
+      { label: "API keys", to: "/admin/api-keys", icon: KeyRound, roles: ["admin"], flag: "batch-import" },
     ],
   },
   {
