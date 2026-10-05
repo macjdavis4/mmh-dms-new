@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 
 import { useCurrentUser } from "@/app/guards";
+import { UnitMaintenance } from "@/features/service/UnitMaintenance";
 import { UnitServiceHistory } from "@/features/service/UnitServiceHistory";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { SectionCard } from "@/components/form/Field";
@@ -440,6 +441,8 @@ export function UnitDetailPage() {
           )}
         </SectionCard>
       </div>
+
+      <UnitMaintenance unitId={u.id} removed={u.is_deleted} />
 
       <UnitServiceHistory unitId={u.id} removed={u.is_deleted} />
 

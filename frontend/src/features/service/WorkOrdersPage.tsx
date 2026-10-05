@@ -1,5 +1,5 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import { ChevronLeft, ChevronRight, Plus, UserRound, X } from "lucide-react";
+import { CalendarClock, ChevronLeft, ChevronRight, Plus, UserRound, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 
@@ -114,13 +114,20 @@ export function WorkOrdersPage() {
         title="Service"
         description="Work orders for customer units and our own stock."
         actions={
-          canEditWorkOrders(user.role) && (
-            <Button asChild variant="cta">
-              <Link to="/service/new">
-                <Plus className="size-5" /> New work order
+          <>
+            <Button asChild variant="outline">
+              <Link to="/service/maintenance">
+                <CalendarClock className="size-4" /> Maintenance due
               </Link>
             </Button>
-          )
+            {canEditWorkOrders(user.role) && (
+              <Button asChild variant="cta">
+                <Link to="/service/new">
+                  <Plus className="size-5" /> New work order
+                </Link>
+              </Button>
+            )}
+          </>
         }
       />
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center">

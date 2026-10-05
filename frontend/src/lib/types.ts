@@ -513,6 +513,8 @@ export interface WorkOrder extends WorkOrderRow {
   notes: string;
   hour_meter: { hours: string; reading_date: string } | null;
   labor: LaborLine[];
+  maintenance_plan: string | null;
+  maintenance_plan_name: string;
   is_deleted: boolean;
   created_at: string;
   created_by_name: string;
@@ -524,4 +526,34 @@ export interface Mechanic {
   id: string;
   name: string;
   role: string;
+}
+
+// --- Planned maintenance (Phase 5) -------------------------------------------------------------
+
+export type PlanState = "overdue" | "due_soon" | "ok" | "paused";
+
+export interface PlanStatus {
+  state: PlanState;
+  next_due_on: string | null;
+  next_due_hours: string | null;
+  current_hours: string | null;
+  days_left: number | null;
+  hours_left: string | null;
+  open_work_order: { id: string; number: string; status: WorkOrderStatus } | null;
+}
+
+export interface MaintenancePlan {
+  id: string;
+  unit: string;
+  unit_summary: UnitSummary;
+  owner_name: string;
+  name: string;
+  tasks: string;
+  interval_hours: number | null;
+  interval_days: number | null;
+  last_done_on: string;
+  last_done_hours: string | null;
+  active: boolean;
+  status: PlanStatus | null;
+  created_at: string;
 }
