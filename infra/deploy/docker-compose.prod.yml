@@ -66,8 +66,9 @@ services:
     command: ["migrate"]
     restart: "no"
     environment:
-      DATABASE_URL: ${DATABASE_DIRECT_URL_FOR_WORKER:-}
+      DATABASE_URL: ${DATABASE_MIGRATE_URL:-}
       DB_BEHIND_POOLER: "false"
+      APP_DB_ROLE: ${APP_DB_ROLE:-}
     healthcheck:
       disable: true
     profiles: ["tools"]

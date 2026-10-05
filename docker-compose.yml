@@ -31,39 +31,28 @@ services:
       retries: 20
 
   minio:
-    image: minio/minio:latest
+    # MinIO stands in for DigitalOcean Spaces. The official images are no
+    # longer published; pgsty/minio is a maintained community build.
+    image: pgsty/minio:latest
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
     ports: ["9000:9000", "9001:9001"]
     volumes: [miniodata:/data]
-    healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
-      interval: 3s
-      timeout: 3s
-      retries: 20
-
-  minio-init:
-    image: minio/mc:latest
-    depends_on:
-      minio: { condition: service_healthy }
-    entrypoint: >
-      /bin/sh -c "mc alias set local http://minio:9000 minioadmin minioadmin &&
-      mc mb --ignore-existing local/mmh-media local/mmh-backups &&
-      mc version enable local/mmh-media"
 
   backend:
     build: { context: ., target: dev }
     environment: *backend-env
     command: >
       sh -c "python manage.py wait_for_db && python manage.py migrate --noinput &&
-      python manage.py seed_dev && python manage.py runserver 0.0.0.0:8000"
+      python manage.py ensure_buckets && python manage.py seed_dev &&
+      python manage.py runserver 0.0.0.0:8000"
     volumes: [./backend:/app/backend]
     ports: ["8000:8000"]
     depends_on:
       db: { condition: service_healthy }
-      minio-init: { condition: service_completed_successfully }
+      minio: { condition: service_started }
 
   worker:
     build: { context: ., target: dev }

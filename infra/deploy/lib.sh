@@ -16,7 +16,15 @@ load_env() {
   # shellcheck source=/dev/null
   . "$MMH_HOME/.env"
   set +a
+  if [ -f "$MMH_HOME/admin.env" ]; then
+    set -a
+    # shellcheck source=/dev/null
+    . "$MMH_HOME/admin.env"
+    set +a
+  fi
   export DATABASE_DIRECT_URL_FOR_WORKER="${DATABASE_DIRECT_URL:-$DATABASE_URL}"
+  # Migrations run as the database owner when its URL is available.
+  export DATABASE_MIGRATE_URL="${ADMIN_DATABASE_URL:-$DATABASE_DIRECT_URL_FOR_WORKER}"
   touch "$STATE_FILE"
   set -a
   # shellcheck source=/dev/null

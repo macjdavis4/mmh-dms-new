@@ -17,6 +17,13 @@ output "database_direct_url" {
   value     = module.database.direct_url
   sensitive = true
 }
+output "database_admin_url" {
+  value     = module.database.admin_url
+  sensitive = true
+}
+output "database_app_role" {
+  value = module.database.app_role
+}
 output "media_bucket" {
   value = module.storage.media_bucket
 }
