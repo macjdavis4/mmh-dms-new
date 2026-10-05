@@ -1,4 +1,5 @@
 import {
+  ArrowRightLeft,
   CalendarClock,
   FileUp,
   Gauge,
@@ -53,6 +54,14 @@ export const NAV: NavSection[] = [
         icon: Truck,
         flag: "customers-units",
         description: "Every forklift's full spec card, photos, hours and history, plus stock for sale.",
+      },
+      {
+        label: "Bought and sold",
+        to: "/units/changes",
+        icon: ArrowRightLeft,
+        roles: ["admin", "sales", "read_only"],
+        flag: "units-changing-hands",
+        description: "Sales, trade-ins, repossessions and buy-backs, each with its own numbers.",
       },
       {
         label: "Service",

@@ -50,6 +50,15 @@ export const routes = [
         lazy: async () => ({ Component: (await import("@/features/units/UnitFormPage")).UnitFormPage }),
       },
       {
+        element: <RequireRole roles={["admin", "sales", "read_only"]} />,
+        children: [
+          {
+            path: "units/changes",
+            lazy: async () => ({ Component: (await import("@/features/units/ChangesPage")).ChangesPage }),
+          },
+        ],
+      },
+      {
         path: "units/:id",
         lazy: async () => ({ Component: (await import("@/features/units/UnitDetailPage")).UnitDetailPage }),
       },

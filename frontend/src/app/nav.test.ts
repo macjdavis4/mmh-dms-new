@@ -20,6 +20,13 @@ describe("navFor", () => {
     expect(labels("read_only")).not.toContain("Sales");
   });
 
+  it("shows Bought and sold to admin, sales and read only, when its flag is on", () => {
+    for (const role of ["admin", "sales", "read_only"] as const) expect(labels(role)).toContain("Bought and sold");
+    for (const role of ["service", "parts"] as const) expect(labels(role)).not.toContain("Bought and sold");
+    const off = navFor("sales", { "units-changing-hands": false }).flatMap((s) => s.items.map((i) => i.label));
+    expect(off).not.toContain("Bought and sold");
+  });
+
   it("drops empty sections", () => {
     expect(navFor("parts").map((s) => s.title)).toEqual(["Work", "You"]);
   });
@@ -43,11 +50,12 @@ describe("feature flags", () => {
 });
 
 describe("activeNavPath", () => {
-  const paths = ["/", "/units", "/service", "/service/maintenance"];
+  const paths = ["/", "/units", "/units/changes", "/service", "/service/maintenance"];
   it("highlights the most specific item", () => {
     expect(activeNavPath("/service/maintenance", paths)).toBe("/service/maintenance");
     expect(activeNavPath("/service/123", paths)).toBe("/service");
     expect(activeNavPath("/units/abc/edit", paths)).toBe("/units");
+    expect(activeNavPath("/units/changes", paths)).toBe("/units/changes");
     expect(activeNavPath("/", paths)).toBe("/");
     expect(activeNavPath("/account", paths)).toBeUndefined();
   });
