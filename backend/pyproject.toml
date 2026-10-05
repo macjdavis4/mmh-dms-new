@@ -23,6 +23,7 @@ ignore = [
 "apps/ops/backup.py" = ["S603", "S607"]  # runs pg_dump/age with fixed argv
 # Column help and user-facing messages read better unwrapped.
 "apps/imports/{columns,formats,parsing,services}.py" = ["E501", "RUF001"]
+"apps/*/demo.py" = ["E501"]  # demo text reads better unwrapped
 
 [tool.mypy]
 python_version = "3.12"

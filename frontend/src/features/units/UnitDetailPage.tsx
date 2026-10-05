@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 
 import { useCurrentUser } from "@/app/guards";
+import { UnitServiceHistory } from "@/features/service/UnitServiceHistory";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { SectionCard } from "@/components/form/Field";
 import { EmptyState, ErrorState } from "@/components/states";
@@ -439,6 +440,8 @@ export function UnitDetailPage() {
           )}
         </SectionCard>
       </div>
+
+      <UnitServiceHistory unitId={u.id} removed={u.is_deleted} />
 
       <SectionCard id="history" title="Change history" description="Every edit to this unit card: who, when, before and after.">
         {!history.data?.length ? (

@@ -26,7 +26,8 @@ describe("navFor", () => {
 
   it("finds items by path", () => {
     expect(findNavItem("/units")?.flag).toBe("customers-units");
-    expect(findNavItem("/service")?.comingInPhase).toBe(4);
+    expect(findNavItem("/service")?.flag).toBe("service");
+    expect(findNavItem("/parts")?.comingInPhase).toBe(9);
     expect(findNavItem("/nope")).toBeUndefined();
   });
 });

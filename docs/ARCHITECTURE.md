@@ -44,6 +44,7 @@
 | Unit components | One row per component kind (engine, pump, ...) instead of 24 columns | Same shape for every component; easy to add a kind later |
 | Uploaded files | Private bucket, streamed through Django after a permission check; content checked with Pillow; WebP thumbnails | No guessable public URLs; a renamed `.exe` is refused |
 | Imports | Validate (no changes) → apply one transaction per row → undo per batch; match on normalized serial; audit entries tagged `import-<batch>` | Safe to re-run and retry; undo can tell the import's changes from later edits |
+| Work order numbers | Postgres sequence starting at 20001 | Never reused or duplicated, even with two people saving at once |
 | Import API | Versioned path, API keys hashed with SHA-256 (256-bit random keys), per-key throttle; requests act as the key's admin | The scanning app needs no user account; a key can be revoked without touching anyone's password |
 | Prices | Removed from API responses for roles that can't see them; price filters and sorting ignored | Hiding in the UI alone would leak through the API |
 
@@ -72,11 +73,14 @@
 | Imports: prices in the file | ✓ | ✓ | (ignored) | | |
 | Imports: undo | ✓ | own imports | own imports | | |
 | API keys | ✓ | | | | |
+| Work orders: view | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Work orders: open, edit, status, labor | ✓ | | ✓ | | |
+| Work orders: remove | ✓ | | | | |
 
 ## Repository layout
 
 ```
-backend/            Django project (config/, apps/core, accounts, search, ops, customers, units, imports; tests/)
+backend/            Django project (config/, apps/core, accounts, search, ops, customers, units, imports, service; tests/)
 frontend/           React + TypeScript (src/app, src/components, src/features, e2e/)
 infra/caddy/        Caddy image and Caddyfile
 infra/cloud-init/   Droplet bootstrap and the deploy entry point

@@ -4,12 +4,33 @@
 |---|---|---|
 | 1 | Foundation | Merged |
 | 2 | Customers and forklift units | Merged |
-| 3 | Batch import | **In review** |
-| 4 | Service | Not started |
-| 5 | Sales | Not started |
-| 6 | Parts inventory | Not started |
-| 7 | Dashboard, reports and continuity | Not started |
-| 8 | Offline work orders (optional) | Ask before starting |
+| 3 | Batch import | Merged |
+| 4 | Work orders | **In review** |
+| 5 | Planned maintenance | Not started |
+| 6 | Printouts (work order and spec sheet PDFs) | Not started |
+| 7 | Units changing hands (sales, trade-ins, repos) | Not started |
+| 8 | Quotes and sales | Not started |
+| 9 | Parts catalog | Not started |
+| 10 | Parts stock ledger | Not started |
+| 11 | Receiving parts invoices | Not started |
+| 12 | Dashboard and reports | Not started |
+| 13 | Continuity (offline-ready app, paper fallback) | Not started |
+| 14 | Offline work orders (optional) | Ask before starting |
+
+From Phase 4 on, phases are smaller (one usable piece each) so each pull request stays easy to review.
+
+| Phase | Delivers |
+|---|---|
+| 4 | Work orders: create, assign, status, complaint / cause / correction, labor hours, hour meter at service, service history on the unit |
+| 5 | Planned maintenance by hours or calendar, due-soon list, work order from a due item |
+| 6 | Work order PDF and unit spec sheet PDF |
+| 7 | Why a unit changed hands, status and condition following the owner, buy and sell records with their own prices |
+| 8 | Quotes, quote PDF, sales with trade-ins |
+| 9 | Parts, bins, reorder points, supersessions, cross references |
+| 10 | Append-only stock ledger, parts used on work orders, nightly drift check, low-stock list |
+| 11 | Invoice upload, text extraction / OCR, review, partial receipts and backorders |
+| 12 | Dashboard tiles and reports (including parts valuation) |
+| 13 | Offline-ready app for recent units and the parts catalog; nightly CSV/PDF paper-fallback exports |
 
 ## Phase 1: Foundation
 
@@ -74,9 +95,24 @@
 
 **Waiting on the owner**: nothing to set up. Fill in the template when the cards are scanned (see [MANUAL_STEPS](MANUAL_STEPS.md), "Phase 3").
 
-## Planned for Phase 5 (Sales): units that come back
+## Phase 4: Work orders
 
-A unit can be sold, come back (repossession, trade-in, buy-back, lease return, bought used) and be sold again, any number of times. It always stays one unit record (one serial), with its ownership history as the timeline. Phase 5 adds:
+**Built**
+- [x] Work orders numbered WO-20001 upwards (a database sequence; old cards' 4-digit numbers can't clash)
+- [x] Unit, customer (taken from the unit's current owner), type, shop or field, mechanic, due date, customer PO, on-site contact, notes
+- [x] Status: open → in progress → on hold (with what it's waiting for) → completed, or cancelled; reopen. Completing needs the correction, also enforced by the database
+- [x] Complaint / cause / correction; labor lines (mechanic, date, hours, what was done), remove with undo
+- [x] Hour meter at service saved as a dated reading on the unit (warns if lower than before)
+- [x] Service list (open, completed, cancelled, all; "Mine"; search), service history on the unit page, dashboard tile and quick action
+- [x] Global search finds work orders by number and units by the work order number on an old card
+- [x] Roles: admin and service edit; sales, parts and read-only can look; only admin removes
+- [x] Demo work orders in the seed data; behind the `service` feature flag (on)
+
+**Tests**: 221 backend tests (92% coverage), 31 Vitest, 35 Playwright end-to-end tests.
+
+## Planned for Phase 7: units that come back
+
+A unit can be sold, come back (repossession, trade-in, buy-back, lease return, bought used) and be sold again, any number of times. It always stays one unit record (one serial), with its ownership history as the timeline. Phase 7 adds:
 
 - **Why it changed hands** on every ownership change: sold, trade-in, repossession, bought back, lease return, other.
 - **Stock status and condition follow the owner**: coming back to our stock sets *In prep* and *Used*; a sale sets *Sold*.

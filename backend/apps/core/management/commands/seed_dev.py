@@ -19,6 +19,7 @@ from apps.accounts.models import User
 from apps.accounts.roles import Role
 from apps.core.context import acting_as
 from apps.core.models import FeatureFlag, SiteSettings
+from apps.service.demo import load_demo_work_orders
 from apps.units.demo import load_demo_data
 
 DEMO_PASSWORD = "Forklift-Demo-2026!"  # noqa: S105 - demo data, never in prod
@@ -38,11 +39,10 @@ USERS = [
 ]
 
 # Finished features: switched on in demo data even if an older seed left them off.
-LIVE_FLAGS = ["customers-units", "batch-import"]
+LIVE_FLAGS = ["customers-units", "batch-import", "service"]
 
-FLAGS = [
-    ("service", "Phase 4: work orders and planned maintenance"),
-]
+# Features still being built: created switched off.
+FLAGS: list[tuple[str, str]] = []
 
 
 class Command(BaseCommand):
@@ -90,6 +90,7 @@ class Command(BaseCommand):
             site.banner_message = ""
             site.save()
             load_demo_data()
+            load_demo_work_orders()
         self.stdout.write(
             self.style.SUCCESS(f"Seeded {len(USERS)} users. Password: {DEMO_PASSWORD}")
         )

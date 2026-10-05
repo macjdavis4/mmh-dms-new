@@ -106,6 +106,11 @@ The database refuses it, so this can only be a near-miss (for example `O` vs `0`
 - **Format docs out of date** after changing `backend/apps/imports/columns.py`: run `python manage.py write_import_docs` and commit the files it writes.
 - **Scanning app gets 401**: its API key was revoked, or the admin who made it was removed or lost the admin role. Make a new key under *Admin → API keys*. A 429 means more than 30 requests a minute.
 
+### Work orders
+
+- A work order is never deleted, only cancelled (and can be reopened). Only an admin can remove one; removed ones come back with *restore*.
+- A wrong hour meter reading on a work order: correct the number in the work order's details. The old reading is replaced (and kept in the change history).
+
 ## Read-only mode and the maintenance banner
 
 *Admin → Site settings*. Read-only mode blocks every change for everyone (sign-in still works) and shows a notice on every screen. Use it during database maintenance or a restore. The banner can show any message in information, warning or critical style, including on the sign-in page.

@@ -448,3 +448,80 @@ export interface ApiKey {
   is_active: boolean;
   key?: string;
 }
+
+// --- Service (Phase 4) --------------------------------------------------------------------------
+
+export type WorkOrderStatus = "open" | "in_progress" | "on_hold" | "completed" | "cancelled";
+export type WorkOrderKind = "repair" | "maintenance" | "inspection" | "prep" | "warranty";
+
+export const WORK_ORDER_KINDS: Record<WorkOrderKind, string> = {
+  repair: "Repair",
+  maintenance: "Planned maintenance",
+  inspection: "Inspection",
+  prep: "Prep for sale",
+  warranty: "Warranty",
+};
+
+export interface UnitSummary {
+  id: string;
+  make: string;
+  model: string;
+  serial_number: string;
+  stock_number: string;
+  year: number | null;
+}
+
+export interface WorkOrderRow {
+  id: string;
+  number: string;
+  unit: string;
+  unit_summary: UnitSummary;
+  customer: string | null;
+  customer_name: string;
+  kind: WorkOrderKind;
+  kind_label: string;
+  status: WorkOrderStatus;
+  status_label: string;
+  location: "shop" | "field";
+  assigned_to: string | null;
+  assigned_to_name: string;
+  complaint: string;
+  hold_reason: string;
+  opened_on: string;
+  due_on: string | null;
+  completed_at: string | null;
+  labor_hours: string;
+}
+
+export interface LaborLine {
+  id: string;
+  work_order: string;
+  mechanic: string;
+  mechanic_name: string;
+  work_date: string;
+  hours: string;
+  description: string;
+  created_at: string;
+}
+
+export interface WorkOrder extends WorkOrderRow {
+  location_label: string;
+  cause: string;
+  correction: string;
+  customer_po: string;
+  contact: string;
+  notes: string;
+  hour_meter: { hours: string; reading_date: string } | null;
+  labor: LaborLine[];
+  is_deleted: boolean;
+  created_at: string;
+  created_by_name: string;
+  updated_at: string;
+  warning?: string | null;
+}
+
+export interface Mechanic {
+  id: string;
+  name: string;
+  role: string;
+}

@@ -18,6 +18,7 @@ import { useCurrentUser } from "@/app/guards";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { canEditWorkOrders, useWorkOrderCounts } from "@/features/service/api";
 import { canEditUnits } from "@/features/units/permissions";
 import { api, type Paginated } from "@/lib/api";
 import { isOn, useFlags } from "@/lib/flags";
@@ -34,16 +35,14 @@ function greeting(now = new Date()): string {
 type Tile = { label: string; icon: typeof Truck; phase: number; to?: string; count?: number | undefined };
 
 const TILES: Tile[] = [
-  { label: "Open work orders", icon: Wrench, phase: 4 },
-  { label: "PM due in 30 days", icon: Activity, phase: 4 },
-  { label: "Low-stock parts", icon: PackageCheck, phase: 6 },
+  { label: "PM due in 30 days", icon: Activity, phase: 5 },
+  { label: "Low-stock parts", icon: PackageCheck, phase: 10 },
 ];
 
 type QuickAction = { label: string; icon: typeof Truck; to: string; phase?: number; hint?: string };
 
 const QUICK_ACTIONS: QuickAction[] = [
-  { label: "New work order", icon: ClipboardPlus, to: "/service", phase: 4 },
-  { label: "Receive a parts invoice", icon: PackageCheck, to: "/parts", phase: 6 },
+  { label: "Receive a parts invoice", icon: PackageCheck, to: "/parts", phase: 11 },
 ];
 
 function StatusRow({ ok, label, detail }: { ok: boolean; label: string; detail: string }) {
@@ -134,10 +133,18 @@ export function DashboardPage() {
   const flags = useFlags();
   const unitsOn = isOn(flags.data?.flags, "customers-units");
   const stock = useStockCount(unitsOn);
+  const serviceOn = isOn(flags.data?.flags, "service");
+  const workOrders = useWorkOrderCounts(serviceOn);
+  const serviceTile: Tile = serviceOn
+    ? { label: "Open work orders", icon: Wrench, phase: 4, to: "/service", count: workOrders.data?.open }
+    : { label: "Open work orders", icon: Wrench, phase: 4 };
   const tiles: Tile[] = unitsOn
-    ? [{ label: "Units in stock", icon: Truck, phase: 2, to: "/units", count: stock.data }, ...TILES]
-    : [{ label: "Units in stock", icon: Truck, phase: 2 }, ...TILES];
+    ? [{ label: "Units in stock", icon: Truck, phase: 2, to: "/units", count: stock.data }, serviceTile, ...TILES]
+    : [{ label: "Units in stock", icon: Truck, phase: 2 }, serviceTile, ...TILES];
   const actions: QuickAction[] = [...QUICK_ACTIONS];
+  if (serviceOn && canEditWorkOrders(user.role)) {
+    actions.unshift({ label: "New work order", icon: ClipboardPlus, to: "/service/new", hint: "Open a job on a unit" });
+  }
   if (isOn(flags.data?.flags, "batch-import") && ["admin", "sales", "service"].includes(user.role)) {
     actions.push({ label: "Import unit cards", icon: FileUp, to: "/imports/new", hint: "Upload a spreadsheet of cards" });
   }

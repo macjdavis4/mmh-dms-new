@@ -28,7 +28,11 @@ def search_units(user: Any, query: str, limit: int) -> list[SearchResult]:
     """Any serial on the unit (unit, engine, battery, attachments...), stock
     number, or model. Serials match ignoring case, spaces and dashes."""
     norm = normalize_serial(query)
-    match = Q(model__icontains=query) | Q(stock_number__iexact=query)
+    match = (
+        Q(model__icontains=query)
+        | Q(stock_number__iexact=query)
+        | Q(work_order_number__iexact=query)  # the number written on an old card
+    )
     if words := every_word(query):
         match |= words
     if len(norm) >= 3:

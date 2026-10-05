@@ -238,6 +238,10 @@ Tip: try 10 cards first. If anything looks wrong, **Undo this import**, fix the 
 
 Full column list: `docs/IMPORT_FORMAT.md`. The scanning-app API needs a key from **Admin → API keys** (only when that app exists).
 
+## Phase 4: work orders
+
+Nothing to set up. Make sure each mechanic has a user with the **Service** role (*Admin → Users*); only service and admin users can be assigned work or log time.
+
 ---
 
 ## Ongoing
