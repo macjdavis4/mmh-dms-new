@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { useCurrentUser } from "@/app/guards";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { PrintButton } from "@/components/PrintButton";
 import { Field, NativeSelect, SectionCard } from "@/components/form/Field";
 import { EmptyState, ErrorState } from "@/components/states";
 import { Button } from "@/components/ui/button";
@@ -293,7 +294,10 @@ function WorkOrderView({ wo }: { wo: WorkOrder }) {
             {due && <span className={cn("font-semibold", due.late && "text-destructive")}> · {due.text}</span>}
           </p>
         </div>
-        {actions}
+        <div className="flex flex-wrap items-start gap-2">
+          {actions}
+          <PrintButton href={`/api/v1/work-orders/${wo.id}/pdf`} />
+        </div>
       </div>
 
       {wo.status === "on_hold" && (

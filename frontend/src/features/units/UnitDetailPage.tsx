@@ -7,6 +7,7 @@ import { useCurrentUser } from "@/app/guards";
 import { UnitMaintenance } from "@/features/service/UnitMaintenance";
 import { UnitServiceHistory } from "@/features/service/UnitServiceHistory";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { PrintButton, PrintMenu } from "@/components/PrintButton";
 import { SectionCard } from "@/components/form/Field";
 import { EmptyState, ErrorState } from "@/components/states";
 import { Button } from "@/components/ui/button";
@@ -17,7 +18,7 @@ import { FUEL_LABELS, type Unit } from "@/lib/types";
 
 import { useFiles, useHistory, useHours, useOwnership, useSaveUnit, useUnit, useUnitAction } from "./api";
 import { ConditionBadge, ReviewBadge, StockBadge, unitTitle } from "./bits";
-import { canEditUnits, canRemoveUnits, canTransferOwnership } from "./permissions";
+import { canEditUnits, canRemoveUnits, canSeePricing, canTransferOwnership } from "./permissions";
 import { HoursDialog, TransferDialog } from "./UnitDialogs";
 import { UnitDocuments, UnitGallery } from "./UnitFiles";
 
@@ -172,6 +173,17 @@ export function UnitDetailPage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            {canSeePricing(user.role) ? (
+              <PrintMenu
+                label="Spec sheet"
+                items={[
+                  { label: "Spec sheet", href: `/api/v1/units/${u.id}/spec-sheet` },
+                  { label: "Spec sheet with asking price", href: `/api/v1/units/${u.id}/spec-sheet?price=1` },
+                ]}
+              />
+            ) : (
+              <PrintButton href={`/api/v1/units/${u.id}/spec-sheet`} label="Spec sheet" />
+            )}
             {canEdit && (
               <>
                 <Button variant="cta" asChild>
