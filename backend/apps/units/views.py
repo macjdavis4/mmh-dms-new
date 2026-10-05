@@ -31,6 +31,7 @@ from .models import (
     UnitFile,
     normalize_serial,
 )
+from .search import every_word
 from .serializers import (
     HourReadingSerializer,
     OwnershipSerializer,
@@ -128,6 +129,8 @@ class UnitViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet[Unit]):
             )
             if norm:
                 match |= Q(serial_normalized__contains=norm)
+            if words := every_word(q, ("make", "model", "owner_name", "card_customer_name")):
+                match |= words
             qs = qs.filter(match)
         for name in ("condition", "fuel_type", "make", "model"):
             if values := p.getlist(name):

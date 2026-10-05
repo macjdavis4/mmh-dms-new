@@ -360,6 +360,18 @@ def test_global_search_finds_any_serial(client_for: Any) -> None:
     assert len(by_engine) == 1
 
 
+@pytest.mark.django_db
+def test_multi_word_search_matches_make_and_model(client_for: Any) -> None:
+    admin = client_for("admin")
+    create(admin, serial_number="MW1", stock_status="available")
+    create(admin, serial_number="MW2", make="Doosan", model="G25N-7", stock_status="available")
+    found = admin.get("/api/v1/search?q=hyundai 35").json()["groups"]["unit"]
+    assert [u["title"] for u in found] == ["Hyundai 35LN-9A"]
+    listed = admin.get(URL, {"q": "doosan g25"}).json()["results"]
+    assert [u["serial_number"] for u in listed] == ["MW2"]
+    assert admin.get(URL, {"q": "doosan 35"}).json()["count"] == 0
+
+
 # --- Ownership and hours --------------------------------------------------------------------------------------------
 
 

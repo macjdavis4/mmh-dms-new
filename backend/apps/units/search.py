@@ -9,11 +9,28 @@ from apps.search.registry import SearchResult
 from .models import Unit, normalize_serial
 
 
+def every_word(query: str, fields: tuple[str, ...] = ("make", "model")) -> Q | None:
+    """For multi-word queries like "hyundai 35": each word must appear in
+    one of `fields`. None for single words (the plain match covers those)."""
+    words = query.split()
+    if len(words) < 2:
+        return None
+    match = Q()
+    for word in words:
+        any_field = Q()
+        for field in fields:
+            any_field |= Q(**{f"{field}__icontains": word})
+        match &= any_field
+    return match
+
+
 def search_units(user: Any, query: str, limit: int) -> list[SearchResult]:
     """Any serial on the unit (unit, engine, battery, attachments...), stock
     number, or model. Serials match ignoring case, spaces and dashes."""
     norm = normalize_serial(query)
     match = Q(model__icontains=query) | Q(stock_number__iexact=query)
+    if words := every_word(query):
+        match |= words
     if len(norm) >= 3:
         match |= (
             Q(serial_normalized__contains=norm)
