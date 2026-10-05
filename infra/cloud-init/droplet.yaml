@@ -1,0 +1,126 @@
+#cloud-config
+# Rendered by Terraform (modules/app). Sets up a hardened Ubuntu 24.04 host
+# that runs only Docker Compose. No application data is stored here.
+
+package_update: true
+package_upgrade: true
+packages:
+  - ca-certificates
+  - curl
+  - ufw
+  - fail2ban
+  - unattended-upgrades
+  - apt-listchanges
+  - jq
+
+users:
+  - name: ${admin_username}
+    groups: [sudo, docker]
+    shell: /bin/bash
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
+    lock_passwd: true
+    ssh_authorized_keys:
+      - ${admin_ssh_public_key}
+  - name: deploy
+    groups: [docker]
+    shell: /bin/bash
+    lock_passwd: true
+    ssh_authorized_keys:
+      # This key can only run the deploy entry point: no shell, no forwarding.
+      - command="/usr/local/bin/mmh-deploy-entry",no-port-forwarding,no-agent-forwarding,no-X11-forwarding,no-pty ${deploy_ssh_public_key}
+
+write_files:
+  - path: /usr/local/bin/mmh-deploy-entry
+    permissions: "0755"
+    owner: root:root
+    encoding: b64
+    content: ${deploy_entry_b64}
+
+  - path: /opt/mmh/certs/do-ca.crt
+    permissions: "0644"
+    encoding: b64
+    content: ${db_ca_cert_b64}
+
+  - path: /etc/ssh/sshd_config.d/60-mmh-hardening.conf
+    permissions: "0644"
+    content: |
+      PermitRootLogin no
+      PasswordAuthentication no
+      KbdInteractiveAuthentication no
+      PubkeyAuthentication yes
+      AllowUsers ${admin_username} deploy
+      X11Forwarding no
+      MaxAuthTries 3
+      LoginGraceTime 30
+
+  - path: /etc/fail2ban/jail.d/sshd.local
+    permissions: "0644"
+    content: |
+      [sshd]
+      enabled = true
+      maxretry = 4
+      findtime = 10m
+      bantime = 1h
+
+  - path: /etc/apt/apt.conf.d/20auto-upgrades
+    permissions: "0644"
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+      APT::Periodic::AutocleanInterval "7";
+
+  - path: /etc/apt/apt.conf.d/52mmh-unattended-upgrades
+    permissions: "0644"
+    content: |
+      Unattended-Upgrade::Origins-Pattern {
+        "origin=Ubuntu,archive=$${distro_codename}-security";
+        "origin=Docker";
+      };
+      Unattended-Upgrade::Automatic-Reboot "true";
+      Unattended-Upgrade::Automatic-Reboot-Time "08:30";
+
+  - path: /etc/docker/daemon.json
+    permissions: "0644"
+    content: |
+      {
+        "log-driver": "json-file",
+        "log-opts": { "max-size": "20m", "max-file": "5" },
+        "live-restore": true,
+        "no-new-privileges": true,
+        "userland-proxy": false
+      }
+
+  - path: /etc/sysctl.d/60-mmh.conf
+    permissions: "0644"
+    content: |
+      net.ipv4.conf.all.rp_filter = 1
+      net.ipv4.tcp_syncookies = 1
+      net.ipv4.conf.all.accept_redirects = 0
+      net.ipv6.conf.all.accept_redirects = 0
+      kernel.kptr_restrict = 2
+
+runcmd:
+  # Docker Engine from Docker's official repository.
+  - install -m 0755 -d /etc/apt/keyrings
+  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+  - chmod a+r /etc/apt/keyrings/docker.asc
+  - echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo $VERSION_CODENAME) stable" > /etc/apt/sources.list.d/docker.list
+  - apt-get update
+  - apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+  - systemctl enable --now docker
+  # Host firewall (the DigitalOcean Cloud Firewall in front is stricter).
+  - ufw default deny incoming
+  - ufw default allow outgoing
+  - ufw limit 22/tcp
+  - ufw allow 80/tcp
+  - ufw allow 443/tcp
+  - ufw allow 443/udp
+  - ufw --force enable
+  - sysctl --system
+  - systemctl enable --now fail2ban
+  - systemctl restart ssh
+  # App directory, owned by the deploy user.
+  - mkdir -p /opt/mmh/releases /opt/mmh/upstream
+  - chown -R deploy:deploy /opt/mmh
+  - chmod 0750 /opt/mmh
+  - echo "mmh ${environment} host ready" > /etc/motd

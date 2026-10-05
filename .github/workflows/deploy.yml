@@ -1,0 +1,128 @@
+# Every merge to main: build images, deploy to staging, then wait for a
+# manual approval (GitHub "production" environment) before production.
+# Deploy jobs are skipped until the repository variable DEPLOY_ENABLED is
+# set to "true" (after docs/MANUAL_STEPS.md is done).
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+env:
+  APP_IMAGE: ghcr.io/${{ github.repository }}
+  CADDY_IMAGE: ghcr.io/${{ github.repository }}-caddy
+
+jobs:
+  build:
+    name: Build and push images
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: tag
+        run: echo "tag=${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: App image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: runtime
+          push: true
+          build-args: APP_VERSION=${{ steps.tag.outputs.tag }}
+          tags: |
+            ${{ env.APP_IMAGE }}:${{ steps.tag.outputs.tag }}
+            ${{ env.APP_IMAGE }}:main
+          cache-from: type=gha,scope=app
+          cache-to: type=gha,mode=max,scope=app
+      - name: Caddy image
+        uses: docker/build-push-action@v6
+        with:
+          context: infra/caddy
+          push: true
+          tags: |
+            ${{ env.CADDY_IMAGE }}:${{ steps.tag.outputs.tag }}
+            ${{ env.CADDY_IMAGE }}:main
+          cache-from: type=gha,scope=caddy
+          cache-to: type=gha,mode=max,scope=caddy
+
+  staging:
+    name: Deploy to staging
+    needs: build
+    if: vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    environment:
+      name: staging
+      url: https://staging-dms.maine-material.com
+    env:
+      APP_ENV: ${{ vars.APP_ENV }}
+      APP_VERSION: ${{ needs.build.outputs.tag }}
+      APP_IMAGE_REPO: ghcr.io/${{ github.repository }}
+      CADDY_IMAGE: ghcr.io/${{ github.repository }}-caddy:${{ needs.build.outputs.tag }}
+      DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CADDY_CLOUDFLARE_API_TOKEN }}
+      ACME_EMAIL: ${{ vars.ACME_EMAIL }}
+      BACKUP_AGE_RECIPIENT: ${{ vars.BACKUP_AGE_RECIPIENT }}
+      GHCR_USER: ${{ vars.GHCR_USER }}
+      GHCR_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
+      SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+      DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+      SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+      DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.SPACES_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/deploy
+        with:
+          environment: staging
+          image-tag: ${{ needs.build.outputs.tag }}
+
+  production:
+    name: Deploy to production
+    needs: [build, staging]
+    if: vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    # Required reviewers on this environment = the manual approval step.
+    environment:
+      name: production
+      url: https://dms.maine-material.com
+    env:
+      APP_ENV: ${{ vars.APP_ENV }}
+      APP_VERSION: ${{ needs.build.outputs.tag }}
+      APP_IMAGE_REPO: ghcr.io/${{ github.repository }}
+      CADDY_IMAGE: ghcr.io/${{ github.repository }}-caddy:${{ needs.build.outputs.tag }}
+      DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CADDY_CLOUDFLARE_API_TOKEN }}
+      ACME_EMAIL: ${{ vars.ACME_EMAIL }}
+      BACKUP_AGE_RECIPIENT: ${{ vars.BACKUP_AGE_RECIPIENT }}
+      GHCR_USER: ${{ vars.GHCR_USER }}
+      GHCR_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
+      SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+      DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+      SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+      DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.SPACES_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/deploy
+        with:
+          environment: production
+          image-tag: ${{ needs.build.outputs.tag }}

@@ -1,0 +1,227 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"
+  NODE_VERSION: "22"
+  TERRAFORM_VERSION: "1.16.5"
+
+jobs:
+  backend:
+    name: Backend (lint, types, migrations, tests)
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: mmh
+          POSTGRES_PASSWORD: mmh
+          POSTGRES_DB: mmh
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U mmh" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://mmh:mmh@localhost:5432/mmh
+      DJANGO_SETTINGS_MODULE: config.settings.test
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: backend/requirements/*.txt
+      - name: System packages (age for backup tests)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq age postgresql-client
+      - name: Install dependencies (hash-checked)
+        run: pip install --require-hashes -r requirements/base.txt -r requirements/dev.txt
+      - name: Ruff lint
+        run: ruff check .
+      - name: Ruff format
+        run: ruff format --check .
+      - name: Mypy (strict)
+        run: mypy .
+      - name: Django system checks
+        run: python manage.py check --fail-level WARNING
+      - name: Migrations are complete
+        run: python manage.py makemigrations --check --dry-run
+      - name: Migration lint (expand/contract safety)
+        run: python manage.py lintmigrations --warnings-as-errors --exclude-migration-tests
+      - name: Tests with coverage
+        run: pytest --cov-fail-under=85
+      - name: Dependency vulnerabilities (pip-audit)
+        run: pip-audit --strict --require-hashes -r requirements/base.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-coverage
+          path: backend/coverage.xml
+
+  frontend:
+    name: Frontend (lint, types, unit tests, build)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - name: ESLint
+        run: npm run lint
+      - name: TypeScript (strict)
+        run: npm run typecheck
+      - name: Unit tests (Vitest)
+        run: npx vitest run --coverage
+      - name: Build
+        run: npm run build
+      - name: Dependency vulnerabilities (npm audit, runtime deps)
+        run: npm audit --omit=dev --audit-level=high
+
+  e2e:
+    name: End-to-end (Playwright)
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: mmh
+          POSTGRES_PASSWORD: mmh
+          POSTGRES_DB: mmh
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U mmh" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://mmh:mmh@localhost:5432/mmh
+      DJANGO_SETTINGS_MODULE: config.settings.e2e
+      E2E_PYTHON: python
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: backend/requirements/*.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: pip install --require-hashes -r backend/requirements/base.txt
+      - run: npm ci --no-audit --no-fund
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend
+      - name: Start the app (production-like, built frontend)
+        working-directory: backend
+        run: |
+          python manage.py migrate --noinput
+          nohup gunicorn -c gunicorn.conf.py config.wsgi > /tmp/gunicorn.log 2>&1 &
+          for _ in $(seq 1 30); do curl -sf http://localhost:8000/readyz && break; sleep 1; done
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - name: Playwright
+        working-directory: frontend
+        run: npx playwright test --project=e2e
+      - name: Server log
+        if: failure()
+        run: tail -200 /tmp/gunicorn.log
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: frontend/playwright-report
+
+  images:
+    name: Container images (build + Trivy scan)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build app image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: runtime
+          load: true
+          tags: mmh-app:ci
+          build-args: APP_VERSION=${{ github.sha }}
+          cache-from: type=gha,scope=app
+          cache-to: type=gha,mode=max,scope=app
+      - name: Build Caddy image
+        uses: docker/build-push-action@v6
+        with:
+          context: infra/caddy
+          load: true
+          tags: mmh-caddy:ci
+          cache-from: type=gha,scope=caddy
+          cache-to: type=gha,mode=max,scope=caddy
+      - name: Container runs as non-root and passes its health check
+        run: |
+          test "$(docker inspect -f '{{.Config.User}}' mmh-app:ci)" = "app"
+          docker run --rm --read-only --tmpfs /tmp mmh-app:ci python -c "import django; print(django.get_version())"
+      - name: Trivy scan (app)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: mmh-app:ci
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+          trivyignores: .trivyignore
+      - name: Trivy scan (caddy)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: mmh-caddy:ci
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+          trivyignores: .trivyignore
+
+  infra:
+    name: Infrastructure (Terraform, shell, secrets)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+      - name: terraform fmt
+        run: terraform fmt -check -recursive infra/terraform
+      - name: terraform validate and test (mocked providers)
+        run: |
+          for env in shared staging production; do
+            echo "::group::$env"
+            terraform -chdir=infra/terraform/envs/$env init -backend=false -input=false
+            terraform -chdir=infra/terraform/envs/$env validate
+            if [ -d infra/terraform/envs/$env/tests ]; then terraform -chdir=infra/terraform/envs/$env test; fi
+            echo "::endgroup::"
+          done
+      - name: ShellCheck
+        run: shellcheck -x infra/deploy/*.sh infra/cloud-init/deploy-entry.sh infra/scripts/*.sh backend/docker-entrypoint.sh
+      - name: actionlint (workflow files)
+        run: |
+          curl -fsSL -o /tmp/al.tgz https://github.com/rhysd/actionlint/releases/download/v1.7.7/actionlint_1.7.7_linux_amd64.tar.gz
+          tar -xzf /tmp/al.tgz -C /tmp actionlint
+          /tmp/actionlint
+      - name: Secret scan (gitleaks)
+        run: |
+          docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.28.0 git /repo --no-banner --redact --exit-code 1

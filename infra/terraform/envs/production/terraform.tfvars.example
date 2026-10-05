@@ -1,0 +1,7 @@
+# Copy to terraform.tfvars for local runs (never commit the real file).
+# In GitHub Actions these come from TF_VAR_* secrets instead.
+admin_ssh_public_key  = "ssh-ed25519 AAAA... owner@office"
+deploy_ssh_public_key = "ssh-ed25519 AAAA... github-actions-deploy"
+admin_ssh_cidrs       = ["203.0.113.10/32"]
+cloudflare_zone_id    = "0123456789abcdef0123456789abcdef"
+alert_emails          = ["owner@maine-material.com"]

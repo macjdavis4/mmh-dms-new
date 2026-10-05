@@ -1,0 +1,11 @@
+# Used only by infra/scripts/test-deploy-local.sh.
+services:
+  caddy: { networks: [app, extra] }
+  app-blue: { networks: [app, extra] }
+  app-green: { networks: [app, extra] }
+  worker: { networks: [app, extra] }
+  migrate: { networks: [app, extra] }
+networks:
+  extra:
+    name: ${EXTRA_NETWORK}
+    external: true

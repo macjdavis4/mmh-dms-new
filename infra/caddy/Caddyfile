@@ -1,0 +1,49 @@
+# Production / staging reverse proxy. Values come from /opt/mmh/.env.
+{
+	email {$ACME_EMAIL}
+	servers {
+		trusted_proxies cloudflare {
+			interval 12h
+			timeout 15s
+		}
+		client_ip_headers CF-Connecting-IP
+		trusted_proxies_strict
+	}
+}
+
+{$SITE_DOMAIN} {
+	tls {
+		dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+		resolvers 1.1.1.1 1.0.0.1
+	}
+
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		-Server
+		-Via
+	}
+
+	# Long-lived caching for fingerprinted frontend files.
+	@assets path /static/assets/*
+	header @assets Cache-Control "public, max-age=31536000, immutable"
+
+	request_body {
+		max_size 50MB
+	}
+
+	# Which app container is live (blue or green). Rewritten by deploy.sh.
+	import /etc/caddy/upstream/active.caddy
+
+	log {
+		output stdout
+		format json
+	}
+}
+
+# Plain HTTP only redirects (Cloudflare also enforces HTTPS).
+http://{$SITE_DOMAIN} {
+	redir https://{host}{uri} permanent
+}

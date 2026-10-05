@@ -1,0 +1,11 @@
+# Secret scanning config (used by CI). Extends gitleaks' default rules.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Made-up passwords in automated tests and local demo data"
+paths = [
+  '''(^|/)backend/tests/''',
+  '''(^|/)frontend/e2e/''',
+  '''(^|/)frontend/src/.*\.test\.tsx?$''',
+]

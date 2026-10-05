@@ -1,0 +1,55 @@
+# Emergency: put the previous version back on staging or production.
+# Actions -> Rollback -> Run workflow. Takes about a minute.
+name: Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        options: [production, staging]
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  rollback:
+    runs-on: ubuntu-24.04
+    environment: ${{ inputs.environment }}
+    env:
+      DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.SPACES_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.16.5"
+          terraform_wrapper: false
+      - name: Find the server
+        working-directory: infra/terraform/envs/${{ inputs.environment }}
+        run: |
+          terraform init -input=false >/dev/null
+          echo "DROPLET_IP=$(terraform output -raw droplet_ip)" >> "$GITHUB_ENV"
+          echo "FIREWALL_ID=$(terraform output -raw firewall_id)" >> "$GITHUB_ENV"
+      - uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+      - name: Roll back
+        env:
+          DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+        run: |
+          RUNNER_IP=$(curl -fsS https://api.ipify.org)
+          doctl compute firewall add-rules "$FIREWALL_ID" --inbound-rules "protocol:tcp,ports:22,address:$RUNNER_IP/32"
+          trap 'doctl compute firewall remove-rules "$FIREWALL_ID" --inbound-rules "protocol:tcp,ports:22,address:$RUNNER_IP/32" || true' EXIT
+          sleep 10
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes "deploy@$DROPLET_IP" rollback < /dev/null

@@ -1,0 +1,152 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "@fontsource-variable/inter";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Maine Material Handling design tokens.
+ * Deep navy primary, one bright "safety amber" accent for calls to action,
+ * white and light-gray surfaces. All text pairs meet WCAG 2.1 AA (4.5:1).
+ */
+:root {
+  --radius: 0.625rem;
+
+  --background: #f4f6f9;
+  --foreground: #0f1b2d;
+  --card: #ffffff;
+  --card-foreground: #0f1b2d;
+  --popover: #ffffff;
+  --popover-foreground: #0f1b2d;
+
+  --primary: #0b2a4a; /* deep navy */
+  --primary-foreground: #ffffff;
+  --secondary: #e8edf3;
+  --secondary-foreground: #0b2a4a;
+  --muted: #eef1f5;
+  --muted-foreground: #4f5d6e;
+  --accent: #e8edf3; /* subtle hover surface (shadcn "accent") */
+  --accent-foreground: #0b2a4a;
+  --cta: #ffb000; /* safety amber: the one bright call-to-action colour */
+  --cta-hover: #f0a300;
+  --cta-foreground: #0b1a2e;
+  --destructive: #b42318;
+  --destructive-foreground: #ffffff;
+  --success: #116b3c;
+  --warning: #8a5300;
+
+  --border: #d9e0e8;
+  --input: #c7d0db;
+  --ring: #2a6fdb;
+
+  --sidebar: #0b2a4a;
+  --sidebar-foreground: #d7e3f1;
+  --sidebar-muted: #9fb3ca;
+  --sidebar-active: #15406c;
+  --sidebar-border: #1a3a5f;
+}
+
+.dark {
+  --background: #0a111c;
+  --foreground: #e6edf5;
+  --card: #111b2a;
+  --card-foreground: #e6edf5;
+  --popover: #142134;
+  --popover-foreground: #e6edf5;
+
+  --primary: #8cb8ef;
+  --primary-foreground: #0a111c;
+  --secondary: #1b2a40;
+  --secondary-foreground: #e6edf5;
+  --muted: #162336;
+  --muted-foreground: #a3b1c2;
+  --accent: #1b2a40;
+  --accent-foreground: #e6edf5;
+  --cta: #ffb81f;
+  --cta-hover: #ffc54d;
+  --cta-foreground: #0a111c;
+  --destructive: #f2817a;
+  --destructive-foreground: #0a111c;
+  --success: #5fd08f;
+  --warning: #f5b84a;
+
+  --border: #23334b;
+  --input: #2d4060;
+  --ring: #6aa5f5;
+
+  --sidebar: #08101b;
+  --sidebar-foreground: #c9d6e6;
+  --sidebar-muted: #8396ae;
+  --sidebar-active: #15263d;
+  --sidebar-border: #1a2a40;
+}
+
+@theme inline {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-cta: var(--cta);
+  --color-cta-hover: var(--cta-hover);
+  --color-cta-foreground: var(--cta-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-active: var(--sidebar-active);
+  --color-sidebar-border: var(--sidebar-border);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "cv11", "ss01";
+  }
+  h1,
+  h2,
+  h3 {
+    @apply font-bold tracking-tight;
+  }
+  /* Large tap targets for gloved hands on shop tablets. */
+  button,
+  [role="button"],
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

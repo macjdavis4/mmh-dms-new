@@ -1,0 +1,11 @@
+-c base.txt
+pytest>=8.3
+pytest-django>=4.10
+pytest-cov>=6.0
+ruff>=0.11
+mypy>=1.15
+django-stubs[compatible-mypy]>=5.2,<5.3
+djangorestframework-stubs>=3.16
+django-migration-linter>=5.2
+pip-audit>=2.9
+time-machine>=2.16

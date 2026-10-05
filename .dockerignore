@@ -1,0 +1,17 @@
+.git
+**/node_modules
+**/.venv
+**/__pycache__
+**/.mypy_cache
+**/.ruff_cache
+**/.pytest_cache
+backend/frontend_dist
+backend/staticfiles
+backend/coverage.xml
+frontend/test-results
+frontend/playwright-report
+frontend/e2e/.auth
+docs/screenshots
+infra/terraform/**/.terraform
+.env
+.env.*

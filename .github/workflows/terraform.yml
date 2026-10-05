@@ -1,0 +1,73 @@
+# Plan or apply infrastructure changes. Run by hand from the Actions tab:
+# Actions -> Terraform -> Run workflow -> pick environment and action.
+# Applying to production waits for approval (production environment rules).
+name: Terraform
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Which stack
+        type: choice
+        options: [staging, production, shared]
+        required: true
+      action:
+        description: plan shows changes; apply makes them
+        type: choice
+        options: [plan, apply]
+        default: plan
+      replace:
+        description: "Optional: rebuild one resource, e.g. module.app.digitalocean_droplet.app"
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy # never at the same time as a deploy (shared firewall rules)
+  cancel-in-progress: false
+
+jobs:
+  terraform:
+    runs-on: ubuntu-24.04
+    environment: ${{ inputs.environment == 'shared' && 'production' || inputs.environment }}
+    defaults:
+      run:
+        working-directory: infra/terraform/envs/${{ inputs.environment }}
+    env:
+      DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
+      SPACES_ACCESS_KEY_ID: ${{ secrets.SPACES_ACCESS_KEY_ID }}
+      SPACES_SECRET_ACCESS_KEY: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.SPACES_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.TERRAFORM_CLOUDFLARE_API_TOKEN }}
+      TF_VAR_cloudflare_zone_id: ${{ vars.CLOUDFLARE_ZONE_ID }}
+      TF_VAR_admin_ssh_public_key: ${{ vars.ADMIN_SSH_PUBLIC_KEY }}
+      TF_VAR_deploy_ssh_public_key: ${{ vars.DEPLOY_SSH_PUBLIC_KEY }}
+      TF_VAR_admin_ssh_cidrs: ${{ vars.ADMIN_SSH_CIDRS }}
+      TF_VAR_alert_emails: ${{ vars.ALERT_EMAILS }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.16.5"
+      - run: terraform init -input=false
+      - name: Plan
+        if: inputs.environment != 'shared'
+        env:
+          REPLACE: ${{ inputs.replace }}
+        run: |
+          if [ -n "$REPLACE" ]; then
+            [[ "$REPLACE" =~ ^[A-Za-z0-9_.\[\]\"-]+$ ]] || { echo "invalid resource address"; exit 1; }
+            terraform plan -input=false -out=tfplan -replace="$REPLACE"
+          else
+            terraform plan -input=false -out=tfplan
+          fi
+      - name: Plan (shared needs only the zone id)
+        if: inputs.environment == 'shared'
+        run: terraform plan -input=false -out=tfplan -var "cloudflare_zone_id=$TF_VAR_cloudflare_zone_id"
+      - name: Apply
+        if: inputs.action == 'apply'
+        run: terraform apply -input=false tfplan

@@ -1,0 +1,76 @@
+name: Deploy to a Droplet
+description: >
+  Reads Terraform outputs, opens SSH to this runner for the length of the job,
+  sends the environment file and runs the blue/green deploy on the Droplet.
+
+inputs:
+  environment:
+    description: staging or production
+    required: true
+  image-tag:
+    description: App image tag (git SHA)
+    required: true
+  terraform-version:
+    required: false
+    default: "1.16.5"
+
+runs:
+  using: composite
+  steps:
+    - uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ inputs.terraform-version }}
+        terraform_wrapper: false
+
+    - name: Read infrastructure outputs
+      shell: bash
+      working-directory: infra/terraform/envs/${{ inputs.environment }}
+      run: |
+        terraform init -input=false >/dev/null
+        terraform output -json > "$RUNNER_TEMP/tf.json"
+        echo "DROPLET_IP=$(jq -r .droplet_ip.value "$RUNNER_TEMP/tf.json")" >> "$GITHUB_ENV"
+        echo "FIREWALL_ID=$(jq -r .firewall_id.value "$RUNNER_TEMP/tf.json")" >> "$GITHUB_ENV"
+        echo "SITE_HOST=$(jq -r .hostname.value "$RUNNER_TEMP/tf.json")" >> "$GITHUB_ENV"
+
+    - uses: digitalocean/action-doctl@v2
+      with:
+        token: ${{ env.DIGITALOCEAN_ACCESS_TOKEN }}
+
+    - name: Allow SSH from this runner (temporary)
+      shell: bash
+      run: |
+        RUNNER_IP=$(curl -fsS https://api.ipify.org)
+        echo "RUNNER_IP=$RUNNER_IP" >> "$GITHUB_ENV"
+        doctl compute firewall add-rules "$FIREWALL_ID" --inbound-rules "protocol:tcp,ports:22,address:$RUNNER_IP/32"
+        sleep 10
+
+    - name: Blue/green deploy
+      shell: bash
+      run: |
+        install -m 700 -d ~/.ssh
+        printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+        printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts && chmod 600 ~/.ssh/known_hosts
+        python3 infra/scripts/build_env.py < "$RUNNER_TEMP/tf.json" \
+          | ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o ConnectTimeout=20 \
+              -o ServerAliveInterval=15 "deploy@$DROPLET_IP" "deploy ${{ inputs.image-tag }}"
+
+    - name: Remove the temporary SSH rule
+      if: always()
+      shell: bash
+      run: |
+        if [ -n "${RUNNER_IP:-}" ]; then
+          doctl compute firewall remove-rules "$FIREWALL_ID" --inbound-rules "protocol:tcp,ports:22,address:$RUNNER_IP/32" || true
+        fi
+        rm -f ~/.ssh/deploy_key "$RUNNER_TEMP/tf.json"
+
+    - name: Check the live site from outside
+      shell: bash
+      run: |
+        for _ in $(seq 1 20); do
+          body=$(curl -fsS "https://$SITE_HOST/readyz" || true)
+          if echo "$body" | grep -q "\"version\": \"${{ inputs.image-tag }}\""; then
+            echo "Live: $body"; exit 0
+          fi
+          sleep 5
+        done
+        echo "::error::https://$SITE_HOST/readyz is not serving ${{ inputs.image-tag }}"; exit 1
