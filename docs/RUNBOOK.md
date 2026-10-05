@@ -128,6 +128,14 @@ The database refuses it, so this can only be a near-miss (for example `O` vs `0`
 - Sales recorded before Phase 7 have no price on their record. When such a unit comes back, its sale price and cost are copied onto the old sale first.
 - *Bought and sold* (admin, sales, read only) lists every change with totals; money is shown to admin and sales only. Switch it off with the `units-changing-hands` flag; *Change owner* keeps working.
 
+### Quotes and sales
+
+- Quotes and sales are admin and sales only. Switch them off with the `sales` flag.
+- **Record sale won't go**: the dialog lists why (a unit isn't in our stock, is already sold, or a trade-in serial is already one of our units: pick that unit on the trade-in instead). Fix the quote and try again; nothing changes until every check passes.
+- **A sale was recorded by mistake**: an admin opens the quote and clicks *Void sale*. It only works while none of the units has changed hands since; if one has, undo that change on the unit first.
+- Sales tax defaults to `SALES_TAX_RATE` (5.5) for new quotes; each quote keeps its own rate.
+- Quote numbers come from `sales_quote_number_seq` (Q-30001 up) and sale numbers from `sales_sale_number_seq` (S-40001 up). Gaps are normal (a failed save still uses a number).
+
 ## Read-only mode and the maintenance banner
 
 *Admin → Site settings*. Read-only mode blocks every change for everyone (sign-in still works) and shows a notice on every screen. Use it during database maintenance or a restore. The banner can show any message in information, warning or critical style, including on the sign-in page.

@@ -269,6 +269,16 @@ Nothing to set up. Two things worth doing once it's deployed:
 
 ---
 
+## Phase 8: quotes and sales
+
+Nothing to set up. Worth checking:
+
+1. [ ] Ask your accountant whether sales tax should be on the price **less the trade-in allowance** (how the app works now) and whether 5.5% is right for everything you sell. Tell me if not and I'll change it.
+2. [ ] Read the standard terms printed on quotes (*Sales → New quote → Terms*) and send me your wording if you want different terms by default. Each quote can still be edited.
+3. [ ] Optional: if the default tax rate ever changes, set the GitHub variable `SALES_TAX_RATE` (e.g. `5.5`) for staging and production.
+
+---
+
 ## Ongoing
 
 | When | What |

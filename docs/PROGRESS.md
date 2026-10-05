@@ -8,8 +8,8 @@
 | 4 | Work orders | Merged |
 | 5 | Planned maintenance | Merged |
 | 6 | Printouts (work order and spec sheet PDFs) | Merged |
-| 7 | Units changing hands (sales, trade-ins, repos) | **In review** |
-| 8 | Quotes and sales | Not started |
+| 7 | Units changing hands (sales, trade-ins, repos) | Merged |
+| 8 | Quotes and sales | **In review** |
 | 9 | Parts catalog | Not started |
 | 10 | Parts stock ledger | Not started |
 | 11 | Receiving parts invoices | Not started |
@@ -154,3 +154,25 @@ A unit can be sold, come back and be sold again any number of times. It stays on
 **Tests**: 283 backend tests (93% coverage), 42 Vitest, 43 Playwright end-to-end tests.
 
 **Known limitations**: only the latest change can be undone; to fix an older owner or date, undo back to it or ask an admin to correct it in the Django admin. Quotes, invoices and trade-ins as part of a sale come in Phase 8.
+
+## Phase 8: Quotes and sales
+
+**Built**
+- [x] Quotes numbered Q-30001 upwards and sales S-40001 upwards (database sequences)
+- [x] A quote has a customer, attention, customer PO, date and valid-until date (shown as *Expired* after it), salesperson, printed terms and internal notes
+- [x] Items: units from our stock (priced at their asking price to start), attachments and options, delivery, service and warranty, other items, and discounts; each taxed or not
+- [x] Trade-ins: one of the customer's units we know, or one described on the quote (make, model, serial, year), with hours, allowance, payoff and who it's owed to, and condition notes
+- [x] Totals worked out the same way on the screen and the server, to the cent: subtotal, less trade-in allowance, plus payoff, plus Maine sales tax (5.5% by default, per quote) on taxed items less the allowance; tax-exempt customers with their certificate #
+- [x] Status: draft, sent, accepted, declined, cancelled (reopen); a declined, cancelled or sold quote is locked
+- [x] Quote PDF for the customer with a line to sign; internal notes and our cost are never printed
+- [x] **Record sale**: checks every unit first (in our stock, not sold, trade-in serial not already ours), then in one transaction sells each unit to the customer (reason *sold*, the line's price) and takes each trade-in into our stock (reason *trade-in*, the allowance); a described trade-in is added as a unit. Totals are kept as they were on the day. Shows up in *Bought and sold* with the sale number
+- [x] Admins can **void a sale** while its units haven't changed hands since; everything goes back and the quote reopens as accepted
+- [x] Sales page (open, sold, declined, all; search by quote or sale #, invoice #, customer, serial, model or PO; "Mine"), *Quote this unit* on stock units, *New quote* on customers, quotes in global search
+- [x] Admin and sales only (quotes carry prices), behind the `sales` feature flag (on); demo data has a draft, a sent quote with a trade-in and payoff, an accepted quote, and a recorded sale with a described trade-in
+
+**Migrations**: `sales/0001_initial` (new tables and the two number sequences), `sales/0002_db_guards` (no hard deletes; the sale-to-ownership links are append-only), `sales/0003_feature_flag`.
+
+**Tests**: 310 backend tests (93% coverage), 47 Vitest, 47 Playwright end-to-end tests.
+
+**Known limitations**: a sale's unit price is the line price; a quote-wide discount isn't spread over the units on the sale records. Sales tax follows the rule above; check it with your accountant. No deposits, payments or invoices yet (invoice # is typed in). Quotes can't be emailed from the app yet.
+
