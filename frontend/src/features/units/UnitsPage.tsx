@@ -49,9 +49,16 @@ function UnitCard({ unit, pricing }: { unit: UnitRow; pricing: boolean }) {
           alt={unitTitle(unit)}
           className="size-full transition-transform duration-300 group-hover:scale-[1.03]"
         />
+        {/* Solid backing so the badges read on any photo. */}
         <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
-          <ConditionBadge condition={unit.condition} />
-          <StockBadge status={unit.stock_status} />
+          <span className="bg-card flex rounded-full shadow-sm">
+            <ConditionBadge condition={unit.condition} />
+          </span>
+          {unit.stock_status && (
+            <span className="bg-card flex rounded-full shadow-sm">
+              <StockBadge status={unit.stock_status} />
+            </span>
+          )}
         </div>
       </div>
       <div className="flex flex-1 flex-col gap-2 p-4">
@@ -286,7 +293,7 @@ export function UnitsPage() {
         }
       />
 
-      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center">
+      <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-center">
         <div role="tablist" aria-label="Which units" className="bg-muted inline-flex w-full rounded-xl p-1 sm:w-auto">
           {SCOPES.map((s) => (
             <button

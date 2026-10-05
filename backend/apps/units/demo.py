@@ -356,8 +356,8 @@ def placeholder_photo(color: tuple[int, int, int]) -> bytes:
     for cx, r in ((560, 120), (980, 105)):
         d.ellipse([cx - r, 900 - r, cx + r, 900 + r], fill=(30, 30, 30))
         d.ellipse([cx - r // 2, 900 - r // 2, cx + r // 2, 900 + r // 2], fill=(120, 120, 120))
-    d.rectangle([0, 0, w, 90], fill=(11, 42, 74))
-    d.text((40, 22), "PLACEHOLDER PHOTO · demo data", fill=(255, 255, 255), font=_font(44))
+    d.rectangle([0, h - 90, w, h], fill=(11, 42, 74))
+    d.text((40, h - 68), "PLACEHOLDER PHOTO · demo data", fill=(255, 255, 255), font=_font(44))
     buf = io.BytesIO()
     img.save(buf, "JPEG", quality=82)
     return buf.getvalue()
