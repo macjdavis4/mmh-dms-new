@@ -5,8 +5,8 @@
 | 1 | Foundation | Merged |
 | 2 | Customers and forklift units | Merged |
 | 3 | Batch import | Merged |
-| 4 | Work orders | **In review** |
-| 5 | Planned maintenance | Not started |
+| 4 | Work orders | Merged |
+| 5 | Planned maintenance | **In review** |
 | 6 | Printouts (work order and spec sheet PDFs) | Not started |
 | 7 | Units changing hands (sales, trade-ins, repos) | Not started |
 | 8 | Quotes and sales | Not started |
@@ -109,6 +109,19 @@ From Phase 4 on, phases are smaller (one usable piece each) so each pull request
 - [x] Demo work orders in the seed data; behind the `service` feature flag (on)
 
 **Tests**: 221 backend tests (92% coverage), 31 Vitest, 35 Playwright end-to-end tests.
+
+## Phase 5: Planned maintenance
+
+**Built**
+- [x] Maintenance plans per unit: every N hours and/or every N days, whichever comes first, counted from when it was last done; common presets (250 / 500 / 1000-hour service, annual inspection); pause or remove with undo
+- [x] Due list: overdue, or due within 30 days / 50 hours (never more than a quarter of the interval in days or a fifth in hours, so a monthly check isn't always "due soon"), most urgent first; option to show every plan
+- [x] One click makes a planned-maintenance work order with the plan's tasks; completing it marks the plan done (date and hour meter), reopening puts it back
+- [x] Plans on the unit page; "Maintenance due" in the menu and on the Service page; dashboard "PM due in 30 days" tile is live
+- [x] The menu highlights only the most specific item (Maintenance due, not also Service)
+- [x] Database checks: a plan needs an interval, and counting by hours needs a starting reading
+- [x] Demo plans in the seed data (overdue by hours, overdue by date, due soon, up to date)
+
+**Tests**: 245 backend tests, 36 Vitest, 37 Playwright end-to-end tests.
 
 ## Planned for Phase 7: units that come back
 
