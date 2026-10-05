@@ -55,7 +55,10 @@ test.describe("as parts", () => {
     // Replaced parts drop out of the list unless asked for.
     await page.goto(`/parts?q=${number}`);
     await expect(page.getByText("No parts match")).toBeVisible();
-    await page.getByLabel("Show replaced parts").check();
+    // The filter lives in the address, which the router updates a moment later.
+    await page.getByLabel("Show replaced parts").click();
+    await expect(page.getByLabel("Show replaced parts")).toBeChecked();
+    await expect(page).toHaveURL(/replaced=1/);
     await expect(page.getByRole("table", { name: "Parts" })).toContainText(number);
   });
 
