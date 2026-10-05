@@ -19,3 +19,4 @@ MIGRATION_LINTER_OPTIONS = {
 
 # Uploaded files live in memory during tests (no MinIO needed).
 STORAGES["default"] = {"BACKEND": "django.core.files.storage.InMemoryStorage"}  # noqa: F405
+PDF_COMPRESS = False  # PDF text readable in tests

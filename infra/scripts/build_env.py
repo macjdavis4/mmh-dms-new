@@ -28,7 +28,15 @@ REQUIRED_SECRETS = [
     "GHCR_USER",
     "GHCR_TOKEN",
 ]
-OPTIONAL_SECRETS = ["SENTRY_DSN", "SENTRY_FRONTEND_DSN", "GUNICORN_WORKERS", "LOG_LEVEL"]
+OPTIONAL_SECRETS = [
+    "SENTRY_DSN",
+    "SENTRY_FRONTEND_DSN",
+    "GUNICORN_WORKERS",
+    "LOG_LEVEL",
+    # Letterhead on printouts (GitHub variables, not secrets).
+    "COMPANY_ADDRESS",
+    "COMPANY_PHONE",
+]
 
 
 def quote(name: str, value: str) -> str:

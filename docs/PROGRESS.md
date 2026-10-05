@@ -6,8 +6,8 @@
 | 2 | Customers and forklift units | Merged |
 | 3 | Batch import | Merged |
 | 4 | Work orders | Merged |
-| 5 | Planned maintenance | **In review** |
-| 6 | Printouts (work order and spec sheet PDFs) | Not started |
+| 5 | Planned maintenance | Merged |
+| 6 | Printouts (work order and spec sheet PDFs) | **In review** |
 | 7 | Units changing hands (sales, trade-ins, repos) | Not started |
 | 8 | Quotes and sales | Not started |
 | 9 | Parts catalog | Not started |
@@ -122,6 +122,17 @@ From Phase 4 on, phases are smaller (one usable piece each) so each pull request
 - [x] Demo plans in the seed data (overdue by hours, overdue by date, due soon, up to date)
 
 **Tests**: 244 backend tests (92% coverage), 36 Vitest, 37 Playwright end-to-end tests.
+
+## Phase 6: Printouts
+
+**Built**
+- [x] Work order PDF (*Print* on any work order): customer, unit, hour meter, complaint / cause / correction, labor with totals, parts used; while the job is open it leaves boxes and lines to write on, plus technician and customer signatures
+- [x] Unit spec sheet PDF (*Spec sheet* on any unit): main photo, key specs, components, mast, tires, forks, battery and charger, attachments, special equipment. Admin and sales can choose a version with the asking price. Cost and internal notes are never printed
+- [x] Shared letterhead (company name, address, phone, website; a marked slot for the Authorized Hyundai Dealer badge) and a footer with what was printed and when
+- [x] ReportLab (pure Python, BSD licence) generates the PDFs; no new system packages
+- [x] Sample PDFs and pictures of their pages in `docs/screenshots/phase-6/`
+
+**Tests**: 253 backend tests, 36 Vitest, 39 Playwright end-to-end tests.
 
 ## Planned for Phase 7: units that come back
 

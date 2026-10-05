@@ -338,3 +338,10 @@ SILENCED_SYSTEM_CHECKS = [
     # endpoint (DRF throttle) and Cloudflare cover IP-based abuse instead.
     "axes.W006",
 ]
+
+# Letterhead on printouts (work orders, spec sheets). Set in the environment.
+COMPANY_NAME = env("COMPANY_NAME", "Maine Material Handling")
+COMPANY_ADDRESS = env("COMPANY_ADDRESS", "Bangor, Maine")
+COMPANY_PHONE = env("COMPANY_PHONE", "")
+COMPANY_WEBSITE = env("COMPANY_WEBSITE", "maine-material.com")
+PDF_COMPRESS = True  # tests turn this off so the text can be checked

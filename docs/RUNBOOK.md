@@ -113,6 +113,12 @@ The database refuses it, so this can only be a near-miss (for example `O` vs `0`
 - A plan done outside the system (e.g. by another shop): edit the plan and set *Last done on* and *Hour meter then*.
 - A wrong hour meter reading on a work order: correct the number in the work order's details. The old reading is replaced (and kept in the change history).
 
+### Printouts
+
+- Work order and spec sheet PDFs are made on request (nothing is stored). If one fails, the error is in Sentry with the work order or unit id.
+- The letterhead address and phone come from `COMPANY_ADDRESS` and `COMPANY_PHONE` (GitHub environment variables, see MANUAL_STEPS).
+- Pictures of sample PDFs for the docs: `infra/scripts/pdf-to-png.sh docs/screenshots/phase-6` (needs `pdftoppm` from poppler).
+
 ## Read-only mode and the maintenance banner
 
 *Admin → Site settings*. Read-only mode blocks every change for everyone (sign-in still works) and shows a notice on every screen. Use it during database maintenance or a restore. The banner can show any message in information, warning or critical style, including on the sign-in page.
