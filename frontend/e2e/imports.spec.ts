@@ -15,7 +15,7 @@ function csv(rows: Record<string, string>[]): Buffer {
   return Buffer.from(lines.join("\r\n") + "\r\n");
 }
 
-function cards(tag: string) {
+function cards(tag: string): Record<string, string>[] {
   return [
     {
       customer_name: "Katahdin Lumber",
@@ -64,7 +64,7 @@ test.describe("as sales", () => {
     await expect(page.getByText("How it works")).toBeVisible();
     const template = await page.request.get("/api/v1/imports/batches/template.csv");
     expect(template.ok()).toBeTruthy();
-    expect((await template.text()).replace(/^﻿/, "").startsWith("customer_name,card_date,mechanic")).toBeTruthy();
+    expect((await template.text()).replace(/^\ufeff/, "").startsWith("customer_name,card_date,mechanic")).toBeTruthy();
     const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("link", { name: "Download template" }).click()]);
     expect(download.suggestedFilename()).toBe("unit-import-template.csv");
     expect(problems).toEqual([]);
