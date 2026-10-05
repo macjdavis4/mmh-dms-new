@@ -610,3 +610,124 @@ export interface MaintenancePlan {
   status: PlanStatus | null;
   created_at: string;
 }
+
+// --- Sales (Phase 8) -------------------------------------------------------------------------
+
+export type QuoteStatus = "draft" | "sent" | "accepted" | "declined" | "cancelled" | "sold";
+export type QuoteLineKind = "unit" | "attachment" | "delivery" | "service" | "other" | "discount";
+
+export const QUOTE_LINE_KINDS: Record<QuoteLineKind, string> = {
+  unit: "Unit",
+  attachment: "Attachment or option",
+  delivery: "Delivery",
+  service: "Service or warranty",
+  other: "Other",
+  discount: "Discount",
+};
+
+export interface SalesUnitSummary {
+  id: string;
+  make: string;
+  model: string;
+  serial_number: string;
+  stock_number: string;
+  year: number | null;
+  condition: Condition;
+  stock_status: StockStatus;
+}
+
+export interface QuoteLine {
+  id?: string;
+  kind: QuoteLineKind;
+  kind_label?: string;
+  unit: string | null;
+  unit_summary?: SalesUnitSummary | null;
+  description: string;
+  quantity: string;
+  unit_price: string;
+  taxable: boolean;
+  amount?: string;
+}
+
+export interface TradeIn {
+  id?: string;
+  unit: string | null;
+  unit_summary?: SalesUnitSummary | null;
+  make: string;
+  model: string;
+  serial_number: string;
+  year: number | null;
+  hours: string | null;
+  description: string;
+  allowance: string;
+  payoff: string | null;
+  payoff_to: string;
+}
+
+export interface QuoteTotals {
+  subtotal: string;
+  trade_allowance: string;
+  trade_payoff: string;
+  taxable_amount: string;
+  tax_rate: string;
+  tax: string;
+  total: string;
+}
+
+export interface SaleSummary {
+  id: string;
+  number: string;
+  status: "completed" | "voided";
+  sale_date: string;
+  invoice_number: string;
+  total: string;
+  void_reason: string;
+}
+
+export interface Quote {
+  id: string;
+  number: string;
+  customer: string;
+  customer_name: string;
+  salesperson: string | null;
+  salesperson_name: string;
+  status: QuoteStatus;
+  status_label: string;
+  quote_date: string;
+  valid_until: string | null;
+  attention: string;
+  customer_po: string;
+  tax_rate: string;
+  tax_exempt: boolean;
+  tax_exempt_number: string;
+  terms: string;
+  notes: string;
+  sent_at: string | null;
+  decided_at: string | null;
+  lines: QuoteLine[];
+  trade_ins: TradeIn[];
+  totals: QuoteTotals;
+  is_expired: boolean;
+  is_open: boolean;
+  sale: SaleSummary | null;
+  past_sales: SaleSummary[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface QuoteRow {
+  id: string;
+  number: string;
+  customer: string;
+  customer_name: string;
+  salesperson_name: string;
+  status: QuoteStatus;
+  status_label: string;
+  quote_date: string;
+  valid_until: string | null;
+  is_expired: boolean;
+  total: string;
+  units: string[];
+  trade_in_count: number;
+  sale_number: string | null;
+}

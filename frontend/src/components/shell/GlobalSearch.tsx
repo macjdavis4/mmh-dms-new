@@ -14,6 +14,7 @@ const KIND_LABELS: Record<string, string> = {
   customer: "Customers",
   unit: "Units",
   work_order: "Work orders",
+  quote: "Quotes and sales",
   part: "Parts",
 };
 

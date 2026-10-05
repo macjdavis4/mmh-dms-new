@@ -36,6 +36,8 @@ OPTIONAL_SECRETS = [
     # Letterhead on printouts (GitHub variables, not secrets).
     "COMPANY_ADDRESS",
     "COMPANY_PHONE",
+    # Default sales tax rate for new quotes, percent (GitHub variable).
+    "SALES_TAX_RATE",
 ]
 
 

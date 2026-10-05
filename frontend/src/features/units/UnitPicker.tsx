@@ -11,6 +11,8 @@ export interface PickedUnit {
   label: string;
   serial: string;
   owner: string;
+  /** Admin and sales only. */
+  asking_price?: string | null;
 }
 
 export function toPicked(u: UnitRow): PickedUnit {
@@ -19,6 +21,7 @@ export function toPicked(u: UnitRow): PickedUnit {
     label: [u.make, u.model].filter(Boolean).join(" ") || "Unit",
     serial: u.serial_number,
     owner: u.owner_name ?? (u.owner_kind === "dealer" ? "Our stock" : ""),
+    asking_price: u.asking_price ?? null,
   };
 }
 
@@ -28,20 +31,31 @@ export function UnitPicker({
   value,
   onChange,
   invalid,
+  scope = "all",
+  owner,
+  placeholder = "Serial, stock #, model or customer",
 }: {
   id: string;
   value: PickedUnit | null;
   onChange: (value: PickedUnit | null) => void;
   invalid?: boolean;
+  /** "stock": only units in our stock. */
+  scope?: "all" | "stock";
+  /** Only this customer's units. */
+  owner?: string;
+  placeholder?: string;
 }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const listId = useId();
   const q = useDebounced(query.trim());
+  const filter = `scope=${scope}${owner ? `&owner=${owner}` : ""}`;
+  // A customer has few units: list them all as soon as the box opens.
+  const minLength = owner ? 0 : 2;
   const results = useQuery({
-    queryKey: ["units", "picker", q],
-    queryFn: () => api<Paginated<UnitRow>>(`/api/v1/units?scope=all&page_size=8&q=${encodeURIComponent(q)}`),
-    enabled: open && q.length >= 2,
+    queryKey: ["units", "picker", filter, q],
+    queryFn: () => api<Paginated<UnitRow>>(`/api/v1/units?${filter}&page_size=8&q=${encodeURIComponent(q)}`),
+    enabled: open && q.length >= minLength,
   });
 
   if (value) {
@@ -77,7 +91,7 @@ export function UnitPicker({
         aria-autocomplete="list"
         aria-invalid={invalid || undefined}
         autoComplete="off"
-        placeholder="Serial, stock #, model or customer"
+        placeholder={placeholder}
         value={query}
         onChange={(e) => {
           setQuery(e.target.value);
@@ -87,7 +101,7 @@ export function UnitPicker({
         onBlur={() => window.setTimeout(() => setOpen(false), 150)}
         className="border-input bg-card focus-visible:ring-ring/50 aria-invalid:border-destructive h-11 w-full rounded-md border pr-3 pl-9 text-base outline-none focus-visible:ring-[3px] md:text-sm"
       />
-      {open && q.length >= 2 && (
+      {open && q.length >= minLength && (
         <ul id={listId} role="listbox" className="bg-popover absolute top-full right-0 left-0 z-50 mt-1 max-h-72 overflow-y-auto rounded-lg border py-1 shadow-lg">
           {results.isFetching && !results.data && <li className="text-muted-foreground px-3 py-2 text-sm">Searching…</li>}
           {results.data?.results.length === 0 && <li className="text-muted-foreground px-3 py-2 text-sm">No units match.</li>}

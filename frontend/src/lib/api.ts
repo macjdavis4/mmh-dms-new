@@ -47,11 +47,17 @@ interface ErrorBody {
   fields?: Record<string, string[] | string>;
 }
 
+/** Field errors keyed by field. Errors on nested rows are flattened to
+ * "lines.1.description", so a form can show them next to the right input. */
 function normalizeFields(fields: ErrorBody["fields"]): Record<string, string[]> {
   const out: Record<string, string[]> = {};
-  for (const [key, value] of Object.entries(fields ?? {})) {
-    out[key] = Array.isArray(value) ? value.map(String) : [value];
-  }
+  const walk = (key: string, value: unknown) => {
+    if (typeof value === "string") (out[key] ??= []).push(value);
+    else if (Array.isArray(value)) value.forEach((v, i) => walk(typeof v === "object" && v !== null ? `${key}.${i}` : key, v));
+    else if (value && typeof value === "object") for (const [k, v] of Object.entries(value)) walk(`${key}.${k}`, v);
+    else if (typeof value === "number" || typeof value === "boolean") (out[key] ??= []).push(String(value));
+  };
+  for (const [key, value] of Object.entries(fields ?? {})) walk(key, value);
   return out;
 }
 

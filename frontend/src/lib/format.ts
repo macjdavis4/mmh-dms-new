@@ -35,6 +35,15 @@ export function formatMoney(value: string | number | null | undefined): string {
   return Number.isFinite(n) ? money.format(n) : "—";
 }
 
+const exact = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 });
+
+/** Dollars and cents, for quotes and sales: "$14,632.50". */
+export function formatCents(value: string | number | null | undefined): string {
+  if (value === null || value === undefined || value === "") return "—";
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? exact.format(n) : "—";
+}
+
 export function formatNumber(value: string | number | null | undefined, unit = ""): string {
   if (value === null || value === undefined || value === "") return "—";
   const n = typeof value === "number" ? value : Number(value);

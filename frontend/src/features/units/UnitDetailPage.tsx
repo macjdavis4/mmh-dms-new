@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowLeft, ArrowRightLeft, Clock, Gauge, Pencil, RotateCcw, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowRightLeft, Clock, FileText, Gauge, Pencil, RotateCcw, Trash2 } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
@@ -13,6 +13,7 @@ import { EmptyState, ErrorState } from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
+import { isOn, useFlags } from "@/lib/flags";
 import { formatDate, formatDateTime, formatMoney, formatNumber } from "@/lib/format";
 import { FUEL_LABELS, type OwnershipRecord, type Unit } from "@/lib/types";
 
@@ -124,6 +125,7 @@ export function UnitDetailPage() {
   const [dialog, setDialog] = useState<"hours" | "transfer" | "remove" | null>(null);
   const [editing, setEditing] = useState<{ record: OwnershipRecord; fromKind: OwnershipRecord["owner_kind"] | null } | null>(null);
   const [undoing, setUndoing] = useState<OwnershipRecord | null>(null);
+  const flags = useFlags().data?.flags;
 
   if (unit.isError) {
     const notFound = unit.error instanceof ApiError && unit.error.status === 404;
@@ -188,6 +190,13 @@ export function UnitDetailPage() {
               />
             ) : (
               <PrintButton href={`/api/v1/units/${u.id}/spec-sheet`} label="Spec sheet" />
+            )}
+            {canSeePricing(user.role) && !u.is_deleted && u.owner_kind === "dealer" && u.stock_status !== "sold" && isOn(flags, "sales") && (
+              <Button variant="outline" asChild>
+                <Link to={`/sales/new?unit=${u.id}`}>
+                  <FileText className="size-4" /> Quote this unit
+                </Link>
+              </Button>
             )}
             {canEdit && (
               <>

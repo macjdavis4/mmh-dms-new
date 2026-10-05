@@ -45,6 +45,22 @@ describe("api", () => {
     expect((err as ApiError).fieldError("email")).toBe("Taken.");
   });
 
+  it("flattens errors on nested rows so forms can place them", async () => {
+    mockApi(() => ({
+      status: 400,
+      body: {
+        code: "invalid",
+        detail: "Please fix the highlighted fields.",
+        fields: { lines: [{}, { description: ["Say what it is."] }], trade_ins: ["Listed twice."], customer: "Required." },
+      },
+    }));
+    const err = (await api("/api/v1/quotes", { method: "POST", body: {} }).catch((e: unknown) => e)) as ApiError;
+    expect(err.fieldError("lines.1.description")).toBe("Say what it is.");
+    expect(err.fieldError("trade_ins")).toBe("Listed twice.");
+    expect(err.fieldError("customer")).toBe("Required.");
+    expect(Object.keys(err.fields)).not.toContain("lines");
+  });
+
   it("reports network failures plainly", async () => {
     vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new TypeError("offline"))));
     await expect(api("/api/v1/x")).rejects.toMatchObject({ code: "network", status: 0 });

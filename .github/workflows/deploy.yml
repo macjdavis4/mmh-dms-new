@@ -84,6 +84,7 @@ jobs:
       SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
       COMPANY_ADDRESS: ${{ vars.COMPANY_ADDRESS }}
       COMPANY_PHONE: ${{ vars.COMPANY_PHONE }}
+      SALES_TAX_RATE: ${{ vars.SALES_TAX_RATE }}
       DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
       SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
       DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
@@ -119,6 +120,7 @@ jobs:
       SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
       COMPANY_ADDRESS: ${{ vars.COMPANY_ADDRESS }}
       COMPANY_PHONE: ${{ vars.COMPANY_PHONE }}
+      SALES_TAX_RATE: ${{ vars.SALES_TAX_RATE }}
       DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
       SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
       DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}

@@ -1,5 +1,6 @@
 import {
   ArrowLeft,
+  FileText,
   Globe,
   Mail,
   MapPin,
@@ -32,7 +33,9 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { StockBadge, UnitPhoto, unitTitle } from "@/features/units/bits";
 import { useCustomerUnits, useFormerUnits } from "@/features/units/api";
+import { canSell } from "@/features/sales/api";
 import { ApiError } from "@/lib/api";
+import { isOn, useFlags } from "@/lib/flags";
 import { formatNumber } from "@/lib/format";
 import type { Address, Contact } from "@/lib/types";
 
@@ -75,6 +78,7 @@ export function CustomerDetailPage() {
   const customer = useCustomer(id);
   const units = useCustomerUnits(id);
   const former = useFormerUnits(id);
+  const flags = useFlags().data?.flags;
   const removeCustomer = useRemoveCustomer();
   const removeContact = useRemoveChild("contacts");
   const removeAddress = useRemoveChild("addresses");
@@ -138,6 +142,13 @@ export function CustomerDetailPage() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
+            {canSell(user.role) && isOn(flags, "sales") && (
+              <Button variant="cta" asChild>
+                <Link to={`/sales/new?customer=${c.id}`}>
+                  <FileText className="size-4" /> New quote
+                </Link>
+              </Button>
+            )}
             {canEdit && (
               <Button variant="outline" onClick={() => setEditing(true)}>
                 <Pencil className="size-4" /> Edit

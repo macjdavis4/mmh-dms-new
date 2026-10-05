@@ -105,7 +105,20 @@ export const routes = [
       })),
       {
         element: <RequireRole roles={["admin", "sales"]} />,
-        children: [{ path: "sales", element: <ComingSoonPage /> }],
+        children: [
+          {
+            path: "sales",
+            lazy: async () => ({ Component: (await import("@/features/sales/SalesPage")).SalesPage }),
+          },
+          {
+            path: "sales/new",
+            lazy: async () => ({ Component: (await import("@/features/sales/QuotePage")).NewQuotePage }),
+          },
+          {
+            path: "sales/:id",
+            lazy: async () => ({ Component: (await import("@/features/sales/QuotePage")).QuotePage }),
+          },
+        ],
       },
       {
         path: "admin",
