@@ -178,7 +178,7 @@ jobs:
           test "$(docker inspect -f '{{.Config.User}}' mmh-app:ci)" = "app"
           docker run --rm --read-only --tmpfs /tmp mmh-app:ci python -c "import django; print(django.get_version())"
       - name: Trivy scan (app)
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: mmh-app:ci
           severity: CRITICAL,HIGH
@@ -186,7 +186,7 @@ jobs:
           exit-code: "1"
           trivyignores: .trivyignore
       - name: Trivy scan (caddy)
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: mmh-caddy:ci
           severity: CRITICAL,HIGH
