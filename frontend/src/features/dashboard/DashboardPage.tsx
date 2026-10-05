@@ -18,8 +18,10 @@ import { useCurrentUser } from "@/app/guards";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { api } from "@/lib/api";
-import type { AdminHealth } from "@/lib/types";
+import { canEditUnits } from "@/features/units/permissions";
+import { api, type Paginated } from "@/lib/api";
+import { isOn, useFlags } from "@/lib/flags";
+import type { AdminHealth, UnitRow } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 function greeting(now = new Date()): string {
@@ -29,16 +31,18 @@ function greeting(now = new Date()): string {
   return "Good evening";
 }
 
-const TILES = [
-  { label: "Units in stock", icon: Truck, phase: 2 },
+type Tile = { label: string; icon: typeof Truck; phase: number; to?: string; count?: number | undefined };
+
+const TILES: Tile[] = [
   { label: "Open work orders", icon: Wrench, phase: 4 },
   { label: "PM due in 30 days", icon: Activity, phase: 4 },
   { label: "Low-stock parts", icon: PackageCheck, phase: 6 },
 ];
 
-const QUICK_ACTIONS = [
+type QuickAction = { label: string; icon: typeof Truck; to: string; phase?: number; hint?: string };
+
+const QUICK_ACTIONS: QuickAction[] = [
   { label: "New work order", icon: ClipboardPlus, to: "/service", phase: 4 },
-  { label: "Add a unit", icon: Truck, to: "/units", phase: 2 },
   { label: "Receive a parts invoice", icon: PackageCheck, to: "/parts", phase: 6 },
   { label: "Import unit cards", icon: FileUp, to: "/imports", phase: 3 },
 ];
@@ -117,8 +121,33 @@ function SystemHealthCard() {
   );
 }
 
+function useStockCount(enabled: boolean) {
+  return useQuery({
+    queryKey: ["units", "dashboard-count"],
+    queryFn: () => api<Paginated<UnitRow>>("/api/v1/units?scope=stock&page_size=1"),
+    enabled,
+    select: (d) => d.count,
+  });
+}
+
 export function DashboardPage() {
   const user = useCurrentUser();
+  const flags = useFlags();
+  const unitsOn = isOn(flags.data?.flags, "customers-units");
+  const stock = useStockCount(unitsOn);
+  const tiles: Tile[] = unitsOn
+    ? [{ label: "Units in stock", icon: Truck, phase: 2, to: "/units", count: stock.data }, ...TILES]
+    : [{ label: "Units in stock", icon: Truck, phase: 2 }, ...TILES];
+  const actions: QuickAction[] = [...QUICK_ACTIONS];
+  if (unitsOn) {
+    actions.splice(
+      1,
+      0,
+      canEditUnits(user.role)
+        ? { label: "Add a unit", icon: Truck, to: "/units/new", hint: "Enter a unit card" }
+        : { label: "Browse stock", icon: Truck, to: "/units", hint: "See units for sale" },
+    );
+  }
   return (
     <div className="flex flex-col gap-8">
       <div>
@@ -135,24 +164,46 @@ export function DashboardPage() {
           At a glance
         </h2>
         <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
-          {TILES.map((tile) => (
-            <Card key={tile.label} className="gap-3 py-5">
-              <CardContent className="flex flex-col gap-3 px-5">
-                <div className="flex items-center justify-between">
-                  <span className="bg-primary/10 text-primary grid size-10 place-items-center rounded-xl dark:bg-primary/15">
-                    <tile.icon className="size-5" aria-hidden="true" />
-                  </span>
-                  <Badge variant="outline" className="text-muted-foreground font-medium">
-                    Phase {tile.phase}
-                  </Badge>
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-3xl font-extrabold">—</p>
-                  <p className="text-sm font-semibold">{tile.label}</p>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+          {tiles.map((tile) => {
+            const live = tile.to !== undefined;
+            const body = (
+              <Card className={cn("h-full gap-3 py-5", live && "hover:border-primary/40 transition-colors")}>
+                <CardContent className="flex flex-col gap-3 px-5">
+                  <div className="flex items-center justify-between">
+                    <span className="bg-primary/10 text-primary grid size-10 place-items-center rounded-xl dark:bg-primary/15">
+                      <tile.icon className="size-5" aria-hidden="true" />
+                    </span>
+                    {!live && (
+                      <Badge variant="outline" className="text-muted-foreground font-medium">
+                        Phase {tile.phase}
+                      </Badge>
+                    )}
+                  </div>
+                  <div>
+                    {live && tile.count === undefined ? (
+                      <Skeleton className="h-9 w-16" />
+                    ) : (
+                      <p className={cn("text-3xl font-extrabold", !live && "text-muted-foreground")}>
+                        {live ? tile.count : "—"}
+                      </p>
+                    )}
+                    <p className="text-sm font-semibold">{tile.label}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+            return tile.to ? (
+              <Link
+                key={tile.label}
+                to={tile.to}
+                className="focus-visible:ring-ring rounded-xl focus-visible:ring-2 focus-visible:outline-none"
+              >
+                {body}
+              </Link>
+            ) : (
+              <div key={tile.label}>{body}</div>
+            );
+          })}
         </div>
       </section>
 
@@ -166,7 +217,7 @@ export function DashboardPage() {
               <CardDescription>These turn on as each part of the system is finished.</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-3 sm:grid-cols-2">
-              {QUICK_ACTIONS.map((action) => (
+              {actions.map((action) => (
                 <Link
                   key={action.label}
                   to={action.to}
@@ -177,7 +228,9 @@ export function DashboardPage() {
                   </span>
                   <span className="flex-1">
                     <span className="block font-semibold">{action.label}</span>
-                    <span className="text-muted-foreground text-xs">Coming in phase {action.phase}</span>
+                    <span className="text-muted-foreground text-xs">
+                      {action.phase ? `Coming in phase ${action.phase}` : action.hint}
+                    </span>
                   </span>
                   <ArrowRight
                     className="text-muted-foreground size-4 transition-transform group-hover:translate-x-0.5"

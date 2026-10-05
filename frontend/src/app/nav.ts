@@ -23,6 +23,8 @@ export interface NavItem {
   roles?: Role[];
   /** Set while the section is not built yet; shows a "Soon" tag. */
   comingInPhase?: number;
+  /** Feature flag that must be on for the item to show. */
+  flag?: string;
   description?: string;
 }
 
@@ -40,14 +42,14 @@ export const NAV: NavSection[] = [
         label: "Customers",
         to: "/customers",
         icon: Users,
-        comingInPhase: 2,
+        flag: "customers-units",
         description: "Customers with their contacts, addresses and equipment.",
       },
       {
         label: "Units",
         to: "/units",
         icon: Truck,
-        comingInPhase: 2,
+        flag: "customers-units",
         description: "Every forklift's full spec card, photos, hours and history, plus stock for sale.",
       },
       {
@@ -96,10 +98,12 @@ export const NAV: NavSection[] = [
   },
 ];
 
-export function navFor(role: Role): NavSection[] {
+export function navFor(role: Role, flags?: Record<string, boolean>): NavSection[] {
   return NAV.map((section) => ({
     ...section,
-    items: section.items.filter((item) => !item.roles || item.roles.includes(role)),
+    items: section.items.filter(
+      (item) => (!item.roles || item.roles.includes(role)) && (!item.flag || (flags?.[item.flag] ?? true)),
+    ),
   })).filter((section) => section.items.length > 0);
 }
 

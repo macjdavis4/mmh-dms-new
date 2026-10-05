@@ -37,6 +37,9 @@ USERS = [
     ("viewer@mmh.test", "Robin", "Viewer", Role.READ_ONLY, False),
 ]
 
+# Finished features: switched on in demo data even if an older seed left them off.
+LIVE_FLAGS = ["customers-units"]
+
 FLAGS = [
     ("batch-import", "Phase 3: CSV and API import of unit cards"),
     ("service", "Phase 4: work orders and planned maintenance"),
@@ -79,6 +82,9 @@ class Command(BaseCommand):
             for key, description in FLAGS:
                 if not FeatureFlag.objects.filter(key=key).exists():
                     FeatureFlag.objects.create(key=key, description=description, enabled=False)
+            for flag in FeatureFlag.objects.filter(key__in=LIVE_FLAGS, enabled=False):
+                flag.enabled = True
+                flag.save()
             axes_reset()  # clear sign-in lockouts left by earlier test runs
             site = SiteSettings.load()
             site.read_only_mode = False

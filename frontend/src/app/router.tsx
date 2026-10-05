@@ -31,7 +31,33 @@ export const routes = [
         path: "account",
         lazy: async () => ({ Component: (await import("@/features/account/AccountPage")).AccountPage }),
       },
-      ...["customers", "units", "service", "parts", "imports"].map((path) => ({
+      {
+        path: "customers",
+        lazy: async () => ({ Component: (await import("@/features/customers/CustomersPage")).CustomersPage }),
+      },
+      {
+        path: "customers/:id",
+        lazy: async () => ({
+          Component: (await import("@/features/customers/CustomerDetailPage")).CustomerDetailPage,
+        }),
+      },
+      {
+        path: "units",
+        lazy: async () => ({ Component: (await import("@/features/units/UnitsPage")).UnitsPage }),
+      },
+      {
+        path: "units/new",
+        lazy: async () => ({ Component: (await import("@/features/units/UnitFormPage")).UnitFormPage }),
+      },
+      {
+        path: "units/:id",
+        lazy: async () => ({ Component: (await import("@/features/units/UnitDetailPage")).UnitDetailPage }),
+      },
+      {
+        path: "units/:id/edit",
+        lazy: async () => ({ Component: (await import("@/features/units/UnitFormPage")).UnitFormPage }),
+      },
+      ...["service", "parts", "imports"].map((path) => ({
         path,
         element: <ComingSoonPage />,
       })),
