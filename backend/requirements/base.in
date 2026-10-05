@@ -1,0 +1,18 @@
+# Runtime dependencies. Compile with: make lock
+Django>=5.2.17,<5.3          # LTS, security support until April 2028
+djangorestframework>=3.16,<3.19
+psycopg[binary]>=3.2,<3.4
+dj-database-url>=3.0,<4
+argon2-cffi>=25.1
+django-otp>=1.6,<2
+qrcode>=8.0,<9
+django-axes>=8.0,<9
+django-csp>=4.0,<5
+procrastinate[django]>=3.5,<4
+gunicorn>=23
+whitenoise>=6.9,<7
+django-storages[s3]>=1.14,<2
+boto3>=1.38
+sentry-sdk[django]>=2.30,<3
+python-json-logger>=3.3,<5
+django-stubs-ext>=5.2,<5.3   # makes Django generics subscriptable for type hints

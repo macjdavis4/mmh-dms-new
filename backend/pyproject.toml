@@ -1,0 +1,46 @@
+[project]
+name = "mmh-dms"
+version = "0.1.0"
+requires-python = ">=3.12"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["frontend_dist", "staticfiles"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "N", "S", "BLE", "DJ", "RUF", "SIM", "PT"]
+ignore = [
+    "S101",   # assert is fine (tests, type narrowing)
+    "RUF012", # Django Meta / class attributes
+    "DJ001",  # we default CharFields to "" explicitly
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S105", "S106", "S311"]
+"*/migrations/*" = ["E501", "RUF"]
+"config/settings/*" = ["S105"]
+"apps/ops/backup.py" = ["S603", "S607"]  # runs pg_dump/age with fixed argv
+
+[tool.mypy]
+python_version = "3.12"
+plugins = ["mypy_django_plugin.main", "mypy_drf_plugin.main"]
+strict = true
+disallow_subclassing_any = false
+disallow_untyped_decorators = false
+warn_unused_ignores = false
+warn_return_any = false
+ignore_missing_imports = true
+exclude = ["migrations/", "tests/", "\\.venv/"]
+
+[tool.django-stubs]
+django_settings_module = "config.settings.test"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+python_files = ["test_*.py"]
+addopts = "-ra --strict-markers --cov=apps --cov=config --cov-report=term-missing:skip-covered --cov-report=xml"
+filterwarnings = ["ignore::DeprecationWarning:axes.*", "ignore:No directory at:UserWarning"]
+
+[tool.coverage.run]
+omit = ["*/migrations/*", "config/wsgi.py", "config/settings/prod.py", "config/settings/dev.py", "config/settings/e2e.py"]
