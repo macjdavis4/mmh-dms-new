@@ -30,8 +30,8 @@ test("global search finds units by serial and customers by name", async ({ page 
 });
 
 test("sections that aren't built yet say when they arrive", async ({ page }) => {
-  await page.goto("/service");
-  await expect(page.getByRole("heading", { name: "Arrives in phase 4" })).toBeVisible();
+  await page.goto("/parts");
+  await expect(page.getByRole("heading", { name: "Arrives in phase 9" })).toBeVisible();
 });
 
 test("unknown pages show a friendly 404", async ({ page }) => {
