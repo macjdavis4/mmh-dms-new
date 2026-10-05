@@ -260,6 +260,15 @@ When you have the official "Authorized Hyundai Dealer" badge artwork, send it ov
 
 ---
 
+## Phase 7: units changing hands
+
+Nothing to set up. Two things worth doing once it's deployed:
+
+1. [ ] For units already sold, open each one and click the pencil on the sale in *Ownership history* to add why it changed hands and the invoice #. (Prices typed on the unit card before are kept automatically.)
+2. [ ] Tell sales staff: from now on, record a sale or a trade-in with **Change owner** on the unit's page rather than editing the stock status by hand. That keeps each deal's numbers.
+
+---
+
 ## Ongoing
 
 | When | What |

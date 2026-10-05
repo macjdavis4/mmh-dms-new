@@ -208,8 +208,67 @@ UNITS: list[tuple[dict[str, Any], dict[str, Any]]] = [
         },
         {
             "owner": None,
-            "sold_to": "Bangor Building Supply",
-            "hours": [(date(2026, 3, 3), "11870", "sale")],
+            "since": date(2025, 11, 4),
+            # (new owner or None for our stock, why, date, price, hours, reference)
+            "changes": [
+                ("Bangor Building Supply", "sold", date(2026, 3, 3), "11400", "11870", "INV-10388"),
+            ],
+        },
+    ),
+    # Sold new, traded back in, now being prepped to sell again.
+    (
+        {
+            "make": "Hyundai",
+            "model": "25L-7A",
+            "serial_number": "HHKHFR04E00412",
+            "year": 2017,
+            "stock_number": "MMH-2417",
+            "condition": "new",
+            "fuel_type": "lpg",
+            "capacity_lbs": 5000,
+            "mast_make": "Hyundai",
+            "mast_type": "Triplex",
+            "mast_lift_height_in": 188,
+            "tire_type": "cushion",
+            "stock_status": "available",
+            "cost": Decimal("19500"),
+            "asking_price": Decimal("25900"),
+        },
+        {
+            "owner": None,
+            "since": date(2017, 3, 20),
+            "changes": [
+                ("Kennebec Cold Storage", "sold", date(2017, 5, 2), "24800", "2", "INV-7731"),
+                (None, "trade_in", date(2026, 9, 18), "6500", "9840", "TRADE-118"),
+            ],
+            "then": {"asking_price": Decimal("12900")},
+            "photo": (90, 150, 90),
+        },
+    ),
+    # Sold used on terms, repossessed.
+    (
+        {
+            "make": "Doosan",
+            "model": "GC25P-5",
+            "serial_number": "FGC25-P05-11873",
+            "year": 2012,
+            "stock_number": "MMH-2290",
+            "condition": "used",
+            "fuel_type": "lpg",
+            "capacity_lbs": 5000,
+            "tire_type": "cushion",
+            "stock_status": "available",
+            "cost": Decimal("5100"),
+            "asking_price": Decimal("8900"),
+        },
+        {
+            "owner": None,
+            "since": date(2023, 10, 2),
+            "changes": [
+                ("Pat Murphy", "sold", date(2024, 2, 9), "8500", "6020", "INV-9204"),
+                (None, "repossession", date(2026, 8, 14), "4200", "7315", ""),
+            ],
+            "photo": (200, 170, 60),
         },
     ),
     # Customer units (service only)
@@ -465,18 +524,27 @@ def load_demo_data(with_files: bool = True) -> None:
                 reel_number=reel_no,
                 side=side,
             )
-        start = unit.card_date or date(2025, 1, 15)
+        start = extra.get("since") or unit.card_date or date(2025, 1, 15)
         owner = by_name.get(extra["owner"]) if extra.get("owner") else None
         services.transfer_ownership(
             unit, owner_kind="customer" if owner else "dealer", customer=owner, start_date=start
         )
-        if extra.get("sold_to"):
-            services.transfer_ownership(
+        for new_owner, reason, when, price, hours, reference in extra.get("changes", []):
+            services.change_hands(
                 unit,
-                owner_kind="customer",
-                customer=by_name[extra["sold_to"]],
-                start_date=date(2026, 3, 3),
+                owner_kind="customer" if new_owner else "dealer",
+                customer=by_name[new_owner] if new_owner else None,
+                reason=reason,
+                start_date=when,
+                price=Decimal(price),
+                hours=Decimal(hours),
+                reference=reference,
             )
+            unit.refresh_from_db()
+        if extra.get("then"):
+            for key, value in extra["then"].items():
+                setattr(unit, key, value)
+            unit.save()
         for when, hours, source in extra.get("hours", []):
             HourMeterReading.objects.create(
                 unit=unit, reading_date=when, hours=Decimal(hours), source=source

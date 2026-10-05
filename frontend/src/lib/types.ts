@@ -339,6 +339,17 @@ export interface HourReading {
   created_at: string;
 }
 
+export type OwnershipReason =
+  | ""
+  | "sold"
+  | "private_sale"
+  | "trade_in"
+  | "repossession"
+  | "buy_back"
+  | "lease_return"
+  | "bought_used"
+  | "other";
+
 export interface OwnershipRecord {
   id: string;
   owner_kind: "customer" | "dealer";
@@ -348,6 +359,48 @@ export interface OwnershipRecord {
   start_date: string;
   end_date: string | null;
   note: string;
+  /** Blank: the first owner on record (or a change from before reasons were kept). */
+  reason: OwnershipReason;
+  reason_label: string;
+  /** Admin and sales only: sale price, or what we paid when it came back. */
+  price?: string | null;
+  /** Admin and sales only: on a sale, the unit's cost at the time. */
+  cost?: string | null;
+  reference: string;
+  hours: string | null;
+  can_undo: boolean;
+}
+
+/** One row of "Bought and sold". */
+export interface UnitChange {
+  id: string;
+  unit: string;
+  unit_label: string;
+  unit_make: string;
+  unit_model: string;
+  unit_serial: string;
+  unit_stock_number: string;
+  start_date: string;
+  end_date: string | null;
+  reason: OwnershipReason;
+  reason_label: string;
+  owner_kind: "customer" | "dealer";
+  customer: string | null;
+  owner_label: string;
+  from_kind: "customer" | "dealer";
+  from_customer: string | null;
+  from_label: string;
+  price?: string | null;
+  cost?: string | null;
+  reference: string;
+  note: string;
+  hours: string | null;
+}
+
+export interface UnitChangeTotals {
+  sold: { count: number; total?: string | null; margin?: string | null; with_margin?: number };
+  came_back: { count: number; total?: string | null };
+  between_customers: { count: number };
 }
 
 export interface UnitFile {

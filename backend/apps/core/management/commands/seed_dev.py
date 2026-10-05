@@ -39,7 +39,7 @@ USERS = [
 ]
 
 # Finished features: switched on in demo data even if an older seed left them off.
-LIVE_FLAGS = ["customers-units", "batch-import", "service"]
+LIVE_FLAGS = ["customers-units", "batch-import", "service", "units-changing-hands"]
 
 # Features still being built: created switched off.
 FLAGS: list[tuple[str, str]] = []

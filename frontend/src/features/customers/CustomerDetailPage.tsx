@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StockBadge, UnitPhoto, unitTitle } from "@/features/units/bits";
-import { useCustomerUnits } from "@/features/units/api";
+import { useCustomerUnits, useFormerUnits } from "@/features/units/api";
 import { ApiError } from "@/lib/api";
 import { formatNumber } from "@/lib/format";
 import type { Address, Contact } from "@/lib/types";
@@ -74,6 +74,7 @@ export function CustomerDetailPage() {
   const navigate = useNavigate();
   const customer = useCustomer(id);
   const units = useCustomerUnits(id);
+  const former = useFormerUnits(id);
   const removeCustomer = useRemoveCustomer();
   const removeContact = useRemoveChild("contacts");
   const removeAddress = useRemoveChild("addresses");
@@ -283,6 +284,27 @@ export function CustomerDetailPage() {
           </ul>
         )}
       </SectionCard>
+
+      {!!former.data?.results.length && (
+        <SectionCard id="former-units" title="Units they used to own" description="Sold on, traded in, repossessed or returned.">
+          <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {former.data.results.map((u) => (
+              <li key={u.id}>
+                <Link to={`/units/${u.id}#ownership`} className="hover:border-primary/40 flex items-center gap-3 rounded-xl border p-3 transition-colors">
+                  <UnitPhoto photoId={u.primary_photo_id} alt={unitTitle(u)} className="size-16 shrink-0 rounded-lg" />
+                  <span className="min-w-0">
+                    <span className="block truncate font-semibold">{unitTitle(u)}</span>
+                    <span className="text-muted-foreground block truncate text-sm">S/N {u.serial_number || "—"}</span>
+                    <span className="text-muted-foreground block truncate text-xs">
+                      Now: {u.owner_name ?? (u.owner_kind === "dealer" ? "our stock" : "—")}
+                    </span>
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </SectionCard>
+      )}
 
       {editing && <CustomerFormDialog customer={c} onClose={() => setEditing(false)} />}
       {contactDialog && (

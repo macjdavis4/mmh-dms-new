@@ -382,7 +382,12 @@ def test_transfer_ownership(client_for: Any) -> None:
     buyer = Customer.objects.create(name="Katahdin Lumber")
     res = sales.post(
         f"{URL}/{unit['id']}/transfer",
-        {"owner_kind": "customer", "customer": str(buyer.pk), "start_date": "2025-01-15"},
+        {
+            "owner_kind": "customer",
+            "customer": str(buyer.pk),
+            "start_date": "2025-01-15",
+            "reason": "sold",
+        },
         format="json",
     )
     assert res.status_code == 201, res.json()
@@ -396,13 +401,19 @@ def test_transfer_ownership(client_for: Any) -> None:
 
     same = sales.post(
         f"{URL}/{unit['id']}/transfer",
-        {"owner_kind": "customer", "customer": str(buyer.pk), "start_date": "2025-02-01"},
+        {
+            "owner_kind": "customer",
+            "customer": str(buyer.pk),
+            "start_date": "2025-02-01",
+            "reason": "private_sale",
+        },
         format="json",
     )
     assert same.status_code == 400
+    assert "customer" in same.json()["fields"]
     backwards = sales.post(
         f"{URL}/{unit['id']}/transfer",
-        {"owner_kind": "dealer", "start_date": "2020-01-01"},
+        {"owner_kind": "dealer", "start_date": "2020-01-01", "reason": "trade_in"},
         format="json",
     )
     assert backwards.status_code == 400
@@ -411,7 +422,7 @@ def test_transfer_ownership(client_for: Any) -> None:
         client_for("service")
         .post(
             f"{URL}/{unit['id']}/transfer",
-            {"owner_kind": "dealer", "start_date": "2026-01-01"},
+            {"owner_kind": "dealer", "start_date": "2026-01-01", "reason": "trade_in"},
             format="json",
         )
         .status_code

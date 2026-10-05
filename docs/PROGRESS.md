@@ -7,8 +7,8 @@
 | 3 | Batch import | Merged |
 | 4 | Work orders | Merged |
 | 5 | Planned maintenance | Merged |
-| 6 | Printouts (work order and spec sheet PDFs) | **In review** |
-| 7 | Units changing hands (sales, trade-ins, repos) | Not started |
+| 6 | Printouts (work order and spec sheet PDFs) | Merged |
+| 7 | Units changing hands (sales, trade-ins, repos) | **In review** |
 | 8 | Quotes and sales | Not started |
 | 9 | Parts catalog | Not started |
 | 10 | Parts stock ledger | Not started |
@@ -134,10 +134,23 @@ From Phase 4 on, phases are smaller (one usable piece each) so each pull request
 
 **Tests**: 253 backend tests, 36 Vitest, 39 Playwright end-to-end tests.
 
-## Planned for Phase 7: units that come back
+## Phase 7: Units changing hands
 
-A unit can be sold, come back (repossession, trade-in, buy-back, lease return, bought used) and be sold again, any number of times. It always stays one unit record (one serial), with its ownership history as the timeline. Phase 7 adds:
+A unit can be sold, come back and be sold again any number of times. It stays one unit record (one serial), with its ownership history as the timeline.
 
-- **Why it changed hands** on every ownership change: sold, trade-in, repossession, bought back, lease return, other.
-- **Stock status and condition follow the owner**: coming back to our stock sets *In prep* and *Used*; a sale sets *Sold*.
-- **A record per sale and per acquisition**, each with its own price and cost, so a second sale never overwrites the first. The unit's cost and prices become "this time in stock".
+**Built**
+- [x] **Why it changed hands** on every change: sold, sold between customers, trade-in, repossession, bought back, lease return, bought used, other. The database refuses a reason that doesn't fit the new owner
+- [x] **Change owner** asks what happened (sold to a customer / came back to our stock / between customers), why, the date (not in the future), price, hour meter at handover and invoice #, and shows *What will change* before saving
+- [x] **Stock status and condition follow the owner**: a sale sets *Sold*; coming back sets *In prep* and *Used*
+- [x] **Each deal keeps its own numbers**: a sale keeps its sale price and the unit's cost at the time (so its margin); a unit coming back keeps what we paid, which becomes the unit's cost. The unit's cost, asking and sale price are now "this time in stock" and start afresh when it comes back. Sale prices recorded before this phase are copied onto the old sale when the unit comes back
+- [x] Ownership history on the unit page shows each reason, the deal's money (admin and sales only), invoice # and hours
+- [x] Correct a recorded deal (admin, sales); admins can undo the latest change. Undo puts stock status, condition and prices back, except fields changed by hand since (it lists them); the undone record stays in the audit log
+- [x] **Bought and sold** page (admin, sales, read only): every change, filters for direction, reason, dates and search, totals for sales, margin and what we paid (money for admin and sales only); tables become cards on phones and tablets
+- [x] Customers show *Units they used to own*
+- [x] Behind the `units-changing-hands` feature flag (on) for the list; demo data has a unit sold new and traded back in, and a repossession
+
+**Migrations**: `units/0004_ownership_deals` (new nullable or defaulted columns and checks every existing row passes; no index built on the live table), `units/0005_feature_flag`.
+
+**Tests**: 283 backend tests (93% coverage), 42 Vitest, 43 Playwright end-to-end tests.
+
+**Known limitations**: only the latest change can be undone; to fix an older owner or date, undo back to it or ask an admin to correct it in the Django admin. Quotes, invoices and trade-ins as part of a sale come in Phase 8.

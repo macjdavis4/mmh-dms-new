@@ -14,12 +14,14 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
 import { formatDate, formatDateTime, formatMoney, formatNumber } from "@/lib/format";
-import { FUEL_LABELS, type Unit } from "@/lib/types";
+import { FUEL_LABELS, type OwnershipRecord, type Unit } from "@/lib/types";
 
 import { useFiles, useHistory, useHours, useOwnership, useSaveUnit, useUnit, useUnitAction } from "./api";
 import { ConditionBadge, ReviewBadge, StockBadge, unitTitle } from "./bits";
 import { canEditUnits, canRemoveUnits, canSeePricing, canTransferOwnership } from "./permissions";
-import { HoursDialog, TransferDialog } from "./UnitDialogs";
+import { keptMessage } from "./changeHands";
+import { OwnershipTimeline } from "./OwnershipTimeline";
+import { ChangeHandsDialog, EditDealDialog, HoursDialog } from "./UnitDialogs";
 import { UnitDocuments, UnitGallery } from "./UnitFiles";
 
 function Spec({ items }: { items: [string, ReactNode][] }) {
@@ -118,7 +120,10 @@ export function UnitDetailPage() {
   const remove = useUnitAction<undefined>(id, `units/${id}`, "DELETE");
   const restore = useUnitAction<undefined>(id, `units/${id}/restore`);
   const markReviewed = useSaveUnit(id);
+  const undo = useUnitAction<{ record: string }, { kept: string[] }>(id, `units/${id}/undo-change`);
   const [dialog, setDialog] = useState<"hours" | "transfer" | "remove" | null>(null);
+  const [editing, setEditing] = useState<{ record: OwnershipRecord; fromKind: OwnershipRecord["owner_kind"] | null } | null>(null);
+  const [undoing, setUndoing] = useState<OwnershipRecord | null>(null);
 
   if (unit.isError) {
     const notFound = unit.error instanceof ApiError && unit.error.status === 404;
@@ -264,7 +269,7 @@ export function UnitDetailPage() {
           </div>
           {pricing && (
             <div className="bg-card rounded-xl border p-5">
-              <h2 className="text-muted-foreground mb-3 text-xs font-semibold tracking-wide uppercase">Pricing (admin and sales only)</h2>
+              <h2 className="text-muted-foreground mb-3 text-xs font-semibold tracking-wide uppercase">Pricing this time in stock (admin and sales only)</h2>
               <div className="grid grid-cols-3 gap-4">
                 <Fact label="Cost" value={formatMoney(u.cost)} />
                 <Fact label="Asking" value={formatMoney(u.asking_price)} />
@@ -427,29 +432,14 @@ export function UnitDetailPage() {
           {!ownership.data?.length ? (
             <p className="text-muted-foreground text-sm">No owners recorded.</p>
           ) : (
-            <ol className="relative flex flex-col gap-4 border-l-2 pl-5">
-              {ownership.data.map((o) => (
-                <li key={o.id} className="relative">
-                  <span
-                    className={`absolute top-1.5 -left-[27px] size-3 rounded-full border-2 ${o.end_date ? "bg-card border-muted-foreground" : "bg-cta border-cta"}`}
-                    aria-hidden="true"
-                  />
-                  <p className="font-semibold">
-                    {o.customer ? (
-                      <Link to={`/customers/${o.customer}`} className="text-primary hover:underline">
-                        {o.owner_label}
-                      </Link>
-                    ) : (
-                      o.owner_label
-                    )}
-                  </p>
-                  <p className="text-muted-foreground text-sm">
-                    {formatDate(o.start_date)} – {o.end_date ? formatDate(o.end_date) : "now"}
-                  </p>
-                  {o.note && <p className="text-muted-foreground text-xs">{o.note}</p>}
-                </li>
-              ))}
-            </ol>
+            <OwnershipTimeline
+              records={ownership.data}
+              pricing={pricing}
+              canEdit={canTransferOwnership(user.role) && !u.is_deleted}
+              canUndo={canRemoveUnits(user.role) && !u.is_deleted}
+              onEdit={(record, fromKind) => setEditing({ record, fromKind })}
+              onUndo={(record) => setUndoing(record)}
+            />
           )}
         </SectionCard>
       </div>
@@ -481,13 +471,38 @@ export function UnitDetailPage() {
       </SectionCard>
 
       {dialog === "hours" && <HoursDialog unitId={u.id} onClose={() => setDialog(null)} />}
-      {dialog === "transfer" && (
-        <TransferDialog
+      {dialog === "transfer" && <ChangeHandsDialog unit={u} pricing={pricing} onClose={() => setDialog(null)} />}
+      {editing && (
+        <EditDealDialog
           unitId={u.id}
-          current={u.owner_name ?? (u.owner_kind === "dealer" ? "Maine Material Handling stock" : null)}
-          onClose={() => setDialog(null)}
+          record={editing.record}
+          fromKind={editing.fromKind}
+          pricing={pricing}
+          onClose={() => setEditing(null)}
         />
       )}
+      <ConfirmDialog
+        open={undoing !== null}
+        title="Undo this change of hands?"
+        description={`${undoing?.owner_label ?? ""} will no longer be the owner and the previous owner becomes current again. Stock status, condition and prices go back to what they were, except any changed by hand since. The undone record stays in the audit log.`}
+        confirmLabel="Undo change"
+        onCancel={() => setUndoing(null)}
+        onConfirm={() => {
+          const record = undoing;
+          setUndoing(null);
+          if (!record) return;
+          undo.mutate(
+            { record: record.id },
+            {
+              onSuccess: (res) => {
+                const kept = keptMessage(res.kept);
+                toast.success("Change undone", kept ? { description: kept } : undefined);
+              },
+              onError: (err) => toast.error(err instanceof ApiError ? (err.fieldError("record") ?? err.message) : "Couldn't undo the change."),
+            },
+          );
+        }}
+      />
       <ConfirmDialog
         open={dialog === "remove"}
         title={`Remove ${title}?`}

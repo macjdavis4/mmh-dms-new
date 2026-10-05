@@ -3,7 +3,17 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import { useDebounced } from "@/hooks/useDebounced";
 import { api, type Paginated } from "@/lib/api";
 import { uploadForm } from "@/lib/upload";
-import type { AuditEntry, HourReading, OwnershipRecord, Unit, UnitFacets, UnitFile, UnitRow } from "@/lib/types";
+import type {
+  AuditEntry,
+  HourReading,
+  OwnershipRecord,
+  Unit,
+  UnitChange,
+  UnitChangeTotals,
+  UnitFacets,
+  UnitFile,
+  UnitRow,
+} from "@/lib/types";
 
 export const unitKeys = {
   all: ["units"] as const,
@@ -91,6 +101,49 @@ export function useCustomerUnits(customerId: string) {
   });
 }
 
+export function useFormerUnits(customerId: string) {
+  return useQuery({
+    queryKey: unitKeys.list(`former_owner=${customerId}`),
+    queryFn: () => api<Paginated<UnitRow>>(`/api/v1/units?scope=all&former_owner=${customerId}&page_size=200`),
+  });
+}
+
+export interface ChangeFilters {
+  direction: "" | "out" | "in" | "between";
+  reason: string;
+  date_from: string;
+  date_to: string;
+  q: string;
+}
+
+export const EMPTY_CHANGE_FILTERS: ChangeFilters = { direction: "", reason: "", date_from: "", date_to: "", q: "" };
+
+export function changeParams(filters: ChangeFilters): URLSearchParams {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters) as [string, string][]) if (value) params.set(key, value);
+  return params;
+}
+
+/** "Bought and sold": every change of hands, newest first. */
+export function useUnitChanges(filters: ChangeFilters, page: number, pageSize: number) {
+  const q = useDebounced(filters.q);
+  const params = changeParams({ ...filters, q });
+  const totalsKey = params.toString();
+  params.set("page", String(page));
+  params.set("page_size", String(pageSize));
+  const list = useQuery({
+    queryKey: ["units", "changes", params.toString()],
+    queryFn: () => api<Paginated<UnitChange>>(`/api/v1/unit-changes?${params.toString()}`),
+    placeholderData: keepPreviousData,
+  });
+  const totals = useQuery({
+    queryKey: ["units", "changes", "totals", totalsKey],
+    queryFn: () => api<UnitChangeTotals>(`/api/v1/unit-changes/totals?${totalsKey}`),
+    placeholderData: keepPreviousData,
+  });
+  return { list, totals };
+}
+
 export function useFacets() {
   return useQuery({
     queryKey: ["units", "facets"],
@@ -142,6 +195,18 @@ export function useUnitAction<TBody, TResult = unknown>(id: string, path: string
       void qc.invalidateQueries({ queryKey: unitKeys.detail(id) });
       void qc.invalidateQueries({ queryKey: unitKeys.all });
       void qc.invalidateQueries({ queryKey: ["customers"] });
+    },
+  });
+}
+
+/** Correct a recorded change of hands (reason, price, cost, reference, note). */
+export function useEditDeal(unitId: string, recordId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Record<string, unknown>) => api<OwnershipRecord>(`/api/v1/ownership-records/${recordId}`, { method: "PATCH", body }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: unitKeys.detail(unitId) });
+      void qc.invalidateQueries({ queryKey: unitKeys.all });
     },
   });
 }

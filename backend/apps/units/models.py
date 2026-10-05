@@ -370,13 +370,39 @@ class HourMeterReading(SoftDeleteModel):
         return f"{self.hours} h on {self.reading_date}"
 
 
+class OwnershipReason(models.TextChoices):
+    """Why a unit changed hands. Blank: the first owner on record, or a change
+    recorded before reasons were kept."""
+
+    SOLD = "sold", "Sold"
+    PRIVATE_SALE = "private_sale", "Sold between customers"
+    TRADE_IN = "trade_in", "Trade-in"
+    REPOSSESSION = "repossession", "Repossession"
+    BUY_BACK = "buy_back", "Bought back"
+    LEASE_RETURN = "lease_return", "Lease return"
+    BOUGHT_USED = "bought_used", "Bought used"
+    OTHER = "other", "Other"
+
+
+# Which reasons fit which new owner.
+TO_CUSTOMER_REASONS = ("sold", "private_sale", "other")
+TO_STOCK_REASONS = ("trade_in", "repossession", "buy_back", "lease_return", "bought_used", "other")
+
+
 class OwnershipRecord(SoftDeleteModel):
     """Who owned the unit when. Exactly one open record (no end date) per unit.
-    owner_kind 'dealer' means Maine Material Handling's own stock."""
+    owner_kind 'dealer' means Maine Material Handling's own stock.
+
+    Each record is also the deal that started it: a sale out of our stock
+    keeps its own sale price and the unit's cost at the time; a unit coming
+    back keeps what we paid. Selling the same unit again never overwrites an
+    earlier deal."""
 
     class OwnerKind(models.TextChoices):
         CUSTOMER = "customer", "Customer"
         DEALER = "dealer", "Maine Material Handling stock"
+
+    Reason = OwnershipReason
 
     unit = models.ForeignKey(Unit, on_delete=models.PROTECT, related_name="ownerships")
     owner_kind = models.CharField(max_length=10, choices=OwnerKind.choices)
@@ -386,6 +412,33 @@ class OwnershipRecord(SoftDeleteModel):
     start_date = models.DateField(default=timezone.localdate)
     end_date = models.DateField(null=True, blank=True)
     note = text(200)
+
+    # --- The deal (price and cost: admin and sales only) ----------------------------------
+    reason = models.CharField(
+        max_length=20, choices=OwnershipReason.choices, blank=True, default="", db_default=""
+    )
+    # Sale price when we sell it; what we paid (trade allowance, buy-back price,
+    # payoff) when it comes back to our stock.
+    price = models.DecimalField(**MONEY, validators=[MinValueValidator(Decimal("0"))])  # type: ignore[arg-type]
+    # On a sale out of our stock: the unit's cost at the time, so each sale
+    # keeps its own margin.
+    cost = models.DecimalField(**MONEY, validators=[MinValueValidator(Decimal("0"))])  # type: ignore[arg-type]
+    reference = models.CharField(max_length=60, blank=True, default="", db_default="")
+    # The hour meter reading taken at handover. Only ever read from this side,
+    # so no index (and none to build on a live table).
+    hour_reading = models.ForeignKey(
+        HourMeterReading,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="+",
+        db_index=False,
+    )
+    # What the change did to the unit, {field: [before, after]}, so the latest
+    # change can be undone without losing edits made since.
+    unit_changes = models.JSONField(null=True, blank=True, editable=False)
+
+    PRICE_FIELDS: ClassVar[tuple[str, ...]] = ("price", "cost")
 
     class Meta:
         ordering = ["-start_date", "-created_at"]
@@ -403,6 +456,21 @@ class OwnershipRecord(SoftDeleteModel):
                 fields=["unit"],
                 condition=ALIVE & Q(end_date__isnull=True),
                 name="ownership_one_open",
+            ),
+            models.CheckConstraint(
+                condition=Q(reason__in=["", *OwnershipReason.values]),
+                name="ownership_reason_valid",
+            ),
+            models.CheckConstraint(
+                condition=Q(reason="")
+                | Q(owner_kind="customer", reason__in=TO_CUSTOMER_REASONS)
+                | Q(owner_kind="dealer", reason__in=TO_STOCK_REASONS),
+                name="ownership_reason_fits_owner",
+            ),
+            models.CheckConstraint(
+                condition=(Q(price__isnull=True) | Q(price__gte=0))
+                & (Q(cost__isnull=True) | Q(cost__gte=0)),
+                name="ownership_money_not_negative",
             ),
         ]
 

@@ -27,7 +27,7 @@ Demo accounts (password `Forklift-Demo-2026!`):
 
 MinIO console (stands in for DigitalOcean Spaces): http://localhost:9001, `minioadmin` / `minioadmin`. The official MinIO images are no longer published, so Compose uses the community build `pgsty/minio`; the backend creates the buckets on start (`manage.py ensure_buckets`, development only).
 
-Demo data (`seed_dev`) also loads 6 customers and 10 forklift units with placeholder photos and a sample scanned card. It is safe to run again: existing rows are left alone. It also switches on feature flags for finished phases.
+Demo data (`seed_dev`) also loads 6 customers and 12 forklift units with placeholder photos and a sample scanned card, including units that were sold, traded back in and repossessed (Phase 7). It is safe to run again: existing rows are left alone. It also switches on feature flags for finished phases.
 
 ## Checks (what CI runs)
 
@@ -118,6 +118,15 @@ The database refuses it, so this can only be a near-miss (for example `O` vs `0`
 - Work order and spec sheet PDFs are made on request (nothing is stored). If one fails, the error is in Sentry with the work order or unit id.
 - The letterhead address and phone come from `COMPANY_ADDRESS` and `COMPANY_PHONE` (GitHub environment variables, see MANUAL_STEPS).
 - Pictures of sample PDFs for the docs: `infra/scripts/pdf-to-png.sh docs/screenshots/phase-6` (needs `pdftoppm` from poppler).
+
+### Units changing hands
+
+- A unit is always one record (one serial), however often it is sold and comes back. *Change owner* on the unit page records why (sold, trade-in, repossession, bought back, lease return, bought used, sold between customers, other), the price, the hour meter and the invoice #.
+- Coming back to our stock sets *In prep* and *Used*, makes what we paid the unit's cost, and empties the asking and sale price. Selling sets *Sold* and the sale price. Each deal keeps its own price (and, for a sale, the cost at the time) on its ownership record, so the next sale never overwrites the last.
+- **Wrong reason, price or invoice #**: admin or sales click the pencil on that record in *Ownership history*. Correcting the current record's price also updates the unit's cost or sale price if it still matched.
+- **Wrong owner or date**: an admin undoes the latest change (the undo arrow on the newest record), then records it again. Stock status, condition and prices go back to what they were, except fields changed by hand since (the undo says which). Only the newest change can be undone; the undone record stays in the audit log.
+- Sales recorded before Phase 7 have no price on their record. When such a unit comes back, its sale price and cost are copied onto the old sale first.
+- *Bought and sold* (admin, sales, read only) lists every change with totals; money is shown to admin and sales only. Switch it off with the `units-changing-hands` flag; *Change owner* keeps working.
 
 ## Read-only mode and the maintenance banner
 
