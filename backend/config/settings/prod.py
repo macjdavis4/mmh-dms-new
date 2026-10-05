@@ -12,8 +12,6 @@ SECRET_KEY = env("DJANGO_SECRET_KEY")  # required, no default
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 USE_X_FORWARDED_HOST = False
 SECURE_SSL_REDIRECT = True
-# /healthz and /readyz are probed over plain HTTP inside the Docker network.
-SECURE_REDIRECT_EXEMPT = [r"^healthz$", r"^readyz$"]
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 SECURE_HSTS_SECONDS = 60 * 60 * 24 * 365

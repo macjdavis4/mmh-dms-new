@@ -15,6 +15,14 @@ def test_healthz_is_always_ok(client: Client) -> None:
 
 
 @pytest.mark.django_db
+def test_health_checks_ignore_the_host_header(client: Client) -> None:
+    # Container probes use the container address, not the public hostname.
+    assert client.get("/healthz", HTTP_HOST="app-green:8000").status_code == 200
+    assert client.get("/readyz", HTTP_HOST="127.0.0.1:8000").status_code == 200
+    assert client.get("/api/v1/system/status", HTTP_HOST="evil.example").status_code == 400
+
+
+@pytest.mark.django_db
 def test_readyz_ok_when_db_and_migrations_current(client: Client) -> None:
     health._migrations_current = False
     res = client.get("/readyz")

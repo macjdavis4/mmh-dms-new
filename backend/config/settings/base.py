@@ -66,6 +66,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "apps.core.health.HealthCheckMiddleware",
     "apps.core.middleware.RequestContextMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
@@ -298,8 +299,9 @@ LOGGING: dict[str, Any] = {
     "formatters": {
         "json": {
             "()": "pythonjsonlogger.json.JsonFormatter",
-            "fmt": "%(asctime)s %(levelname)s %(name)s %(message)s",
-            "rename_fields": {"asctime": "ts", "levelname": "level", "name": "logger"},
+            "fmt": "%(levelname)s %(name)s %(message)s",
+            "rename_fields": {"levelname": "level", "name": "logger"},
+            "timestamp": True,  # ISO 8601, UTC
         },
     },
     "handlers": {

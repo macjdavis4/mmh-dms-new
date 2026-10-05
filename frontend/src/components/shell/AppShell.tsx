@@ -43,7 +43,7 @@ export function AppShell({ user }: { user: CurrentUser }) {
       </a>
 
       {/* Desktop and landscape tablet: fixed sidebar */}
-      <aside className="bg-sidebar text-sidebar-foreground fixed inset-y-0 left-0 z-30 hidden w-64 lg:block">
+      <aside className="bg-sidebar text-sidebar-foreground border-sidebar-border fixed inset-y-0 left-0 z-30 hidden w-64 border-r lg:block">
         <SidebarBody user={user} />
       </aside>
 

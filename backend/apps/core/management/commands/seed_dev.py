@@ -8,6 +8,7 @@ from __future__ import annotations
 import base64
 from typing import Any
 
+from axes.utils import reset as axes_reset
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
@@ -70,9 +71,15 @@ class Command(BaseCommand):
                         for device in model.objects.filter(user=user, confirmed=True):
                             device.confirmed = False
                             device.save()
+            # Tidy up throwaway users created by earlier end-to-end runs.
+            demo_emails = {u[0] for u in USERS}
+            for leftover in User.objects.filter(email__endswith="@mmh.test"):
+                if leftover.email.lower() not in demo_emails:
+                    leftover.soft_delete()
             for key, description in FLAGS:
                 if not FeatureFlag.objects.filter(key=key).exists():
                     FeatureFlag.objects.create(key=key, description=description, enabled=False)
+            axes_reset()  # clear sign-in lockouts left by earlier test runs
             site = SiteSettings.load()
             site.read_only_mode = False
             site.banner_message = ""

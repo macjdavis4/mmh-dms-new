@@ -43,9 +43,9 @@ function show(value: unknown): string {
 function Changes({ entry }: { entry: AuditEntry }) {
   if (entry.action === "update" && entry.changed_fields.length > 0) {
     return (
-      <ul className="flex flex-col gap-1 text-sm">
+      <ul className="flex max-w-md min-w-56 flex-col gap-1 text-sm whitespace-normal">
         {entry.changed_fields.map((field) => (
-          <li key={field} className="break-words">
+          <li key={field} className="[overflow-wrap:anywhere]">
             <span className="font-semibold">{field}</span>:{" "}
             <span className="text-muted-foreground line-through">{show(entry.before?.[field])}</span> →{" "}
             <span>{show(entry.after?.[field])}</span>
@@ -161,6 +161,7 @@ export function AuditLogPage() {
         </div>
         <DataTable
           caption="Audit log"
+          tableFrom="xl"
           columns={columns}
           data={log.data?.results}
           isLoading={log.isPending}

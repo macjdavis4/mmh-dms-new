@@ -22,7 +22,13 @@ interface DataTableProps<T> {
   empty: { title: string; message?: ReactNode; action?: ReactNode };
   getRowId?: (row: T) => string;
   caption: string;
+  /** Width from which the table is shown; below it, cards. Wide tables use "xl". */
+  tableFrom?: "md" | "lg" | "xl";
 }
+
+// Literal class names so Tailwind can see them.
+const SHOW_TABLE = { md: "hidden md:block", lg: "hidden lg:block", xl: "hidden xl:block" } as const;
+const SHOW_CARDS = { md: "divide-y md:hidden", lg: "divide-y lg:hidden", xl: "divide-y xl:hidden" } as const;
 
 /** Table on tablet/desktop, stacked cards on phones. */
 export function DataTable<T>({
@@ -35,6 +41,7 @@ export function DataTable<T>({
   empty,
   getRowId,
   caption,
+  tableFrom = "md",
 }: DataTableProps<T>) {
   const table = useReactTable({
     data: data ?? [],
@@ -62,7 +69,7 @@ export function DataTable<T>({
   }
   return (
     <>
-      <div className="hidden md:block">
+      <div className={SHOW_TABLE[tableFrom]}>
         <Table>
           <caption className="sr-only">{caption}</caption>
           <TableHeader>
@@ -92,7 +99,7 @@ export function DataTable<T>({
           </TableBody>
         </Table>
       </div>
-      <ul className="divide-y md:hidden" aria-label={caption}>
+      <ul className={SHOW_CARDS[tableFrom]} aria-label={caption}>
         {rows.map((row) => (
           <li key={row.id} className="p-4">
             {renderCard(row)}

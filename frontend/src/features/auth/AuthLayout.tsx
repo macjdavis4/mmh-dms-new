@@ -10,7 +10,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
     <div className="flex min-h-dvh flex-col">
       <SystemBanner />
       <div className="grid flex-1 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
-        <section className="bg-sidebar relative hidden overflow-hidden lg:flex lg:flex-col lg:justify-between lg:p-12">
+        <section className="bg-sidebar hidden lg:flex lg:flex-col lg:justify-between lg:p-12">
           <Logo inverted />
           <div>
             <ForkliftArt className="text-sidebar-foreground/80 mb-10 w-full max-w-md" />
@@ -22,10 +22,6 @@ export function AuthLayout({ children }: { children: ReactNode }) {
             </p>
           </div>
           <DealerBadgeSlot className="w-fit" />
-          <div
-            aria-hidden="true"
-            className="bg-cta pointer-events-none absolute -right-24 -bottom-24 size-72 rotate-12 rounded-[3rem] opacity-[0.07]"
-          />
         </section>
         <section className="flex flex-col">
           <div className="flex items-center justify-between p-4 sm:p-6">

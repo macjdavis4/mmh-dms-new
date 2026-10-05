@@ -73,7 +73,7 @@ test("maintenance banner and read-only mode", async ({ page }) => {
 test("audit log lists recent changes", async ({ page }) => {
   await page.goto("/admin/audit");
   await expect(page.getByRole("heading", { name: "Audit log", level: 1 })).toBeVisible();
-  await expect(page.getByRole("row").filter({ hasText: "Signed in" }).first()).toBeVisible();
+  await expect(page.getByText("Signed in").filter({ visible: true }).first()).toBeVisible();
 });
 
 test("dashboard shows system health to admins", async ({ page }) => {

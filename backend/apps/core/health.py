@@ -8,11 +8,12 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 
 from django.conf import settings
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
-from django.http import HttpRequest, JsonResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET
 
@@ -51,6 +52,25 @@ def _check_migrations() -> tuple[bool, str]:
         return False, f"{len(plan)} pending"
     _migrations_current = True
     return True, "ok"
+
+
+class HealthCheckMiddleware:
+    """Answer /healthz and /readyz before host validation and HTTPS redirects.
+
+    Docker, Caddy and the deploy script probe containers directly
+    (Host: 127.0.0.1 or app-blue:8000), which ALLOWED_HOSTS would reject.
+    """
+
+    def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
+        self.get_response = get_response
+
+    def __call__(self, request: HttpRequest) -> HttpResponse:
+        if request.method == "GET":
+            if request.path == "/healthz":
+                return healthz(request)
+            if request.path == "/readyz":
+                return readyz(request)
+        return self.get_response(request)
 
 
 @never_cache
