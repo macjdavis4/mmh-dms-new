@@ -499,7 +499,10 @@ def test_sales_role_matrix(
     allowed = role in ("admin", "sales")
     q = make_quote(client_for("admin"), customer, stock_unit)
     client = client_for(role)
-    expect = (lambda ok: ok) if allowed else (lambda ok: 403)  # noqa: E731
+
+    def expect(ok: int) -> int:
+        return ok if allowed else 403
+
     assert client.get(QUOTES).status_code == expect(200)
     assert client.get(f"{QUOTES}/{q['id']}").status_code == expect(200)
     assert client.get(f"{QUOTES}/{q['id']}/pdf").status_code == expect(200)
