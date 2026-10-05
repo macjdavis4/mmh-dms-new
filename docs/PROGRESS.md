@@ -3,8 +3,8 @@
 | Phase | Name | Status |
 |---|---|---|
 | 1 | Foundation | Merged |
-| 2 | Customers and forklift units | **In review** |
-| 3 | Batch import | Not started |
+| 2 | Customers and forklift units | Merged |
+| 3 | Batch import | **In review** |
 | 4 | Service | Not started |
 | 5 | Sales | Not started |
 | 6 | Parts inventory | Not started |
@@ -51,3 +51,25 @@
 **Tests**: 168 backend tests (88% coverage), 23 Vitest, 25 Playwright end-to-end tests, local blue/green deploy test.
 
 **Waiting on the owner**: nothing new beyond Phase 1's [MANUAL_STEPS](MANUAL_STEPS.md) (see "Phase 2" there).
+
+## Phase 3: Batch import
+
+**Built**
+- [x] Import format: one CSV row (or JSON object) per unit card, every card field. Documented in [IMPORT_FORMAT.md](IMPORT_FORMAT.md) with a template, a sample, a JSON Schema and a sample API request, all generated from one spec (a test fails if they drift)
+- [x] Template and sample downloadable in the app (*Imports → Download template*)
+- [x] Upload a CSV (Excel's CSV UTF-8 or plain CSV; semicolons accepted; an .xlsx is explained, not accepted) with optional scans of the cards
+- [x] Preview before anything changes: each row marked new / update / no changes / can't import, with errors, warnings and the fields that would change
+- [x] Units matched on serial (ignoring case, spaces and dashes), else stock number; importing the same file again changes nothing
+- [x] Customers matched by name ("Co." = "Company"); near-duplicates flagged; new customers added once per file
+- [x] Values that don't parse (e.g. "5 ton") kept as written in the notes; units with warnings flagged *Needs review*
+- [x] Blank cells never erase data; the owner of a known unit is never changed by an import
+- [x] Scanned cards attached to their unit by file name (`source_image_filename`)
+- [x] Import, retry after a failure, discard, and undo a whole batch (units edited since are kept and listed)
+- [x] Large files (over 300 rows) import in the background worker; the page follows progress
+- [x] Versioned JSON API (`/api/v1/import/v1/…`) with API keys (stored hashed, shown once, revocable), dry runs, per-key rate limit
+- [x] Admin page for API keys; dashboard "Import unit cards" action
+- [x] Everything behind the `batch-import` feature flag (on); every import change is in the audit log, tagged with its batch
+
+**Tests**: 206 backend tests (90% coverage), 28 Vitest, 31 Playwright end-to-end tests, local blue/green deploy test.
+
+**Waiting on the owner**: nothing to set up. Fill in the template when the cards are scanned (see [MANUAL_STEPS](MANUAL_STEPS.md), "Phase 3").

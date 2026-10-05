@@ -43,6 +43,8 @@
 | Unit serials | Stored as entered, plus a normalized copy (uppercase letters and digits) with a unique constraint over all rows, removed ones included | Catches `HHK-123` vs `hhk123`; a removed unit is restored, not duplicated |
 | Unit components | One row per component kind (engine, pump, ...) instead of 24 columns | Same shape for every component; easy to add a kind later |
 | Uploaded files | Private bucket, streamed through Django after a permission check; content checked with Pillow; WebP thumbnails | No guessable public URLs; a renamed `.exe` is refused |
+| Imports | Validate (no changes) → apply one transaction per row → undo per batch; match on normalized serial; audit entries tagged `import-<batch>` | Safe to re-run and retry; undo can tell the import's changes from later edits |
+| Import API | Versioned path, API keys hashed with SHA-256 (256-bit random keys), per-key throttle; requests act as the key's admin | The scanning app needs no user account; a key can be revoked without touching anyone's password |
 | Prices | Removed from API responses for roles that can't see them; price filters and sorting ignored | Hiding in the UI alone would leak through the API |
 
 ## Request flow and security headers
@@ -66,11 +68,15 @@
 | Units: add, edit, hours, photos | ✓ | ✓ | ✓ | | |
 | Units: change owner | ✓ | ✓ | | | |
 | Units: remove, remove hour readings | ✓ | | | | |
+| Imports: upload, check, import | ✓ | ✓ | ✓ | | |
+| Imports: prices in the file | ✓ | ✓ | (ignored) | | |
+| Imports: undo | ✓ | own imports | own imports | | |
+| API keys | ✓ | | | | |
 
 ## Repository layout
 
 ```
-backend/            Django project (config/, apps/core, accounts, search, ops, customers, units; tests/)
+backend/            Django project (config/, apps/core, accounts, search, ops, customers, units, imports; tests/)
 frontend/           React + TypeScript (src/app, src/components, src/features, e2e/)
 infra/caddy/        Caddy image and Caddyfile
 infra/cloud-init/   Droplet bootstrap and the deploy entry point

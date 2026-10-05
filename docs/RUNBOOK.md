@@ -98,6 +98,14 @@ After migrating, the deploy runs `manage.py grant_app_privileges mmh_app`, so ne
 
 The database refuses it, so this can only be a near-miss (for example `O` vs `0`). Open both, decide which is right, fix the serial on the other or remove it. Removed units keep their serial reserved; restore the removed one instead of adding it again.
 
+### Imports
+
+- An import that **failed part-way** keeps the rows already imported. Open it under *Imports* and press **Try again**; rows already done are skipped.
+- An import **stuck on "Waiting" or "Importing"** for more than a few minutes: big files run in the worker on the `imports` queue. Check the worker is running (`docker ps`, `docker compose … logs --tail 200 worker`).
+- **Wrong data imported**: open the import and **Undo this import**. Units someone edited after the import are left alone and listed; fix those by hand.
+- **Format docs out of date** after changing `backend/apps/imports/columns.py`: run `python manage.py write_import_docs` and commit the files it writes.
+- **Scanning app gets 401**: its API key was revoked, or the admin who made it was removed or lost the admin role. Make a new key under *Admin → API keys*. A 429 means more than 30 requests a minute.
+
 ## Read-only mode and the maintenance banner
 
 *Admin → Site settings*. Read-only mode blocks every change for everyone (sign-in still works) and shows a notice on every screen. Use it during database maintenance or a restore. The banner can show any message in information, warning or critical style, including on the sign-in page.
