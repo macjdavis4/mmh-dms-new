@@ -89,8 +89,8 @@ export const NAV: NavSection[] = [
         label: "Parts",
         to: "/parts",
         icon: Package,
-        comingInPhase: 9,
-        description: "Parts catalog, stock levels and invoice receiving.",
+        flag: "parts",
+        description: "Parts catalog: numbers, bins, reorder points and other brands' numbers.",
       },
       {
         label: "Imports",

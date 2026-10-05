@@ -9,8 +9,8 @@
 | 5 | Planned maintenance | Merged |
 | 6 | Printouts (work order and spec sheet PDFs) | Merged |
 | 7 | Units changing hands (sales, trade-ins, repos) | Merged |
-| 8 | Quotes and sales | **In review** |
-| 9 | Parts catalog | Not started |
+| 8 | Quotes and sales | Merged |
+| 9 | Parts catalog | **In review** |
 | 10 | Parts stock ledger | Not started |
 | 11 | Receiving parts invoices | Not started |
 | 12 | Dashboard and reports | Not started |
@@ -175,4 +175,23 @@ A unit can be sold, come back and be sold again any number of times. It stays on
 **Tests**: 310 backend tests (93% coverage), 47 Vitest, 47 Playwright end-to-end tests.
 
 **Known limitations**: a sale's unit price is the line price; a quote-wide discount isn't spread over the units on the sale records. Sales tax follows the rule above; check it with your accountant. No deposits, payments or invoices yet (invoice # is typed in). Quotes can't be emailed from the app yet.
+
+## Phase 9: Parts catalog
+
+**Built**
+- [x] Parts with maker, part number (kept as written), description, category, unit (each, pair, set, kit, box, foot, quart, gallon), list price, our cost, bin, reorder point and quantity, supplier and the supplier's number, the models it fits, and notes
+- [x] Part numbers match without case, spaces or dashes ("31n4 01050" finds 31N4-01050). One record per maker and number, enforced by the database, removed parts included (restore instead); a live warning while typing
+- [x] **Bins**: shelf codes (unique, kept upper case) with a description and a part count; a bin with parts in it can't be removed
+- [x] **Reorder point and quantity**, ready for the low-stock list when the stock ledger arrives (Phase 10)
+- [x] **Supersessions**: a part can be replaced by a newer one; the page shows what replaced it and the current part at the end of the chain, and what it replaces. Chains can't loop; replaced parts are hidden from the list unless asked for
+- [x] **Cross references**: other brands' numbers for the same part, found by the parts search and the global search
+- [x] Parts page (search, category and bin filters), part page, add and edit form, bins page; Parts is in the menu (no more "Soon")
+- [x] Parts staff and admins edit; everyone can look parts up. List prices for everyone, our cost for admin, sales and parts only
+- [x] Behind the `parts` feature flag (on); demo data has 9 bins and 14 parts with cross references and one replaced part (made-up numbers, marked as demo)
+
+**Migrations**: `parts/0001_initial` (new tables), `parts/0002_db_guards` (no hard deletes), `parts/0003_feature_flag`.
+
+**Tests**: 327 backend tests (93% coverage), 47 Vitest, 50 Playwright end-to-end tests.
+
+**Known limitations**: no quantities on hand yet (Phase 10). No parts import from a spreadsheet yet; parts are added one at a time. One bin per part.
 

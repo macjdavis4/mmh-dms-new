@@ -3,7 +3,7 @@ import { createBrowserRouter } from "react-router";
 import { AuthLayout } from "@/features/auth/AuthLayout";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { DashboardPage } from "@/features/dashboard/DashboardPage";
-import { ComingSoonPage, NotFoundPage } from "@/features/misc/ComingSoonPage";
+import { NotFoundPage } from "@/features/misc/ComingSoonPage";
 
 import { RequireAuth, RequireRole } from "./guards";
 import { RouteError } from "./RouteError";
@@ -99,10 +99,31 @@ export const routes = [
         path: "service/:id",
         lazy: async () => ({ Component: (await import("@/features/service/WorkOrderPage")).WorkOrderPage }),
       },
-      ...["parts"].map((path) => ({
-        path,
-        element: <ComingSoonPage />,
-      })),
+      {
+        path: "parts",
+        lazy: async () => ({ Component: (await import("@/features/parts/PartsPage")).PartsPage }),
+      },
+      {
+        path: "parts/bins",
+        lazy: async () => ({ Component: (await import("@/features/parts/BinsPage")).BinsPage }),
+      },
+      {
+        element: <RequireRole roles={["admin", "parts"]} />,
+        children: [
+          {
+            path: "parts/new",
+            lazy: async () => ({ Component: (await import("@/features/parts/PartFormPage")).PartFormPage }),
+          },
+          {
+            path: "parts/:id/edit",
+            lazy: async () => ({ Component: (await import("@/features/parts/PartFormPage")).PartFormPage }),
+          },
+        ],
+      },
+      {
+        path: "parts/:id",
+        lazy: async () => ({ Component: (await import("@/features/parts/PartPage")).PartPage }),
+      },
       {
         element: <RequireRole roles={["admin", "sales"]} />,
         children: [

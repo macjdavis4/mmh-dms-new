@@ -19,6 +19,7 @@ from apps.accounts.models import User
 from apps.accounts.roles import Role
 from apps.core.context import acting_as
 from apps.core.models import FeatureFlag, SiteSettings
+from apps.parts.demo import load_demo_parts
 from apps.sales.demo import load_demo_quotes
 from apps.service.demo import load_demo_plans, load_demo_work_orders
 from apps.units.demo import load_demo_data
@@ -40,7 +41,14 @@ USERS = [
 ]
 
 # Finished features: switched on in demo data even if an older seed left them off.
-LIVE_FLAGS = ["customers-units", "batch-import", "service", "units-changing-hands", "sales"]
+LIVE_FLAGS = [
+    "customers-units",
+    "batch-import",
+    "service",
+    "units-changing-hands",
+    "sales",
+    "parts",
+]
 
 # Features still being built: created switched off.
 FLAGS: list[tuple[str, str]] = []
@@ -94,6 +102,7 @@ class Command(BaseCommand):
             load_demo_work_orders()
             load_demo_plans()
             load_demo_quotes()
+            load_demo_parts()
         self.stdout.write(
             self.style.SUCCESS(f"Seeded {len(USERS)} users. Password: {DEMO_PASSWORD}")
         )
