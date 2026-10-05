@@ -73,3 +73,11 @@
 **Tests**: 206 backend tests (90% coverage), 28 Vitest, 31 Playwright end-to-end tests, local blue/green deploy test.
 
 **Waiting on the owner**: nothing to set up. Fill in the template when the cards are scanned (see [MANUAL_STEPS](MANUAL_STEPS.md), "Phase 3").
+
+## Planned for Phase 5 (Sales): units that come back
+
+A unit can be sold, come back (repossession, trade-in, buy-back, lease return, bought used) and be sold again, any number of times. It always stays one unit record (one serial), with its ownership history as the timeline. Phase 5 adds:
+
+- **Why it changed hands** on every ownership change: sold, trade-in, repossession, bought back, lease return, other.
+- **Stock status and condition follow the owner**: coming back to our stock sets *In prep* and *Used*; a sale sets *Sold*.
+- **A record per sale and per acquisition**, each with its own price and cost, so a second sale never overwrites the first. The unit's cost and prices become "this time in stock".
