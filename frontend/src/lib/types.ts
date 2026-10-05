@@ -372,3 +372,79 @@ export interface UnitFacets {
   models: Record<string, string[]>;
   can_see_pricing: boolean;
 }
+
+// --- Imports (Phase 3) --------------------------------------------------------------------------
+
+export type ImportStatus = "draft" | "queued" | "importing" | "imported" | "failed" | "undoing" | "undone" | "discarded";
+
+export interface ImportMessage {
+  column: string;
+  message: string;
+}
+
+export interface ImportFile {
+  id: string;
+  original_name: string;
+  content_type: string;
+  size_bytes: number;
+  created_at: string;
+}
+
+export interface ImportBatchRow {
+  id: string;
+  source: "csv" | "api";
+  source_label: string;
+  status: ImportStatus;
+  status_label: string;
+  filename: string;
+  reference: string;
+  on_existing: "update" | "skip";
+  skip_invalid: boolean;
+  counts: Partial<Record<string, number>>;
+  row_count: number;
+  created_at: string;
+  created_by_name: string;
+  validated_at: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+  undone_at: string | null;
+  undone_by_name: string;
+  api_key_name: string;
+  error: string;
+  can_undo: boolean;
+}
+
+export interface ImportBatch extends ImportBatchRow {
+  file_messages: ImportMessage[];
+  files: ImportFile[];
+}
+
+export interface ImportRow {
+  id: string;
+  row_number: number;
+  status: "ok" | "warning" | "error";
+  plan: "" | "create" | "update" | "unchanged" | "skip";
+  plan_label: string;
+  errors: ImportMessage[];
+  warnings: ImportMessage[];
+  changes: string[];
+  serial: string;
+  label: string;
+  customer_name: string;
+  unit: string | null;
+  result: "" | "created" | "updated" | "unchanged" | "skipped" | "failed";
+  result_label: string;
+  undo_result: string;
+}
+
+export interface ApiKey {
+  id: string;
+  name: string;
+  prefix: string;
+  created_at: string;
+  created_by_name: string;
+  last_used_at: string | null;
+  revoked_at: string | null;
+  is_active: boolean;
+  key?: string;
+}

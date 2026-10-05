@@ -21,6 +21,8 @@ ignore = [
 "*/migrations/*" = ["E501", "RUF"]
 "config/settings/*" = ["S105"]
 "apps/ops/backup.py" = ["S603", "S607"]  # runs pg_dump/age with fixed argv
+# Column help and user-facing messages read better unwrapped.
+"apps/imports/{columns,formats,parsing,services}.py" = ["E501", "RUF001"]
 
 [tool.mypy]
 python_version = "3.12"

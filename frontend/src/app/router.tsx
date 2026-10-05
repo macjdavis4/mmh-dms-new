@@ -57,7 +57,24 @@ export const routes = [
         path: "units/:id/edit",
         lazy: async () => ({ Component: (await import("@/features/units/UnitFormPage")).UnitFormPage }),
       },
-      ...["service", "parts", "imports"].map((path) => ({
+      {
+        element: <RequireRole roles={["admin", "sales", "service"]} />,
+        children: [
+          {
+            path: "imports",
+            lazy: async () => ({ Component: (await import("@/features/imports/ImportsPage")).ImportsPage }),
+          },
+          {
+            path: "imports/new",
+            lazy: async () => ({ Component: (await import("@/features/imports/NewImportPage")).NewImportPage }),
+          },
+          {
+            path: "imports/:id",
+            lazy: async () => ({ Component: (await import("@/features/imports/ImportBatchPage")).ImportBatchPage }),
+          },
+        ],
+      },
+      ...["service", "parts"].map((path) => ({
         path,
         element: <ComingSoonPage />,
       })),
@@ -76,6 +93,10 @@ export const routes = [
           {
             path: "settings",
             lazy: async () => ({ Component: (await import("@/features/admin/SiteSettingsPage")).SiteSettingsPage }),
+          },
+          {
+            path: "api-keys",
+            lazy: async () => ({ Component: (await import("@/features/admin/ApiKeysPage")).ApiKeysPage }),
           },
           {
             path: "audit",

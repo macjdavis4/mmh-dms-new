@@ -223,6 +223,23 @@ Nothing new to set up. Customers and units use the same database and Spaces buck
 
 ---
 
+## Phase 3: batch import of the unit cards
+
+Nothing to set up. When the cards are scanned and typed up:
+
+- [ ] In the DMS go to **Imports → Download template**. Open it in Excel or Google Sheets.
+- [ ] Before typing, select the serial number columns (`unit_serial`, `engine_serial`, …) and set them to **Text** (Excel: right-click → Format Cells → Text), so Excel doesn't change them.
+- [ ] Type one row per card, exactly as written. Leave anything you can't read blank. Put the scan's file name (e.g. `card-0412.jpg`) in `source_image_filename`.
+- [ ] Save as **CSV UTF-8 (Comma delimited)**.
+- [ ] **Imports → New import**: choose the CSV and the scans, press **Check file**, read the preview, then **Import**.
+- [ ] Afterwards: *Units → Filters → Only units that need review* lists cards that had something unclear.
+
+Tip: try 10 cards first. If anything looks wrong, **Undo this import**, fix the spreadsheet and import again.
+
+Full column list: `docs/IMPORT_FORMAT.md`. The scanning-app API needs a key from **Admin → API keys** (only when that app exists).
+
+---
+
 ## Ongoing
 
 | When | What |
