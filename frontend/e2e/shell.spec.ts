@@ -29,9 +29,10 @@ test("global search finds units by serial and customers by name", async ({ page 
   await expect(page.getByText("No matches for “zzqx-nothing”.")).toBeVisible();
 });
 
-test("sections that aren't built yet say when they arrive", async ({ page }) => {
+test("every section in the menu is built (parts was the last placeholder)", async ({ page }) => {
   await page.goto("/parts");
-  await expect(page.getByRole("heading", { name: "Arrives in phase 9" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Parts", level: 1 })).toBeVisible();
+  await expect(page.getByText("Soon", { exact: true })).toHaveCount(0);
 });
 
 test("unknown pages show a friendly 404", async ({ page }) => {
