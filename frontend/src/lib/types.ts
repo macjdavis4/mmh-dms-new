@@ -731,3 +731,67 @@ export interface QuoteRow {
   trade_in_count: number;
   sale_number: string | null;
 }
+
+// --- Parts (Phase 9) --------------------------------------------------------------------------
+
+export interface PartBin {
+  id: string;
+  code: string;
+  description: string;
+  part_count: number;
+}
+
+export interface PartSummary {
+  id: string;
+  manufacturer: string;
+  part_number: string;
+  description: string;
+  is_deleted: boolean;
+}
+
+export interface CrossReference {
+  id?: string;
+  manufacturer: string;
+  part_number: string;
+  note: string;
+}
+
+export interface PartRow {
+  id: string;
+  manufacturer: string;
+  part_number: string;
+  description: string;
+  category: string;
+  category_label: string;
+  unit_of_measure: string;
+  /** Admin, sales and parts only. */
+  cost?: string | null;
+  list_price: string | null;
+  bin: string | null;
+  bin_code: string | null;
+  reorder_point: string | null;
+  reorder_quantity: string | null;
+  vendor: string;
+  superseded_by: string | null;
+  superseded_by_summary: PartSummary | null;
+  is_deleted: boolean;
+}
+
+export interface Part extends PartRow {
+  unit_label: string;
+  vendor_part_number: string;
+  fits: string;
+  notes: string;
+  superseded_on: string | null;
+  current_part: PartSummary | null;
+  supersedes: PartSummary[];
+  cross_references: CrossReference[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PartFacets {
+  categories: { value: string; label: string }[];
+  units: { value: string; label: string }[];
+  can_see_cost: boolean;
+}
