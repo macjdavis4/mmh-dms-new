@@ -246,6 +246,18 @@ Nothing to set up. Make sure each mechanic has a user with the **Service** role 
 
 Nothing to set up. For each customer unit on a service contract, open the unit and **Add plan** (the common ones are one click). Set *Last done on* and *Hour meter then* from the last service sticker or invoice, so the due dates start right.
 
+## Phase 6: printouts
+
+Optional: put your address and phone number on printed work orders and spec sheets.
+
+1. [ ] GitHub → your repository → *Settings → Secrets and variables → Actions → Variables* tab.
+2. [ ] For **staging** and **production** (environment variables), add:
+   - `COMPANY_ADDRESS`, e.g. `123 Main Street, Bangor, ME 04401` (no apostrophes)
+   - `COMPANY_PHONE`, e.g. `207-555-0100`
+3. [ ] They take effect on the next deploy. Until then printouts say "Bangor, Maine".
+
+When you have the official "Authorized Hyundai Dealer" badge artwork, send it over; the printouts have a marked slot for it.
+
 ---
 
 ## Ongoing
