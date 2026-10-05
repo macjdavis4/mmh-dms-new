@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError
 from rest_framework import status
 from rest_framework.response import Response
@@ -16,6 +17,14 @@ def exception_handler(exc: Exception, context: dict[str, Any]) -> Response | Non
         return Response(
             {"code": "conflict", "detail": "That change conflicts with existing data."},
             status=status.HTTP_409_CONFLICT,
+        )
+    if isinstance(exc, DjangoValidationError):
+        fields = (
+            exc.message_dict if hasattr(exc, "error_dict") else {"non_field_errors": exc.messages}
+        )
+        return Response(
+            {"code": "invalid", "detail": "Please fix the highlighted fields.", "fields": fields},
+            status=status.HTTP_400_BAD_REQUEST,
         )
     if isinstance(exc, AuditBypassError):
         return Response(
