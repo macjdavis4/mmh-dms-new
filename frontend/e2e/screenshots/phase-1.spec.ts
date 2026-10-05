@@ -2,15 +2,18 @@
  * UI screenshots for the phase PR: every new or changed screen at desktop,
  * tablet and phone widths, in light and dark mode, plus key states.
  *
- *   SCREENSHOT_DIR=../docs/screenshots/phase-1 npx playwright test --project=screenshots
+ *   SCREENSHOT_PHASE=1 npx playwright test --project=screenshots
+ *
+ * Kept as the record of how the phase 1 pictures were made. Later phases
+ * changed some of these screens (units is no longer "coming soon").
  */
 import path from "node:path";
 
 import { type APIRequestContext, type Browser, expect, type Page, test } from "@playwright/test";
 
-import { apiLogin, authFile, PASSWORD, USERS } from "./helpers";
+import { apiLogin, authFile, PASSWORD, USERS } from "../helpers";
 
-const OUT = process.env.SCREENSHOT_DIR ?? path.resolve(import.meta.dirname, "../../docs/screenshots/phase-1");
+const OUT = process.env.SCREENSHOT_DIR ?? path.resolve(import.meta.dirname, "../../../docs/screenshots/phase-1");
 
 const VIEWPORTS = {
   desktop: { width: 1440, height: 900 },

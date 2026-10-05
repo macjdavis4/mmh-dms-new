@@ -3,6 +3,8 @@ import { defineConfig, devices } from "@playwright/test";
 const baseURL = process.env.E2E_BASE_URL ?? "http://localhost:8000";
 // The cloud sandbox ships its own Chromium; CI installs Playwright's.
 const executablePath = process.env.PW_CHROMIUM_PATH;
+// Screenshots are taken for one phase at a time (default: the current one).
+const screenshotPhase = process.env.SCREENSHOT_PHASE ?? "2";
 
 export default defineConfig({
   testDir: "./e2e",
@@ -20,7 +22,12 @@ export default defineConfig({
   },
   projects: [
     { name: "setup", testMatch: /global\.setup\.ts/ },
-    { name: "e2e", testMatch: /.*\.spec\.ts/, testIgnore: /screenshots\.spec\.ts/, dependencies: ["setup"] },
-    { name: "screenshots", testMatch: /screenshots\.spec\.ts/, dependencies: ["setup"], timeout: 120_000 },
+    { name: "e2e", testMatch: /.*\.spec\.ts/, testIgnore: /screenshots\//, dependencies: ["setup"] },
+    {
+      name: "screenshots",
+      testMatch: new RegExp(`screenshots/phase-${screenshotPhase}\\.spec\\.ts$`),
+      dependencies: ["setup"],
+      timeout: 180_000,
+    },
   ],
 });
