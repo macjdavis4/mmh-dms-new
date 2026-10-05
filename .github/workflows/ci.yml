@@ -64,7 +64,7 @@ jobs:
         run: pytest --cov-fail-under=85
       - name: Dependency vulnerabilities (pip-audit)
         run: pip-audit --strict --require-hashes -r requirements/base.txt
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: backend-coverage
@@ -143,7 +143,7 @@ jobs:
       - name: Server log
         if: failure()
         run: tail -200 /tmp/gunicorn.log
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-report
