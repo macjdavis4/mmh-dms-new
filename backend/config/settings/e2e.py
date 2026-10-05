@@ -11,3 +11,10 @@ STORAGES["staticfiles"]["BACKEND"] = "whitenoise.storage.CompressedStaticFilesSt
 WHITENOISE_USE_FINDERS = True
 REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"] = {"login": "1000/min", "otp": "1000/min"}  # noqa: F405
 WHITENOISE_AUTOREFRESH = True  # pick up rebuilt frontend files without a restart
+
+# Uploaded files on local disk for Playwright runs (CI has no MinIO). The S3
+# storage path is used in development (MinIO) and production (Spaces).
+STORAGES["default"] = {  # noqa: F405
+    "BACKEND": "django.core.files.storage.FileSystemStorage",
+    "OPTIONS": {"location": "/tmp/mmh-e2e-media"},  # noqa: S108 - throwaway test files
+}

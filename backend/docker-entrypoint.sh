@@ -12,8 +12,13 @@ case "${1:-web}" in
     exec python manage.py procrastinate worker --queues=default,maintenance
     ;;
   migrate)
+    # In production this runs as the database owner (ADMIN_DATABASE_URL),
+    # then gives the app's limited user access to any new tables.
     python manage.py wait_for_db --timeout 120
-    exec python manage.py migrate --noinput
+    python manage.py migrate --noinput
+    if [ -n "${APP_DB_ROLE:-}" ]; then
+      python manage.py grant_app_privileges "$APP_DB_ROLE"
+    fi
     ;;
   manage)
     shift

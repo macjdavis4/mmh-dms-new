@@ -63,6 +63,8 @@ INSTALLED_APPS = [
     "apps.accounts",
     "apps.search",
     "apps.ops",
+    "apps.customers",
+    "apps.units",
 ]
 
 MIDDLEWARE = [
@@ -212,21 +214,19 @@ REST_FRAMEWORK = {
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [d for d in [BASE_DIR / "frontend_dist"] if d.exists()]
+S3_MEDIA_OPTIONS = {
+    "bucket_name": env("MEDIA_BUCKET", "mmh-media"),
+    "endpoint_url": env("S3_ENDPOINT_URL", "http://localhost:9000"),
+    "access_key": env("S3_ACCESS_KEY_ID", "minioadmin"),
+    "secret_key": env("S3_SECRET_ACCESS_KEY", "minioadmin"),
+    "region_name": env("S3_REGION", "us-east-1"),
+    "default_acl": "private",
+    "querystring_auth": True,
+    "querystring_expire": 900,
+    "file_overwrite": False,
+}
 STORAGES: dict[str, dict[str, Any]] = {
-    "default": {
-        "BACKEND": "storages.backends.s3.S3Storage",
-        "OPTIONS": {
-            "bucket_name": env("MEDIA_BUCKET", "mmh-media"),
-            "endpoint_url": env("S3_ENDPOINT_URL", "http://localhost:9000"),
-            "access_key": env("S3_ACCESS_KEY_ID", "minioadmin"),
-            "secret_key": env("S3_SECRET_ACCESS_KEY", "minioadmin"),
-            "region_name": env("S3_REGION", "us-east-1"),
-            "default_acl": "private",
-            "querystring_auth": True,
-            "querystring_expire": 900,
-            "file_overwrite": False,
-        },
-    },
+    "default": {"BACKEND": "storages.backends.s3.S3Storage", "OPTIONS": S3_MEDIA_OPTIONS},
     "staticfiles": {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },

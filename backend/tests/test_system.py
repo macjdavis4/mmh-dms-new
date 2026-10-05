@@ -63,10 +63,9 @@ def test_read_only_mode_blocks_writes_but_not_sign_in_or_switching_it_off(
 def test_feature_flags_endpoint(client_for: Any) -> None:
     FeatureFlag.objects.create(key="parts-ocr", enabled=True, roles=["parts"])
     FeatureFlag.objects.create(key="offline", enabled=False)
-    assert client_for("parts").get("/api/v1/feature-flags").json()["flags"] == {
-        "offline": False,
-        "parts-ocr": True,
-    }
+    flags = client_for("parts").get("/api/v1/feature-flags").json()["flags"]
+    assert flags["offline"] is False
+    assert flags["parts-ocr"] is True
     assert client_for("sales").get("/api/v1/feature-flags").json()["flags"]["parts-ocr"] is False
 
 
@@ -88,12 +87,13 @@ def test_admin_health(admin_client: APIClient) -> None:
 
 
 @pytest.mark.django_db
-def test_search_is_empty_until_features_register(client_for: Any) -> None:
+def test_search_needs_two_characters_and_finds_nothing_in_an_empty_db(client_for: Any) -> None:
     client = client_for("service")
     assert client.get("/api/v1/search?q=a").json()["groups"] == {}
     body = client.get("/api/v1/search?q=35LN").json()
     assert body["query"] == "35LN"
-    assert body["groups"] == {}
+    assert all(items == [] for items in body["groups"].values())
+    assert set(body["searchable"]) >= {"customer", "unit"}
 
 
 @pytest.mark.django_db

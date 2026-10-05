@@ -13,3 +13,6 @@ MIGRATION_LINTER_OPTIONS = {
     # Only our apps; third-party migrations are their maintainers' business.
     "include_apps": ["accounts", "core", "ops"],
 }
+
+# Uploaded files live in memory during tests (no MinIO needed).
+STORAGES["default"] = {"BACKEND": "django.core.files.storage.InMemoryStorage"}  # noqa: F405

@@ -19,6 +19,7 @@ from apps.accounts.models import User
 from apps.accounts.roles import Role
 from apps.core.context import acting_as
 from apps.core.models import FeatureFlag, SiteSettings
+from apps.units.demo import load_demo_data
 
 DEMO_PASSWORD = "Forklift-Demo-2026!"  # noqa: S105 - demo data, never in prod
 # Fixed 2FA secret for the demo admin so end-to-end tests can compute codes.
@@ -37,7 +38,6 @@ USERS = [
 ]
 
 FLAGS = [
-    ("customers-units", "Phase 2: customers and forklift units"),
     ("batch-import", "Phase 3: CSV and API import of unit cards"),
     ("service", "Phase 4: work orders and planned maintenance"),
 ]
@@ -84,6 +84,7 @@ class Command(BaseCommand):
             site.read_only_mode = False
             site.banner_message = ""
             site.save()
+            load_demo_data()
         self.stdout.write(
             self.style.SUCCESS(f"Seeded {len(USERS)} users. Password: {DEMO_PASSWORD}")
         )

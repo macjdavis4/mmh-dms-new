@@ -49,7 +49,7 @@ def backup_client() -> Any:
 
 
 def media_client() -> Any:
-    opts = settings.STORAGES["default"]["OPTIONS"]
+    opts = settings.S3_MEDIA_OPTIONS
     return boto3.client(
         "s3",
         endpoint_url=opts["endpoint_url"],
@@ -214,7 +214,7 @@ def run_media_replication() -> BackupRun:
     """Copy new or changed media objects to the second-region backup bucket."""
     today = timezone.localdate()
     run = BackupRun.objects.create(kind=BackupRun.Kind.MEDIA, run_date=today)
-    src_bucket = settings.STORAGES["default"]["OPTIONS"]["bucket_name"]
+    src_bucket = settings.S3_MEDIA_OPTIONS["bucket_name"]
     dest_prefix = f"media/{settings.APP_ENV}/"
     src = media_client()
     dest = backup_client()
