@@ -121,7 +121,7 @@ From Phase 4 on, phases are smaller (one usable piece each) so each pull request
 - [x] Database checks: a plan needs an interval, and counting by hours needs a starting reading
 - [x] Demo plans in the seed data (overdue by hours, overdue by date, due soon, up to date)
 
-**Tests**: 245 backend tests, 36 Vitest, 37 Playwright end-to-end tests.
+**Tests**: 244 backend tests (92% coverage), 36 Vitest, 37 Playwright end-to-end tests.
 
 ## Planned for Phase 7: units that come back
 
