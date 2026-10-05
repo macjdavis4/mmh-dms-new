@@ -1,0 +1,7 @@
+reverse_proxy app-__COLOR__:8000 {
+	header_up X-Real-IP {client_ip}
+	header_up X-Request-ID {http.request.header.Cf-Ray}
+	health_uri /healthz
+	health_interval 10s
+	lb_try_duration 5s
+}

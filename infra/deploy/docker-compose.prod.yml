@@ -1,0 +1,81 @@
+# Runs on the Droplet in /opt/mmh. Managed only by deploy.sh / rollback.sh.
+# Image tags live in ${MMH_HOME:-/opt/mmh}/state.env; secrets in ${MMH_HOME:-/opt/mmh}/.env (0600).
+name: mmh
+
+x-app: &app
+  env_file:
+    - "${MMH_HOME:-/opt/mmh}/.env"
+  restart: unless-stopped
+  user: "10001:10001"
+  read_only: true
+  tmpfs: ["/tmp:size=256m"]
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  volumes:
+    - "${MMH_HOME:-/opt/mmh}/certs:/certs:ro"
+  networks: [app]
+  logging:
+    driver: json-file
+    options: { max-size: "20m", max-file: "5" }
+
+services:
+  caddy:
+    image: ${CADDY_IMAGE}
+    env_file:
+    - "${MMH_HOME:-/opt/mmh}/.env"
+    restart: unless-stopped
+    ports: ["80:80", "443:443", "443:443/udp"]
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    security_opt: ["no-new-privileges:true"]
+    volumes:
+      - "${MMH_HOME:-/opt/mmh}/upstream:/etc/caddy/upstream:ro"
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [app]
+    logging:
+      driver: json-file
+      options: { max-size: "20m", max-file: "5" }
+
+  app-blue:
+    <<: *app
+    image: ${BLUE_IMAGE:-none}
+    command: ["web"]
+
+  app-green:
+    <<: *app
+    image: ${GREEN_IMAGE:-none}
+    command: ["web"]
+
+  worker:
+    <<: *app
+    image: ${WORKER_IMAGE:-none}
+    command: ["worker"]
+    environment:
+      # Workers use the direct connection (LISTEN/NOTIFY and pg_dump
+      # snapshots don't work through PgBouncer's transaction mode).
+      DATABASE_URL: ${DATABASE_DIRECT_URL_FOR_WORKER:-}
+      DB_BEHIND_POOLER: "false"
+    stop_grace_period: 120s
+    healthcheck:
+      disable: true
+
+  migrate:
+    <<: *app
+    image: ${MIGRATE_IMAGE:-none}
+    command: ["migrate"]
+    restart: "no"
+    environment:
+      DATABASE_URL: ${DATABASE_DIRECT_URL_FOR_WORKER:-}
+      DB_BEHIND_POOLER: "false"
+    healthcheck:
+      disable: true
+    profiles: ["tools"]
+
+networks:
+  app: {}
+
+volumes:
+  # Caddy's certificates. Losing them is harmless (re-issued automatically).
+  caddy_data:
+  caddy_config:

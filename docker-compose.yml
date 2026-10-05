@@ -1,0 +1,91 @@
+# Local development: the whole app with Postgres and MinIO (in place of Spaces).
+#   make up       start everything     http://localhost:5173 (app) :8000 (API)
+#   make test     run all tests        make e2e / make screenshots
+name: mmh-dms
+
+x-backend-env: &backend-env
+  DJANGO_SETTINGS_MODULE: config.settings.dev
+  DATABASE_URL: postgres://mmh:mmh@db:5432/mmh
+  BACKUP_DATABASE_URL: postgres://mmh:mmh@db:5432/mmh
+  S3_ENDPOINT_URL: http://minio:9000
+  S3_ACCESS_KEY_ID: minioadmin
+  S3_SECRET_ACCESS_KEY: minioadmin
+  MEDIA_BUCKET: mmh-media
+  BACKUP_BUCKET: mmh-backups
+  DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,backend
+  DJANGO_CSRF_TRUSTED_ORIGINS: http://localhost:5173,http://localhost:8000
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: mmh
+      POSTGRES_PASSWORD: mmh
+      POSTGRES_DB: mmh
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mmh -d mmh"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports: ["9000:9000", "9001:9001"]
+    volumes: [miniodata:/data]
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio: { condition: service_healthy }
+    entrypoint: >
+      /bin/sh -c "mc alias set local http://minio:9000 minioadmin minioadmin &&
+      mc mb --ignore-existing local/mmh-media local/mmh-backups &&
+      mc version enable local/mmh-media"
+
+  backend:
+    build: { context: ., target: dev }
+    environment: *backend-env
+    command: >
+      sh -c "python manage.py wait_for_db && python manage.py migrate --noinput &&
+      python manage.py seed_dev && python manage.py runserver 0.0.0.0:8000"
+    volumes: [./backend:/app/backend]
+    ports: ["8000:8000"]
+    depends_on:
+      db: { condition: service_healthy }
+      minio-init: { condition: service_completed_successfully }
+
+  worker:
+    build: { context: ., target: dev }
+    environment: *backend-env
+    command: sh -c "python manage.py wait_for_db && python manage.py procrastinate worker --queues=default,maintenance"
+    volumes: [./backend:/app/backend]
+    depends_on:
+      backend: { condition: service_started }
+
+  frontend:
+    image: node:22-bookworm-slim
+    working_dir: /app/frontend
+    command: sh -c "npm ci --no-audit --no-fund && npm run dev -- --host 0.0.0.0"
+    environment:
+      VITE_BACKEND_URL: http://backend:8000
+    volumes:
+      - ./frontend:/app/frontend
+      - frontend_node_modules:/app/frontend/node_modules
+    ports: ["5173:5173"]
+    depends_on: [backend]
+
+volumes:
+  pgdata:
+  miniodata:
+  frontend_node_modules:
