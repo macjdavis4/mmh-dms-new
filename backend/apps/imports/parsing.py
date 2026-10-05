@@ -345,7 +345,8 @@ def parse_row(raw: dict[str, str], *, can_price: bool) -> ParsedRow:
                     parsed.forks.append((dims, qty))
 
     # A unit has to be recognisable when the same card is imported again.
-    if not parsed.serial and not parsed.stock_number:
+    serial_flagged = any(e.column == "unit_serial" for e in parsed.errors)
+    if not parsed.serial and not parsed.stock_number and not serial_flagged:
         parsed.errors.append(Message("unit_serial", "Needs a unit serial (or a stock number)."))
 
     # Spools only describe a control valve that has some details.

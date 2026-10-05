@@ -33,7 +33,9 @@ def make_csv(rows: list[dict[str, str]], *, delimiter: str = ",", encoding: str 
 
 
 def upload(client: APIClient, data: bytes, name: str = "cards.csv") -> Any:
-    return client.post(BATCHES, {"file": SimpleUploadedFile(name, data, "text/csv")}, format="multipart")
+    return client.post(
+        BATCHES, {"file": SimpleUploadedFile(name, data, "text/csv")}, format="multipart"
+    )
 
 
 def png(name: str = "card-0001.png") -> SimpleUploadedFile:
@@ -100,7 +102,10 @@ def test_parse_keeps_unreadable_values_as_written() -> None:
     )
     assert "capacity_lbs" not in parsed.unit
     assert parsed.unit["year"] == 1999
-    assert parsed.as_written == ["card_date as written: spring 2019", "capacity_lbs as written: 5 ton"]
+    assert parsed.as_written == [
+        "card_date as written: spring 2019",
+        "capacity_lbs as written: 5 ton",
+    ]
     assert {w.column for w in parsed.warnings} == {"capacity_lbs", "card_date"}
 
 
@@ -121,7 +126,9 @@ def test_parse_errors(row: dict[str, str], column: str) -> None:
 
 
 def test_read_csv_handles_excel_files() -> None:
-    semicolons = make_csv([{"Unit Serial": "A1", "Customer Name": "Café Lumber"}], delimiter=";", encoding="cp1252")
+    semicolons = make_csv(
+        [{"Unit Serial": "A1", "Customer Name": "Café Lumber"}], delimiter=";", encoding="cp1252"
+    )
     rows, messages = read_csv(semicolons)
     assert rows == [{"unit_serial": "A1", "customer_name": "Café Lumber"}]
     assert messages == []
@@ -176,7 +183,13 @@ def test_template_and_sample_downloads(client_for: Any) -> None:
 def test_full_card_import(client_for: Any) -> None:
     client = client_for("sales")
     existing = Customer.objects.create(name="Penobscot Paper Company")
-    second = {**ROW, "unit_serial": "HHK-2", "unit_make": "Hyundai", "customer_name": "Katahdin Lumber", "capacity_lbs": "5 ton"}
+    second = {
+        **ROW,
+        "unit_serial": "HHK-2",
+        "unit_make": "Hyundai",
+        "customer_name": "Katahdin Lumber",
+        "capacity_lbs": "5 ton",
+    }
     res = upload(client, make_csv([ROW, second]))
     assert res.status_code == 201, res.content
     batch = res.json()
@@ -198,12 +211,21 @@ def test_full_card_import(client_for: Any) -> None:
     assert unit.card_customer_name == "Penobscot Paper Co."
     assert unit.capacity_lbs == 5000
     assert unit.needs_review is False
-    assert {c.kind: c.spools for c in unit.components.all()} == {"engine": "", "control_valve": "3SP"}
-    assert [(f.dimensions, f.quantity, f.length_in) for f in unit.forks.all()] == [("1.75 x 4 x 48 STD", 2, Decimal("48.00"))]
+    assert {c.kind: c.spools for c in unit.components.all()} == {
+        "engine": "",
+        "control_valve": "3SP",
+    }
+    assert [(f.dimensions, f.quantity, f.length_in) for f in unit.forks.all()] == [
+        ("1.75 x 4 x 48 STD", 2, Decimal("48.00"))
+    ]
     att = unit.attachments.get()
     assert (att.manufacturer, att.hose_reel, att.side) == ("Cascade", True, "LH")
     reading = unit.hour_readings.get()
-    assert (reading.hours, reading.reading_date.isoformat(), reading.source) == (Decimal("10288.0"), "2024-03-12", "card")
+    assert (reading.hours, reading.reading_date.isoformat(), reading.source) == (
+        Decimal("10288.0"),
+        "2024-03-12",
+        "card",
+    )
     owner = OwnershipRecord.objects.get(unit=unit)
     assert owner.customer == existing  # matched despite "Co." vs "Company"
 
@@ -228,7 +250,13 @@ def test_update_then_undo_restores_previous_values(client_for: Any) -> None:
     client.post(f"{BATCHES}/{first['id']}/apply", {}, format="json")
     unit = Unit.objects.get()
 
-    changed = {**ROW, "mechanic": "Dave", "engine_serial": "K25-1", "forks": "2 x 5 x 60", "hour_meter": "11000"}
+    changed = {
+        **ROW,
+        "mechanic": "Dave",
+        "engine_serial": "K25-1",
+        "forks": "2 x 5 x 60",
+        "hour_meter": "11000",
+    }
     second = upload(client, make_csv([changed])).json()
     row = rows_of(client, second["id"])[0]
     assert row["plan"] == "update"
@@ -297,7 +325,12 @@ def test_only_admin_or_the_importer_can_undo(client_for: Any) -> None:
 @pytest.mark.django_db
 def test_errors_block_import_unless_skipped(client_for: Any) -> None:
     client = client_for("admin")
-    rows = [ROW, {**ROW, "unit_serial": "fga25 71234"}, {"unit_model": "No serial"}, {**ROW, "unit_serial": "B2", "condition": "meh"}]
+    rows = [
+        ROW,
+        {**ROW, "unit_serial": "fga25 71234"},
+        {"unit_model": "No serial"},
+        {**ROW, "unit_serial": "B2", "condition": "meh"},
+    ]
     batch = upload(client, make_csv(rows)).json()
     assert batch["counts"]["error"] == 3
     errors = rows_of(client, batch["id"], "errors")
@@ -328,7 +361,20 @@ def test_skip_existing_and_removed_units(client_for: Any) -> None:
 @pytest.mark.django_db
 def test_existing_owner_and_prices(client_for: Any) -> None:
     sales = client_for("sales")
-    batch = upload(sales, make_csv([{**ROW, "customer_name": "", "owner": "stock", "stock_status": "available", "asking_price": "$18,500"}])).json()
+    batch = upload(
+        sales,
+        make_csv(
+            [
+                {
+                    **ROW,
+                    "customer_name": "",
+                    "owner": "stock",
+                    "stock_status": "available",
+                    "asking_price": "$18,500",
+                }
+            ]
+        ),
+    ).json()
     sales.post(f"{BATCHES}/{batch['id']}/apply", {}, format="json")
     unit = Unit.objects.get()
     assert (unit.asking_price, unit.stock_status) == (Decimal("18500.00"), "available")
@@ -358,13 +404,24 @@ def test_similar_customer_warns(client_for: Any) -> None:
 @pytest.mark.django_db
 def test_scanned_cards_are_attached(client_for: Any) -> None:
     client = client_for("sales")
-    rows = [{**ROW, "source_image_filename": "Card-0001.png"}, {**ROW, "unit_serial": "B2", "source_image_filename": "missing.jpg"}]
+    rows = [
+        {**ROW, "source_image_filename": "Card-0001.png"},
+        {**ROW, "unit_serial": "B2", "source_image_filename": "missing.jpg"},
+    ]
     batch = upload(client, make_csv(rows)).json()
-    res = client.post(f"{BATCHES}/{batch['id']}/files", {"file": png("card-0001.png")}, format="multipart")
+    res = client.post(
+        f"{BATCHES}/{batch['id']}/files", {"file": png("card-0001.png")}, format="multipart"
+    )
     assert res.status_code == 201, res.content
-    dup = client.post(f"{BATCHES}/{batch['id']}/files", {"file": png("CARD-0001.png")}, format="multipart")
+    dup = client.post(
+        f"{BATCHES}/{batch['id']}/files", {"file": png("CARD-0001.png")}, format="multipart"
+    )
     assert dup.status_code == 400
-    bad = client.post(f"{BATCHES}/{batch['id']}/files", {"file": SimpleUploadedFile("x.png", b"not an image")}, format="multipart")
+    bad = client.post(
+        f"{BATCHES}/{batch['id']}/files",
+        {"file": SimpleUploadedFile("x.png", b"not an image")},
+        format="multipart",
+    )
     assert bad.status_code == 400
     client.post(f"{BATCHES}/{batch['id']}/files", {"file": png("unused.png")}, format="multipart")
     checked = client.post(f"{BATCHES}/{batch['id']}/validate").json()
@@ -375,15 +432,27 @@ def test_scanned_cards_are_attached(client_for: Any) -> None:
 
     client.post(f"{BATCHES}/{batch['id']}/apply", {}, format="json")
     scan = UnitFile.objects.get(unit__serial_normalized="FGA2571234")
-    assert (scan.kind, scan.original_name, scan.content_type) == ("scanned_card", "card-0001.png", "image/png")
-    assert client.post(f"{BATCHES}/{batch['id']}/files", {"file": png("late.png")}, format="multipart").status_code == 400
+    assert (scan.kind, scan.original_name, scan.content_type) == (
+        "scanned_card",
+        "card-0001.png",
+        "image/png",
+    )
+    assert (
+        client.post(
+            f"{BATCHES}/{batch['id']}/files", {"file": png("late.png")}, format="multipart"
+        ).status_code
+        == 400
+    )
 
 
 @pytest.mark.django_db
 def test_big_batches_run_in_the_background(client_for: Any) -> None:
     client = client_for("admin")
     batch = upload(client, make_csv([ROW, {**ROW, "unit_serial": "B2"}])).json()
-    with mock.patch.object(services, "INLINE_MAX_ROWS", 1), mock.patch("apps.imports.tasks.apply_import.configure") as configure:
+    with (
+        mock.patch.object(services, "INLINE_MAX_ROWS", 1),
+        mock.patch("apps.imports.tasks.apply_import.configure") as configure,
+    ):
         res = client.post(f"{BATCHES}/{batch['id']}/apply", {}, format="json").json()
     assert res["status"] == "queued"
     configure.return_value.defer.assert_called_once_with(batch_id=batch["id"])
@@ -466,7 +535,9 @@ def api_key(client_for: Any) -> tuple[APIClient, str]:
 
 
 @pytest.mark.django_db
-def test_api_keys_are_shown_once_and_stored_hashed(client_for: Any, api_key: tuple[APIClient, str]) -> None:
+def test_api_keys_are_shown_once_and_stored_hashed(
+    client_for: Any, api_key: tuple[APIClient, str]
+) -> None:
     _, raw = api_key
     key = ApiKey.objects.get()
     assert raw.startswith("mmh_") and key.key_hash != raw and raw.startswith(key.prefix)
@@ -478,7 +549,15 @@ def test_api_keys_are_shown_once_and_stored_hashed(client_for: Any, api_key: tup
 @pytest.mark.django_db
 def test_api_import(api_key: tuple[APIClient, str]) -> None:
     client, _ = api_key
-    unit = {"unit_serial": "API-1", "unit_make": "Hyundai", "unit_model": "50D-9", "forks": ["1.75 x 4 x 48", "1.75 x 4 x 48"], "attachment_1_mfg": "Cascade", "attachment_1_hose_reel": True, "hour_meter": 512}
+    unit = {
+        "unit_serial": "API-1",
+        "unit_make": "Hyundai",
+        "unit_model": "50D-9",
+        "forks": ["1.75 x 4 x 48", "1.75 x 4 x 48"],
+        "attachment_1_mfg": "Cascade",
+        "attachment_1_hose_reel": True,
+        "hour_meter": 512,
+    }
     dry = client.post(f"{API}/units", {"units": [unit], "dry_run": True}, format="json")
     assert dry.status_code == 200, dry.content
     assert dry.json()["rows"][0]["plan"] == "create"
@@ -500,15 +579,23 @@ def test_api_import(api_key: tuple[APIClient, str]) -> None:
 
     status = client.get(f"{API}/batches/{body['id']}")
     assert status.json()["reference"] == "scan-7"
-    unknown = client.post(f"{API}/units", {"units": [{"unit_serial": "X", "colour": "red"}]}, format="json")
+    unknown = client.post(
+        f"{API}/units", {"units": [{"unit_serial": "X", "colour": "red"}]}, format="json"
+    )
     assert unknown.status_code == 400
 
 
 @pytest.mark.django_db
 def test_api_scans_via_draft_batch(api_key: tuple[APIClient, str]) -> None:
     client, _ = api_key
-    draft = client.post(f"{API}/units", {"units": [{"unit_serial": "API-2", "source_image_filename": "c.png"}], "dry_run": True}, format="json").json()
-    res = client.post(f"{API}/batches/{draft['id']}/files", {"file": png("c.png")}, format="multipart")
+    draft = client.post(
+        f"{API}/units",
+        {"units": [{"unit_serial": "API-2", "source_image_filename": "c.png"}], "dry_run": True},
+        format="json",
+    ).json()
+    res = client.post(
+        f"{API}/batches/{draft['id']}/files", {"file": png("c.png")}, format="multipart"
+    )
     assert res.status_code == 201, res.content
     done = client.post(f"{API}/batches/{draft['id']}/apply", {}, format="json")
     assert done.status_code == 201
@@ -517,22 +604,38 @@ def test_api_scans_via_draft_batch(api_key: tuple[APIClient, str]) -> None:
 
 @pytest.mark.django_db
 def test_api_auth_and_limits(api_key: tuple[APIClient, str], client_for: Any) -> None:
-    client, raw = api_key
-    assert APIClient().post(f"{API}/units", {"units": [{"unit_serial": "A"}]}, format="json").status_code == 401
+    client, _ = api_key
+    assert (
+        APIClient()
+        .post(f"{API}/units", {"units": [{"unit_serial": "A"}]}, format="json")
+        .status_code
+        == 401
+    )
     wrong = APIClient()
     wrong.credentials(HTTP_AUTHORIZATION="Api-Key mmh_nope")
-    assert wrong.post(f"{API}/units", {"units": [{"unit_serial": "A"}]}, format="json").status_code == 401
+    assert (
+        wrong.post(f"{API}/units", {"units": [{"unit_serial": "A"}]}, format="json").status_code
+        == 401
+    )
     # A session user can't use the API endpoints without a key.
-    assert client_for("admin").post(f"{API}/units", {"units": [{"unit_serial": "A"}]}, format="json").status_code in (401, 403)
+    assert client_for("admin").post(
+        f"{API}/units", {"units": [{"unit_serial": "A"}]}, format="json"
+    ).status_code in (401, 403)
 
     # Batches are only visible to the key that made them.
-    batch = client.post(f"{API}/units", {"units": [{"unit_serial": "A"}], "dry_run": True}, format="json").json()
-    other = client_for("admin").post("/api/v1/admin/api-keys", {"name": "Other"}, format="json").json()
+    batch = client.post(
+        f"{API}/units", {"units": [{"unit_serial": "A"}], "dry_run": True}, format="json"
+    ).json()
+    other = (
+        client_for("admin").post("/api/v1/admin/api-keys", {"name": "Other"}, format="json").json()
+    )
     other_client = APIClient()
     other_client.credentials(HTTP_AUTHORIZATION=f"Api-Key {other['key']}")
     assert other_client.get(f"{API}/batches/{batch['id']}").status_code == 404
 
-    with mock.patch("apps.imports.authentication.ApiKeyThrottle.THROTTLE_RATES", {"import-api": "2/min"}):
+    with mock.patch(
+        "apps.imports.authentication.ApiKeyThrottle.THROTTLE_RATES", {"import-api": "2/min"}
+    ):
         codes = [client.get(f"{API}/batches/{batch['id']}").status_code for _ in range(3)]
     assert codes[-1] == 429
 
@@ -548,7 +651,12 @@ def test_api_key_stops_working_when_creator_loses_access(api_key: tuple[APIClien
     creator = ApiKey.objects.get().created_by
     creator.role = "parts"
     creator.save()
-    assert client.post(f"{API}/units", {"units": [{"unit_serial": "A"}], "dry_run": True}, format="json").status_code == 401
+    assert (
+        client.post(
+            f"{API}/units", {"units": [{"unit_serial": "A"}], "dry_run": True}, format="json"
+        ).status_code
+        == 401
+    )
 
 
 def test_schema_is_public(client: Any) -> None:
