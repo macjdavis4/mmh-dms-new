@@ -27,7 +27,17 @@ def plan(**kw: Any) -> MaintenancePlan:
     ("kw", "hours", "state"),
     [
         ({"interval_days": 90}, None, "ok"),
-        ({"interval_days": 30}, None, "due_soon"),  # 20 days left
+        (
+            {"interval_days": 365, "last_done_on": TODAY - timedelta(days=345)},
+            None,
+            "due_soon",
+        ),  # 20 days left
+        ({"interval_days": 30}, None, "ok"),  # 20 days left of a monthly check: not "due soon" yet
+        (
+            {"interval_days": 30, "last_done_on": TODAY - timedelta(days=25)},
+            None,
+            "due_soon",
+        ),  # 5 left
         ({"interval_days": 9}, None, "overdue"),
         ({"interval_hours": 250, "last_done_hours": Decimal("1000")}, Decimal("1100"), "ok"),
         (

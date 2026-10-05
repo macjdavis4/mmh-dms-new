@@ -2,7 +2,9 @@
 
 A plan is due every `interval_hours` and/or every `interval_days` after it
 was last done, whichever comes first. "Due soon" means within 30 days or
-50 hours. Completing a work order made for a plan marks the plan done.
+50 hours, but never more than a quarter of the interval in days or a fifth in
+hours (so a monthly check isn't always "due soon"). Completing a work order
+made for a plan marks the plan done.
 """
 
 from __future__ import annotations
@@ -63,6 +65,14 @@ def current_hours(unit_ids: Iterable[Any]) -> dict[Any, Decimal]:
     return {u.pk: u.h for u in rows if u.h is not None}
 
 
+def soon_days(plan: MaintenancePlan) -> int:
+    return min(DUE_SOON_DAYS, (plan.interval_days or 0) // 4)
+
+
+def soon_hours(plan: MaintenancePlan) -> Decimal:
+    return min(DUE_SOON_HOURS, Decimal(plan.interval_hours or 0) / 5)
+
+
 def plan_status(
     plan: MaintenancePlan, hours: Decimal | None, today: date, open_wo: WorkOrder | None = None
 ) -> PlanStatus:
@@ -78,8 +88,8 @@ def plan_status(
         state = "paused"
     elif (days_left is not None and days_left < 0) or (hours_left is not None and hours_left <= 0):
         state = "overdue"
-    elif (days_left is not None and days_left <= DUE_SOON_DAYS) or (
-        hours_left is not None and hours_left <= DUE_SOON_HOURS
+    elif (days_left is not None and days_left <= soon_days(plan)) or (
+        hours_left is not None and hours_left <= soon_hours(plan)
     ):
         state = "due_soon"
     else:
