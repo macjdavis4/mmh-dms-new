@@ -88,7 +88,7 @@ export function WorkOrdersPage() {
       {
         id: "job",
         header: "Job",
-        cell: ({ row }) => <span className="line-clamp-2 max-w-xs text-sm">{row.original.complaint || row.original.kind_label}</span>,
+        cell: ({ row }) => <span className="line-clamp-2 max-w-[16rem] text-sm">{row.original.complaint || row.original.kind_label}</span>,
       },
       { id: "status", header: "Status", cell: ({ row }) => <WorkOrderStatusBadge status={row.original.status} label={row.original.status_label} /> },
       { id: "assigned", header: "Mechanic", cell: ({ row }) => row.original.assigned_to_name || "—" },
@@ -102,7 +102,6 @@ export function WorkOrdersPage() {
           </span>
         ),
       },
-      { id: "hours", header: "Labor", cell: ({ row }) => `${Number(row.original.labor_hours)} h` },
     ],
     [],
   );

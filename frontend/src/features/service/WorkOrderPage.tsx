@@ -136,7 +136,7 @@ function Labor({ wo, canEdit }: { wo: WorkOrder; canEdit: boolean }) {
       )}
       {canEdit && open && (
         <form
-          className="mt-4 grid gap-3 border-t pt-4 sm:grid-cols-[1fr_10rem_6rem] lg:grid-cols-[12rem_10rem_6rem_1fr_auto] lg:items-end"
+          className="mt-4 grid gap-3 border-t pt-4 sm:grid-cols-[1fr_10rem_6rem] xl:grid-cols-[12rem_10rem_6rem_1fr_auto] xl:items-end"
           onSubmit={(e) => {
             e.preventDefault();
             add.mutate(line, {
@@ -162,10 +162,10 @@ function Labor({ wo, canEdit }: { wo: WorkOrder; canEdit: boolean }) {
           <Field id="labor-hours" label="Hours" error={err?.fieldError("hours")}>
             <Input id="labor-hours" inputMode="decimal" value={line.hours} onChange={(e) => setLine({ ...line, hours: e.target.value.replace(/[^\d.]/g, "") })} placeholder="1.5" />
           </Field>
-          <Field id="labor-desc" label="What was done (optional)" className="sm:col-span-3 lg:col-span-1">
+          <Field id="labor-desc" label="What was done (optional)" className="sm:col-span-3 xl:col-span-1">
             <Input id="labor-desc" value={line.description} onChange={(e) => setLine({ ...line, description: e.target.value })} />
           </Field>
-          <Button type="submit" variant="outline" disabled={!line.mechanic || !line.hours || add.isPending} className="sm:col-span-3 lg:col-span-1">
+          <Button type="submit" variant="outline" disabled={!line.mechanic || !line.hours || add.isPending} className="sm:col-span-3 xl:col-span-1">
             <Plus className="size-4" /> Add time
           </Button>
         </form>
@@ -304,7 +304,7 @@ function WorkOrderView({ wo }: { wo: WorkOrder }) {
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <SectionCard id="job" title="The job" description="What's wrong, why, and what was done.">
           <div className="flex flex-col gap-4">
             {(
