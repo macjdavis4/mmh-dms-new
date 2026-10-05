@@ -218,8 +218,8 @@ export function ChangesPage() {
             </button>
           ))}
         </div>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
-          <div className="col-span-2 lg:col-span-1">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:items-end xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
+          <div className="col-span-2 md:col-span-4 xl:col-span-1">
             <Label htmlFor="changes-search" className="mb-1.5 block text-sm font-semibold">
               Search
             </Label>
@@ -231,7 +231,7 @@ export function ChangesPage() {
               onChange={(e) => update({ q: e.target.value })}
             />
           </div>
-          <Field id="changes-reason" label="Why" className="col-span-2 lg:col-span-1">
+          <Field id="changes-reason" label="Why" className="col-span-2 md:col-span-2 xl:col-span-1">
             <NativeSelect
               id="changes-reason"
               value={filters.reason}
@@ -247,7 +247,7 @@ export function ChangesPage() {
             <Input id="changes-to" type="date" value={filters.date_to} onChange={(e) => update({ date_to: e.target.value })} />
           </Field>
           {filtered && (
-            <Button variant="ghost" className="col-span-2 justify-self-start lg:col-span-1" onClick={() => update(EMPTY_CHANGE_FILTERS)}>
+            <Button variant="ghost" className="col-span-2 justify-self-start md:col-span-4 xl:col-span-1" onClick={() => update(EMPTY_CHANGE_FILTERS)}>
               <X className="size-4" /> Clear
             </Button>
           )}
@@ -256,7 +256,7 @@ export function ChangesPage() {
       <Card className="gap-0 overflow-hidden py-0">
         <DataTable
           caption="Units that changed hands"
-          tableFrom="lg"
+          tableFrom="xl"
           columns={columns}
           data={list.data?.results}
           isLoading={list.isPending}
