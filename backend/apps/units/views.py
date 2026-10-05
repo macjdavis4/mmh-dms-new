@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from contextlib import suppress
+from datetime import date
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from django.contrib.contenttypes.models import ContentType
-from django.db.models import OuterRef, Q, QuerySet, Subquery
+from django.db.models import Count, DecimalField, Exists, F, OuterRef, Q, QuerySet, Subquery, Sum
 from django.http import FileResponse, Http404, HttpResponse
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
@@ -36,9 +38,11 @@ from .models import (
 from .pdf import spec_sheet_pdf
 from .search import every_word
 from .serializers import (
+    DealEditSerializer,
     HourReadingSerializer,
     OwnershipSerializer,
     TransferSerializer,
+    UnitChangeSerializer,
     UnitFileSerializer,
     UnitListSerializer,
     UnitSerializer,
@@ -46,6 +50,7 @@ from .serializers import (
 )
 
 FLAG = RequiresFlag("customers-units")
+CHANGES_FLAG = RequiresFlag("units-changing-hands")
 
 # Who may do what (enforced here; tested in tests/test_units_permissions.py).
 CanEditUnits = HasRole(
@@ -53,6 +58,10 @@ CanEditUnits = HasRole(
 )
 CanRemoveUnits = HasRole(Role.ADMIN)
 CanTransferOwnership = HasRole(Role.ADMIN, Role.SALES)
+CanEditDeals = HasRole(
+    Role.ADMIN, Role.SALES, read_roles=(Role.SERVICE, Role.PARTS, Role.READ_ONLY)
+)
+CanViewChanges = HasRole(Role.ADMIN, Role.SALES, read_roles=(Role.READ_ONLY,))
 
 ORDERINGS = {
     "make": ["make", "model", "serial_number"],
@@ -98,7 +107,7 @@ class UnitViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet[Unit]):
     http_method_names = ["get", "post", "patch", "delete", "options"]
 
     def get_permissions(self) -> list[BasePermission]:
-        if self.action in ("destroy", "restore"):
+        if self.action in ("destroy", "restore", "undo_change"):
             return [FLAG(), CanRemoveUnits()]
         if self.action == "transfer":
             return [FLAG(), CanTransferOwnership()]
@@ -140,6 +149,13 @@ class UnitViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet[Unit]):
                 qs = qs.filter(**{f"{name}__in": [v for v in values if v]})
         if owner := p.get("owner"):
             qs = qs.filter(owner_customer_id=owner)  # type: ignore[misc]
+        if former := p.get("former_owner"):
+            owned_before = OwnershipRecord.objects.filter(
+                unit=OuterRef("pk"), customer_id=former, end_date__isnull=False
+            )
+            qs = qs.filter(Exists(owned_before)).exclude(
+                owner_customer_id=former  # type: ignore[misc]
+            )
         if p.get("needs_review") == "1":
             qs = qs.filter(needs_review=True)
         ranges = [
@@ -227,17 +243,37 @@ class UnitViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet[Unit]):
     @action(detail=True, methods=["get"])
     def ownership(self, request: Request, pk: str | None = None) -> Response:
         unit = self.get_object()
+        records = unit.ownerships.select_related("customer", "hour_reading")
         return Response(
-            OwnershipSerializer(unit.ownerships.select_related("customer"), many=True).data
+            OwnershipSerializer(records, many=True, context=self.get_serializer_context()).data
         )
 
     @action(detail=True, methods=["post"])
     def transfer(self, request: Request, pk: str | None = None) -> Response:
+        """Record a change of hands: a sale, trade-in, repossession, buy-back,
+        lease return or purchase. Stock status, condition and prices follow."""
         unit = self.get_object()
         data = TransferSerializer(data=request.data)
         data.is_valid(raise_exception=True)
-        record = services.transfer_ownership(unit, **data.validated_data)
-        return Response(OwnershipSerializer(record).data, status=status.HTTP_201_CREATED)
+        result = services.change_hands(unit, **data.validated_data)
+        body = OwnershipSerializer(result.record, context=self.get_serializer_context()).data
+        return Response(
+            {**body, "hours_warning": result.hours_warning}, status=status.HTTP_201_CREATED
+        )
+
+    @action(detail=True, methods=["post"], url_path="undo-change")
+    def undo_change(self, request: Request, pk: str | None = None) -> Response:
+        """Admins: undo the latest change of hands (body: {"record": id})."""
+        unit = self.get_object()
+        result = services.undo_change(unit, request.data.get("record"))
+        return Response(
+            {
+                "owner": OwnershipSerializer(
+                    result.restored, context=self.get_serializer_context()
+                ).data,
+                "kept": result.kept,
+            }
+        )
 
     # --- Files ------------------------------------------------------------------------------------
     @action(detail=True, methods=["get", "post"], parser_classes=[MultiPartParser, FormParser])
@@ -288,6 +324,133 @@ class UnitViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet[Unit]):
                     f for f in row["changed_fields"] if f not in Unit.PRICE_FIELDS
                 ]
         return Response(rows)
+
+
+class OwnershipRecordViewSet(viewsets.GenericViewSet[OwnershipRecord]):
+    """Correct a recorded change of hands: reason, price, cost, reference, note.
+    Who owned it and when stay as recorded (undo the change to fix those)."""
+
+    serializer_class = OwnershipSerializer
+
+    def get_permissions(self) -> list[BasePermission]:
+        return [FLAG(), CanEditDeals()]
+
+    def get_queryset(self) -> Any:
+        return OwnershipRecord.objects.filter(unit__deleted_at__isnull=True).select_related(
+            "customer", "hour_reading"
+        )
+
+    def retrieve(self, request: Request, pk: str | None = None) -> Response:
+        return Response(self.get_serializer(self.get_object()).data)
+
+    def partial_update(self, request: Request, pk: str | None = None) -> Response:
+        record = self.get_object()
+        data = DealEditSerializer(record, data=request.data, partial=True)
+        data.is_valid(raise_exception=True)
+        record = services.edit_deal(record, dict(data.validated_data))
+        return Response(self.get_serializer(record).data)
+
+
+def changes_queryset() -> QuerySet[OwnershipRecord]:
+    """Every change of hands (records that followed another), with who had it before."""
+    previous = (
+        OwnershipRecord.objects.filter(
+            unit=OuterRef("unit"),
+            end_date=OuterRef("start_date"),
+            created_at__lte=OuterRef("created_at"),
+        )
+        .exclude(pk=OuterRef("pk"))
+        .order_by("-created_at")
+    )
+    return (
+        OwnershipRecord.objects.filter(unit__deleted_at__isnull=True)
+        .select_related("unit", "customer", "hour_reading")
+        .annotate(
+            from_kind=Subquery(previous.values("owner_kind")[:1]),
+            from_customer_id=Subquery(previous.values("customer_id")[:1]),
+            from_name=Subquery(previous.values("customer__name")[:1]),
+        )
+        .filter(from_kind__isnull=False)
+    )
+
+
+DIRECTIONS = {
+    # Sold out of our stock.
+    "out": Q(owner_kind=OwnershipRecord.OwnerKind.CUSTOMER, from_kind="dealer"),
+    # Came back into our stock.
+    "in": Q(owner_kind=OwnershipRecord.OwnerKind.DEALER),
+    # From one customer to another.
+    "between": Q(owner_kind=OwnershipRecord.OwnerKind.CUSTOMER, from_kind="customer"),
+}
+
+
+def _dec(value: Decimal | None) -> str | None:
+    return None if value is None else f"{value:.2f}"
+
+
+class UnitChangeViewSet(viewsets.GenericViewSet[OwnershipRecord]):
+    """ "Bought and sold": every unit that changed hands, newest first."""
+
+    serializer_class = UnitChangeSerializer
+
+    def get_permissions(self) -> list[BasePermission]:
+        return [FLAG(), CHANGES_FLAG(), CanViewChanges()]
+
+    def get_queryset(self) -> QuerySet[OwnershipRecord]:
+        qs = changes_queryset()
+        p = self.request.query_params
+        if (direction := p.get("direction")) in DIRECTIONS:
+            qs = qs.filter(DIRECTIONS[direction])
+        if reason := p.get("reason"):
+            qs = qs.filter(reason=reason)
+        for name, lookup in (("date_from", "start_date__gte"), ("date_to", "start_date__lte")):
+            if value := p.get(name):
+                with suppress(ValueError):
+                    qs = qs.filter(**{lookup: date.fromisoformat(value)})
+        if q := p.get("q", "").strip():
+            match = (
+                Q(unit__make__icontains=q)
+                | Q(unit__model__icontains=q)
+                | Q(unit__stock_number__iexact=q)
+                | Q(customer__name__icontains=q)
+                | Q(from_name__icontains=q)
+                | Q(reference__icontains=q)
+            )
+            if norm := normalize_serial(q):
+                match |= Q(unit__serial_normalized__contains=norm)
+            qs = qs.filter(match)
+        return qs.order_by("-start_date", "-created_at", "id")
+
+    def list(self, request: Request) -> Response:
+        page = self.paginate_queryset(self.get_queryset())
+        return self.get_paginated_response(self.get_serializer(page, many=True).data)
+
+    @action(detail=False, methods=["get"])
+    def totals(self, request: Request) -> Response:
+        """Counts for everyone; money (sales, cost, what we paid) for admin and sales."""
+        qs = self.get_queryset().order_by()
+        money: DecimalField[Decimal, Decimal] = DecimalField(max_digits=14, decimal_places=2)
+        sold = qs.filter(DIRECTIONS["out"]).aggregate(
+            n=Count("id"),
+            total=Sum("price", output_field=money),
+            margin=Sum(F("price") - F("cost"), output_field=money),
+            costed=Count("id", filter=Q(price__isnull=False, cost__isnull=False)),
+        )
+        bought = qs.filter(DIRECTIONS["in"]).aggregate(
+            n=Count("id"), total=Sum("price", output_field=money)
+        )
+        between = qs.filter(DIRECTIONS["between"]).count()
+        body: dict[str, Any] = {
+            "sold": {"count": sold["n"]},
+            "came_back": {"count": bought["n"]},
+            "between_customers": {"count": between},
+        }
+        if can_see_pricing({"request": request}):
+            body["sold"].update(
+                total=_dec(sold["total"]), margin=_dec(sold["margin"]), with_margin=sold["costed"]
+            )
+            body["came_back"]["total"] = _dec(bought["total"])
+        return Response(body)
 
 
 class HourReadingViewSet(SoftDeleteViewSetMixin, viewsets.GenericViewSet[HourMeterReading]):

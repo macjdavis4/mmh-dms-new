@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from datetime import date
 from typing import Any
 
 from django.db import IntegrityError, transaction
+from django.utils import timezone
 from rest_framework import serializers
 
 from apps.accounts.roles import PRICE_ROLES
@@ -104,9 +106,29 @@ class HourReadingSerializer(serializers.ModelSerializer[HourMeterReading]):
         read_only_fields = ["id", "created_at"]
 
 
-class OwnershipSerializer(serializers.ModelSerializer[OwnershipRecord]):
+class DealPriceMixin:
+    """An ownership record's price and cost exist only for admin and sales."""
+
+    def get_fields(self) -> dict[str, Any]:
+        fields: dict[str, Any] = super().get_fields()  # type: ignore[misc]
+        if not can_see_pricing(self.context):  # type: ignore[attr-defined]
+            for name in OwnershipRecord.PRICE_FIELDS:
+                fields.pop(name, None)
+        return fields
+
+
+class OwnershipSerializer(DealPriceMixin, serializers.ModelSerializer[OwnershipRecord]):
     customer_name = serializers.CharField(source="customer.name", read_only=True, default=None)
     owner_label = serializers.SerializerMethodField()
+    reason_label = serializers.CharField(source="get_reason_display", read_only=True)
+    hours = serializers.DecimalField(
+        source="hour_reading.hours",
+        max_digits=9,
+        decimal_places=1,
+        read_only=True,
+        default=None,
+    )
+    can_undo = serializers.SerializerMethodField()
 
     class Meta:
         model = OwnershipRecord
@@ -119,10 +141,43 @@ class OwnershipSerializer(serializers.ModelSerializer[OwnershipRecord]):
             "start_date",
             "end_date",
             "note",
+            "reason",
+            "reason_label",
+            "price",
+            "cost",
+            "reference",
+            "hours",
+            "can_undo",
+        ]
+        read_only_fields = [
+            "id",
+            "owner_kind",
+            "customer",
+            "start_date",
+            "end_date",
         ]
 
     def get_owner_label(self, obj: OwnershipRecord) -> str:
         return obj.customer.name if obj.customer else "Maine Material Handling stock"
+
+    def get_can_undo(self, obj: OwnershipRecord) -> bool:
+        """Changes recorded since Phase 7 can be undone while they're the latest."""
+        return obj.end_date is None and obj.unit_changes is not None
+
+
+class DealEditSerializer(serializers.ModelSerializer[OwnershipRecord]):
+    """Correct a recorded change: why, the money, the reference, the note."""
+
+    price = serializers.DecimalField(
+        max_digits=12, decimal_places=2, min_value=0, required=False, allow_null=True
+    )
+    cost = serializers.DecimalField(
+        max_digits=12, decimal_places=2, min_value=0, required=False, allow_null=True
+    )
+
+    class Meta:
+        model = OwnershipRecord
+        fields = ["reason", "price", "cost", "reference", "note"]
 
 
 class TransferSerializer(serializers.Serializer[Any]):
@@ -131,7 +186,84 @@ class TransferSerializer(serializers.Serializer[Any]):
         queryset=Customer.objects.all(), required=False, allow_null=True
     )
     start_date = serializers.DateField()
+    reason = serializers.ChoiceField(
+        choices=OwnershipRecord.Reason.choices,
+        error_messages={
+            "required": "Say why it changed hands.",
+            "invalid_choice": "Pick a reason.",
+        },
+    )
+    price = serializers.DecimalField(
+        max_digits=12, decimal_places=2, min_value=0, required=False, allow_null=True
+    )
+    reference = serializers.CharField(max_length=60, required=False, allow_blank=True, default="")
     note = serializers.CharField(max_length=200, required=False, allow_blank=True, default="")
+    hours = serializers.DecimalField(
+        max_digits=9, decimal_places=1, min_value=0, required=False, allow_null=True
+    )
+
+    def validate_start_date(self, value: date) -> date:
+        if value > timezone.localdate():
+            raise serializers.ValidationError("Can't be in the future. Record it on the day.")
+        return value
+
+
+class UnitChangeSerializer(DealPriceMixin, serializers.ModelSerializer[OwnershipRecord]):
+    """One change of hands, for the "Bought and sold" list."""
+
+    unit_label = serializers.CharField(source="unit.__str__", read_only=True)
+    unit_make = serializers.CharField(source="unit.make", read_only=True)
+    unit_model = serializers.CharField(source="unit.model", read_only=True)
+    unit_serial = serializers.CharField(source="unit.serial_number", read_only=True)
+    unit_stock_number = serializers.CharField(source="unit.stock_number", read_only=True)
+    reason_label = serializers.CharField(source="get_reason_display", read_only=True)
+    owner_label = serializers.SerializerMethodField()
+    from_kind = serializers.CharField(read_only=True)
+    from_customer = serializers.UUIDField(source="from_customer_id", read_only=True)
+    from_label = serializers.SerializerMethodField()
+    hours = serializers.DecimalField(
+        source="hour_reading.hours",
+        max_digits=9,
+        decimal_places=1,
+        read_only=True,
+        default=None,
+    )
+
+    class Meta:
+        model = OwnershipRecord
+        fields = [
+            "id",
+            "unit",
+            "unit_label",
+            "unit_make",
+            "unit_model",
+            "unit_serial",
+            "unit_stock_number",
+            "start_date",
+            "end_date",
+            "reason",
+            "reason_label",
+            "owner_kind",
+            "customer",
+            "owner_label",
+            "from_kind",
+            "from_customer",
+            "from_label",
+            "price",
+            "cost",
+            "reference",
+            "note",
+            "hours",
+        ]
+        read_only_fields = fields
+
+    def get_owner_label(self, obj: OwnershipRecord) -> str:
+        return obj.customer.name if obj.customer else "Maine Material Handling stock"
+
+    def get_from_label(self, obj: Any) -> str:
+        if obj.from_kind == OwnershipRecord.OwnerKind.DEALER:
+            return "Maine Material Handling stock"
+        return obj.from_name or ""
 
 
 class UnitFileSerializer(serializers.ModelSerializer[UnitFile]):
