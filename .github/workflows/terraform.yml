@@ -49,7 +49,7 @@ jobs:
       TF_VAR_admin_ssh_cidrs: ${{ vars.ADMIN_SSH_CIDRS }}
       TF_VAR_alert_emails: ${{ vars.ALERT_EMAILS }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: "1.16.5"

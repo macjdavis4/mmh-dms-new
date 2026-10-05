@@ -41,7 +41,7 @@ jobs:
       BUCKET: ${{ vars.BACKUP_BUCKET }}
       RESTORE_URL: postgres://restore:restore@localhost:5432/restore
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Tools
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq age
