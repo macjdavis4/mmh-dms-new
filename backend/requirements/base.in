@@ -1,5 +1,5 @@
 # Runtime dependencies. Compile with: make lock
-Django>=5.2.17,<5.3          # LTS, security support until April 2028
+Django>=6.1.1,<6.2          # LTS, security support until April 2028
 djangorestframework>=3.16,<3.19
 psycopg[binary]>=3.2,<3.4
 dj-database-url>=3.0,<4
