@@ -150,11 +150,10 @@ class UnitViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet[Unit]):
         if owner := p.get("owner"):
             qs = qs.filter(owner_customer_id=owner)  # type: ignore[misc]
         if former := p.get("former_owner"):
-            owned_before = OwnershipRecord.objects.filter(
-                unit=OuterRef("pk"), customer_id=former, end_date__isnull=False
-            )
-            qs = qs.filter(Exists(owned_before)).exclude(
-                owner_customer_id=former  # type: ignore[misc]
+            # Owned it once, but not now (a unit back in our stock has no owner customer).
+            records = OwnershipRecord.objects.filter(unit=OuterRef("pk"), customer_id=former)
+            qs = qs.filter(Exists(records.filter(end_date__isnull=False))).exclude(
+                Exists(records.filter(end_date__isnull=True))
             )
         if p.get("needs_review") == "1":
             qs = qs.filter(needs_review=True)

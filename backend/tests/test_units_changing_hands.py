@@ -525,6 +525,11 @@ def test_customer_page_lists_units_they_used_to_own(
     former = admin.get(f"{URL}?scope=all&former_owner={buyers[0].pk}").json()["results"]
     assert [r["id"] for r in former] == [u["id"]]
     assert admin.get(f"{URL}?scope=all&former_owner={buyers[1].pk}").json()["count"] == 0
+    # Back in our stock: still listed for everyone who owned it.
+    change(admin, u["id"], owner_kind="dealer", reason="buy_back", start_date="2026-05-01")
+    for buyer in buyers:
+        found = admin.get(f"{URL}?scope=all&former_owner={buyer.pk}").json()["results"]
+        assert [r["id"] for r in found] == [u["id"]]
 
 
 @pytest.mark.django_db
