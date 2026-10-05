@@ -19,6 +19,7 @@ from apps.accounts.models import User
 from apps.accounts.roles import Role
 from apps.core.context import acting_as
 from apps.core.models import FeatureFlag, SiteSettings
+from apps.units.demo import load_demo_data
 
 DEMO_PASSWORD = "Forklift-Demo-2026!"  # noqa: S105 - demo data, never in prod
 # Fixed 2FA secret for the demo admin so end-to-end tests can compute codes.
@@ -36,8 +37,10 @@ USERS = [
     ("viewer@mmh.test", "Robin", "Viewer", Role.READ_ONLY, False),
 ]
 
+# Finished features: switched on in demo data even if an older seed left them off.
+LIVE_FLAGS = ["customers-units"]
+
 FLAGS = [
-    ("customers-units", "Phase 2: customers and forklift units"),
     ("batch-import", "Phase 3: CSV and API import of unit cards"),
     ("service", "Phase 4: work orders and planned maintenance"),
 ]
@@ -79,11 +82,15 @@ class Command(BaseCommand):
             for key, description in FLAGS:
                 if not FeatureFlag.objects.filter(key=key).exists():
                     FeatureFlag.objects.create(key=key, description=description, enabled=False)
+            for flag in FeatureFlag.objects.filter(key__in=LIVE_FLAGS, enabled=False):
+                flag.enabled = True
+                flag.save()
             axes_reset()  # clear sign-in lockouts left by earlier test runs
             site = SiteSettings.load()
             site.read_only_mode = False
             site.banner_message = ""
             site.save()
+            load_demo_data()
         self.stdout.write(
             self.style.SUCCESS(f"Seeded {len(USERS)} users. Password: {DEMO_PASSWORD}")
         )

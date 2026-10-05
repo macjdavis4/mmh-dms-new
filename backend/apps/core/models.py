@@ -20,6 +20,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields import ArrayField
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models, transaction
+from django.db.models.fields.files import FieldFile
 from django.db.models.functions import Now
 from django.utils import timezone
 
@@ -35,7 +36,10 @@ def _snapshot(instance: models.Model, exclude: set[str]) -> dict[str, Any]:
     for f in instance._meta.concrete_fields:
         if f.name in exclude or f.attname in exclude:
             continue
-        data[f.attname] = f.value_from_object(instance)
+        value = f.value_from_object(instance)
+        if isinstance(value, FieldFile):
+            value = value.name or ""  # record the stored path, not the file
+        data[f.attname] = value
     # Round-trip through JSON so dates, UUIDs and Decimals become plain values.
     return json.loads(json.dumps(data, cls=DjangoJSONEncoder))
 

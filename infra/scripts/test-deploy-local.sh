@@ -38,6 +38,9 @@ log "test database"
 docker network create "$NET" >/dev/null
 docker run -d --name "$PG" --network "$NET" -e POSTGRES_USER=mmh -e POSTGRES_PASSWORD=mmh -e POSTGRES_DB=mmh postgres:16-alpine >/dev/null
 for _ in $(seq 1 30); do docker exec "$PG" pg_isready -U mmh >/dev/null 2>&1 && break; sleep 1; done
+sleep 2
+# Like production: the app logs in as a limited user that can't change the schema.
+docker exec "$PG" psql -U mmh -d mmh -qc "CREATE ROLE mmh_app LOGIN PASSWORD 'app'" >/dev/null
 
 log "test Caddy image (internal TLS instead of Let's Encrypt)"
 cat >"$WORK/Caddyfile" <<CADDY
@@ -64,10 +67,12 @@ DJANGO_SETTINGS_MODULE=config.settings.prod
 DJANGO_SECRET_KEY=local-deploy-test-secret-key-0123456789abcdefghijklmnop
 DJANGO_ALLOWED_HOSTS=$DOMAIN
 DJANGO_CSRF_TRUSTED_ORIGINS=https://$DOMAIN
-DATABASE_URL=postgres://mmh:mmh@$PG:5432/mmh
-DATABASE_DIRECT_URL=postgres://mmh:mmh@$PG:5432/mmh
+DATABASE_URL=postgres://mmh_app:app@$PG:5432/mmh
+DATABASE_DIRECT_URL=postgres://mmh_app:app@$PG:5432/mmh
+APP_DB_ROLE=mmh_app
 APP_ENV=deploy-test
 ENV
+echo "ADMIN_DATABASE_URL=postgres://mmh:mmh@$PG:5432/mmh" >"$MMH_HOME/admin.env"
 
 # Images exist only locally: skip registry pulls, trust Caddy's internal CA,
 # and put the containers on the test database's network.
@@ -106,5 +111,11 @@ log "broken image must not replace the live version"
 if run deploy.sh broken; then echo "broken deploy should have failed"; exit 1; fi
 [ "$(active)" = blue ] || { echo "live color changed after failed deploy"; exit 1; }
 curl -skf --resolve "$DOMAIN:443:127.0.0.1" "https://$DOMAIN/readyz"
+
+log "the app user can read and write rows but not change the schema"
+docker exec "$PG" psql -U mmh_app -d mmh -tAc "SELECT count(*) FROM accounts_user" >/dev/null
+if docker exec "$PG" psql -U mmh_app -d mmh -tAc "CREATE TABLE should_fail (id int)" >/dev/null 2>&1; then
+  echo "app user was able to create a table"; exit 1
+fi
 
 log "ALL DEPLOY CHECKS PASSED"

@@ -1,13 +1,15 @@
 import { NavLink } from "react-router";
 
 import { navFor } from "@/app/nav";
+import { useFlags } from "@/lib/flags";
 import type { Role } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export function SidebarNav({ role, onNavigate }: { role: Role; onNavigate?: () => void }) {
+  const { data } = useFlags();
   return (
     <nav aria-label="Main" className="flex flex-col gap-6">
-      {navFor(role).map((section) => (
+      {navFor(role, data?.flags).map((section) => (
         <div key={section.title}>
           <p className="text-sidebar-muted mb-2 px-3 text-[11px] font-semibold tracking-[0.16em] uppercase">
             {section.title}

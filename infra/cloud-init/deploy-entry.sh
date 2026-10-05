@@ -27,7 +27,11 @@ case "${CMD:-}" in
     rm -rf "$RELEASE" && mv "$RELEASE.tmp" "$RELEASE"
     chmod 0755 "$RELEASE"/*.sh
     [ -f "$MMH_HOME/.env" ] && cp -p "$MMH_HOME/.env" "$MMH_HOME/.env.previous"
-    mv "$MMH_HOME/.env.incoming" "$MMH_HOME/.env"
+    # Database-owner credentials go to their own file, read only by the
+    # migrate step. Everything else becomes the app's environment.
+    grep '^ADMIN_' "$MMH_HOME/.env.incoming" >"$MMH_HOME/admin.env" || true
+    grep -v '^ADMIN_' "$MMH_HOME/.env.incoming" >"$MMH_HOME/.env"
+    rm -f "$MMH_HOME/.env.incoming"
     exec env RELEASE_DIR="$RELEASE" "$RELEASE/deploy.sh" "$TAG"
     ;;
   rollback)

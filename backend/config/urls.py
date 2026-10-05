@@ -14,6 +14,8 @@ urlpatterns = [
     path("api/v1/auth/", include("apps.accounts.urls")),
     path("api/v1/", include("apps.core.urls")),
     path("api/v1/search", include("apps.search.urls")),
+    path("api/v1/", include("apps.customers.urls")),
+    path("api/v1/", include("apps.units.urls")),
     # Django admin is kept as an emergency tool for admins (2FA enforced).
     path("django-admin/", admin.site.urls),
     # Everything else is the React app; it handles its own routing and 404s.

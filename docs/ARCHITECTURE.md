@@ -39,6 +39,11 @@
 | Deploy scripts | Shipped inside the app image | The server always runs the scripts that match the code |
 | Secrets | GitHub environment secrets → `/opt/mmh/.env` (0600), rewritten each deploy | Nothing secret in the repo or the image |
 | Backups | `age`-encrypted to a public key | A stolen server or bucket key can't read old backups |
+| Database users | Migrations as the owner (`doadmin`); the app as `mmh_app` with row-level rights only | A bug or break-in in the app can't drop or alter tables |
+| Unit serials | Stored as entered, plus a normalized copy (uppercase letters and digits) with a unique constraint over all rows, removed ones included | Catches `HHK-123` vs `hhk123`; a removed unit is restored, not duplicated |
+| Unit components | One row per component kind (engine, pump, ...) instead of 24 columns | Same shape for every component; easy to add a kind later |
+| Uploaded files | Private bucket, streamed through Django after a permission check; content checked with Pillow; WebP thumbnails | No guessable public URLs; a renamed `.exe` is refused |
+| Prices | Removed from API responses for roles that can't see them; price filters and sorting ignored | Hiding in the UI alone would leak through the API |
 
 ## Request flow and security headers
 
@@ -49,12 +54,23 @@
 
 ## Roles
 
-`admin`, `sales`, `service`, `parts`, `read_only`. Admins must use TOTP two-factor; for everyone else it is optional. Cost and prices are visible to `admin` and `sales` only (`PRICE_ROLES`, enforced in serializers from Phase 2).
+`admin`, `sales`, `service`, `parts`, `read_only`. Admins must use TOTP two-factor; for everyone else it is optional. Cost and prices are visible to `admin` and `sales` only (`PRICE_ROLES`, enforced in serializers).
+
+| | admin | sales | service | parts | read_only |
+|---|---|---|---|---|---|
+| Customers: view | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Customers: add and edit | ✓ | ✓ | ✓ | ✓ | |
+| Customers: remove | ✓ | ✓ | | | |
+| Units: view (no prices) | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Units: prices and stock status | ✓ | ✓ | | | |
+| Units: add, edit, hours, photos | ✓ | ✓ | ✓ | | |
+| Units: change owner | ✓ | ✓ | | | |
+| Units: remove, remove hour readings | ✓ | | | | |
 
 ## Repository layout
 
 ```
-backend/            Django project (config/, apps/core, apps/accounts, apps/search, apps/ops, tests/)
+backend/            Django project (config/, apps/core, accounts, search, ops, customers, units; tests/)
 frontend/           React + TypeScript (src/app, src/components, src/features, e2e/)
 infra/caddy/        Caddy image and Caddyfile
 infra/cloud-init/   Droplet bootstrap and the deploy entry point

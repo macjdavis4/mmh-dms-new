@@ -25,7 +25,9 @@ Demo accounts (password `Forklift-Demo-2026!`):
 
 `seed_dev` refuses to run in staging or production.
 
-MinIO console (stands in for DigitalOcean Spaces): http://localhost:9001, `minioadmin` / `minioadmin`.
+MinIO console (stands in for DigitalOcean Spaces): http://localhost:9001, `minioadmin` / `minioadmin`. The official MinIO images are no longer published, so Compose uses the community build `pgsty/minio`; the backend creates the buckets on start (`manage.py ensure_buckets`, development only).
+
+Demo data (`seed_dev`) also loads 6 customers and 10 forklift units with placeholder photos and a sample scanned card. It is safe to run again: existing rows are left alone. It also switches on feature flags for finished phases.
 
 ## Checks (what CI runs)
 
@@ -35,7 +37,7 @@ make typecheck        # mypy --strict, tsc --strict
 make migrations-lint  # makemigrations --check, django-migration-linter
 make test             # pytest (coverage gate 85%), vitest
 make e2e              # Playwright against a production-like server
-make screenshots      # docs/screenshots/phase-N at 3 widths x light/dark
+make screenshots      # docs/screenshots/phase-N at 3 widths x light/dark (SCREENSHOT_PHASE=N, default: current phase)
 make deploy-test      # run the real blue/green scripts against local Docker
 ```
 
@@ -76,6 +78,25 @@ cat /opt/mmh/state.env            # which version and color are live
 docker ps                          # containers
 docker compose -p mmh -f /opt/mmh/current/docker-compose.prod.yml logs --tail 200 app-blue
 ```
+
+### Database users
+
+Two database users, on purpose:
+
+| User | Used by | Can do |
+|---|---|---|
+| `doadmin` (owner) | The migrate step of each deploy only. Its URL lives in `/opt/mmh/admin.env`, which no app container loads. | Everything, including schema changes |
+| `mmh_app` | The web app and the worker | Read, add, change and (soft) remove rows. Cannot create, alter or drop tables. |
+
+After migrating, the deploy runs `manage.py grant_app_privileges mmh_app`, so new tables are usable by the app straight away. If the app ever logs `permission denied for table ...`, run that command by hand (with `admin.env` loaded) and redeploy.
+
+### Customers and units are switched off by mistake
+
+*Admin → Site settings → Feature flags*: turn `customers-units` back on. While it is off, those pages and their API answer "not found"; no data is touched.
+
+### Two units have the same serial
+
+The database refuses it, so this can only be a near-miss (for example `O` vs `0`). Open both, decide which is right, fix the serial on the other or remove it. Removed units keep their serial reserved; restore the removed one instead of adding it again.
 
 ## Read-only mode and the maintenance banner
 

@@ -13,19 +13,25 @@ test("theme toggle switches to dark and remembers it", async ({ page }) => {
   await expect(page.locator("html")).toHaveClass(/dark/);
 });
 
-test("global search explains what it will find", async ({ page }) => {
+test("global search finds units by serial and customers by name", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("combobox")).toBeVisible();
   await page.keyboard.press("/");
   await expect(page.getByRole("combobox")).toBeFocused();
-  await page.getByRole("combobox").fill("35LN-9A");
-  await expect(page.getByText("No matches for “35LN-9A”.")).toBeVisible();
-  await expect(page.getByText(/become searchable as those sections are added/)).toBeVisible();
+  await page.getByRole("combobox").fill("hhkhfv30k");
+  const results = page.locator(`[id="${await page.getByRole("combobox").getAttribute("aria-controls")}"]`);
+  await results.getByRole("link", { name: /70D-9/ }).click();
+  await expect(page).toHaveURL(/\/units\/[0-9a-f-]+$/);
+  await page.getByRole("combobox").fill("katahdin");
+  await results.getByRole("link", { name: /Katahdin Lumber/ }).click();
+  await expect(page.getByRole("heading", { name: "Katahdin Lumber", level: 1 })).toBeVisible();
+  await page.getByRole("combobox").fill("zzqx-nothing");
+  await expect(page.getByText("No matches for “zzqx-nothing”.")).toBeVisible();
 });
 
 test("sections that aren't built yet say when they arrive", async ({ page }) => {
-  await page.goto("/units");
-  await expect(page.getByRole("heading", { name: "Arrives in phase 2" })).toBeVisible();
+  await page.goto("/service");
+  await expect(page.getByRole("heading", { name: "Arrives in phase 4" })).toBeVisible();
 });
 
 test("unknown pages show a friendly 404", async ({ page }) => {

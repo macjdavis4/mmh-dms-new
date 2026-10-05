@@ -15,6 +15,16 @@ output "direct_url" {
   sensitive   = true
 }
 
+output "admin_url" {
+  description = "Database owner (doadmin). Used only to run migrations; never given to the app."
+  value       = "postgres://${digitalocean_database_cluster.pg.user}:${urlencode(digitalocean_database_cluster.pg.password)}@${digitalocean_database_cluster.pg.private_host}:${digitalocean_database_cluster.pg.port}/${digitalocean_database_db.app.name}"
+  sensitive   = true
+}
+
+output "app_role" {
+  value = digitalocean_database_user.app.name
+}
+
 output "ca_certificate" {
   value     = data.digitalocean_database_ca.pg.certificate
   sensitive = true

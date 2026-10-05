@@ -25,7 +25,18 @@ describe("navFor", () => {
   });
 
   it("finds items by path", () => {
-    expect(findNavItem("/units")?.comingInPhase).toBe(2);
+    expect(findNavItem("/units")?.flag).toBe("customers-units");
+    expect(findNavItem("/service")?.comingInPhase).toBe(4);
     expect(findNavItem("/nope")).toBeUndefined();
+  });
+});
+
+describe("feature flags", () => {
+  it("hides items whose flag is off", () => {
+    const off = navFor("admin", { "customers-units": false }).flatMap((s) => s.items.map((i) => i.label));
+    expect(off).not.toContain("Units");
+    expect(off).not.toContain("Customers");
+    const on = navFor("admin", { "customers-units": true }).flatMap((s) => s.items.map((i) => i.label));
+    expect(on).toEqual(expect.arrayContaining(["Units", "Customers"]));
   });
 });
