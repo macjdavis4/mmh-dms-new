@@ -213,6 +213,16 @@ exit
 
 ---
 
+## Phase 2: customers and forklift units
+
+Nothing new to set up. Customers and units use the same database and Spaces bucket as Phase 1.
+
+- [ ] **Only if you already ran Terraform for Phase 1**: run *Actions → **Terraform** → Run workflow* with `apply` for **staging**, then **production**. It shows "Changes to Outputs" only (two new outputs the deploy uses to run migrations as the database owner). No servers change.
+- [ ] After the deploy, sign in and check that *Customers* and *Units* appear in the menu.
+- [ ] Optional: add one real unit card by hand (*Units → Add unit*) to try it before the batch import in Phase 3.
+
+---
+
 ## Ongoing
 
 | When | What |
