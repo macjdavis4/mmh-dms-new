@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { findNavItem, navFor } from "./nav";
+import { activeNavPath, findNavItem, navFor } from "./nav";
 
 const labels = (role: Parameters<typeof navFor>[0]) =>
   navFor(role).flatMap((s) => s.items.map((i) => i.label));
@@ -39,5 +39,16 @@ describe("feature flags", () => {
     expect(off).not.toContain("Customers");
     const on = navFor("admin", { "customers-units": true }).flatMap((s) => s.items.map((i) => i.label));
     expect(on).toEqual(expect.arrayContaining(["Units", "Customers"]));
+  });
+});
+
+describe("activeNavPath", () => {
+  const paths = ["/", "/units", "/service", "/service/maintenance"];
+  it("highlights the most specific item", () => {
+    expect(activeNavPath("/service/maintenance", paths)).toBe("/service/maintenance");
+    expect(activeNavPath("/service/123", paths)).toBe("/service");
+    expect(activeNavPath("/units/abc/edit", paths)).toBe("/units");
+    expect(activeNavPath("/", paths)).toBe("/");
+    expect(activeNavPath("/account", paths)).toBeUndefined();
   });
 });

@@ -120,3 +120,10 @@ export function navFor(role: Role, flags?: Record<string, boolean>): NavSection[
 export function findNavItem(path: string): NavItem | undefined {
   return NAV.flatMap((s) => s.items).find((i) => i.to === path);
 }
+
+/** The nav item to highlight: the most specific one whose path the page is
+ * under ("/service/maintenance" wins over "/service"). */
+export function activeNavPath(pathname: string, paths: string[]): string | undefined {
+  const matches = paths.filter((p) => (p === "/" ? pathname === "/" : pathname === p || pathname.startsWith(`${p}/`)));
+  return matches.sort((a, b) => b.length - a.length)[0];
+}
