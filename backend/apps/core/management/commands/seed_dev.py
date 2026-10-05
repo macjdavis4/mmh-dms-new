@@ -19,7 +19,7 @@ from apps.accounts.models import User
 from apps.accounts.roles import Role
 from apps.core.context import acting_as
 from apps.core.models import FeatureFlag, SiteSettings
-from apps.service.demo import load_demo_work_orders
+from apps.service.demo import load_demo_plans, load_demo_work_orders
 from apps.units.demo import load_demo_data
 
 DEMO_PASSWORD = "Forklift-Demo-2026!"  # noqa: S105 - demo data, never in prod
@@ -91,6 +91,7 @@ class Command(BaseCommand):
             site.save()
             load_demo_data()
             load_demo_work_orders()
+            load_demo_plans()
         self.stdout.write(
             self.style.SUCCESS(f"Seeded {len(USERS)} users. Password: {DEMO_PASSWORD}")
         )

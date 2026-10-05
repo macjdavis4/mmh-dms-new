@@ -14,6 +14,7 @@ from apps.accounts.roles import Role
 from apps.units import services as unit_services
 from apps.units.models import HourMeterReading, OwnershipRecord, Unit
 
+from . import maintenance
 from .models import LaborLine, WorkOrder
 
 S = WorkOrder.Status
@@ -97,7 +98,10 @@ def change_status(work_order: WorkOrder, new_status: str, *, reason: str = "") -
                 {"correction": f"Before completing, fill in {' and '.join(missing)}."}
             )
         locked.completed_at = timezone.now()
+        maintenance.mark_done(locked)
     else:
+        if locked.status == S.COMPLETED:
+            maintenance.unmark_done(locked)  # reopening: the plan isn't done after all
         locked.completed_at = None
     if new_status == S.ON_HOLD:
         if not reason.strip():

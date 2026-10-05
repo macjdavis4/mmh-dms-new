@@ -7,6 +7,7 @@ from django.db.models import DecimalField, Q, QuerySet, Sum, Value
 from django.db.models.functions import Coalesce
 from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import BasePermission
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -14,12 +15,14 @@ from rest_framework.response import Response
 from apps.accounts.permissions import HasRole
 from apps.accounts.roles import Role
 from apps.core.api import RequiresFlag, SoftDeleteViewSetMixin
+from apps.units.models import OwnershipRecord
 
-from . import services
-from .models import LaborLine, WorkOrder
+from . import maintenance, services
+from .models import LaborLine, MaintenancePlan, WorkOrder
 from .serializers import (
     LaborCreateSerializer,
     LaborSerializer,
+    MaintenancePlanSerializer,
     StatusSerializer,
     WorkOrderListSerializer,
     WorkOrderSerializer,
@@ -202,3 +205,88 @@ class LaborViewSet(
         if serializer.instance.work_order.status == WorkOrder.Status.CANCELLED:
             raise serializers.ValidationError({"work_order": ["This work order is cancelled."]})
         serializer.save()
+
+
+def _owners(unit_ids: set[Any]) -> dict[Any, str]:
+    """Current owner's name per unit (blank for our stock)."""
+    records = OwnershipRecord.objects.filter(
+        unit_id__in=unit_ids, end_date__isnull=True
+    ).select_related("customer")
+    return {r.unit_id: (r.customer.name if r.customer else "") for r in records}
+
+
+class MaintenancePlanViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet[MaintenancePlan]):
+    model = MaintenancePlan
+    serializer_class = MaintenancePlanSerializer
+    pagination_class = None
+    http_method_names = ["get", "post", "patch", "delete", "options"]
+
+    def get_permissions(self) -> list[BasePermission]:
+        return [FLAG(), CanEditWorkOrders()]
+
+    def get_queryset(self) -> QuerySet[MaintenancePlan]:
+        qs = self.base_queryset().select_related("unit")
+        if self.action == "list":
+            unit = self.request.query_params.get("unit")
+            if not unit:
+                raise serializers.ValidationError({"unit": ["Say which unit."]})
+            qs = qs.filter(unit_id=unit)
+        return qs
+
+    def get_serializer_context(self) -> dict[str, Any]:
+        context = super().get_serializer_context()
+        context.update(getattr(self, "_extra_context", {}))
+        return context
+
+    def _with_status(self, plans: list[MaintenancePlan]) -> dict[str, Any]:
+        items = maintenance.statuses(plans)
+        return {
+            "statuses": {p.pk: st for p, st in items},
+            "owners": _owners({p.unit_id for p in plans}),
+        }
+
+    def list(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        plans = list(self.get_queryset())
+        self._extra_context = self._with_status(plans)
+        return Response(self.get_serializer(plans, many=True).data)
+
+    def retrieve(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        plan = self.get_object()
+        self._extra_context = self._with_status([plan])
+        return Response(self.get_serializer(plan).data)
+
+    def perform_create(self, serializer: Any) -> None:
+        serializer.save()
+        self._extra_context = self._with_status([serializer.instance])
+
+    def perform_update(self, serializer: Any) -> None:
+        serializer.save()
+        self._extra_context = self._with_status([serializer.instance])
+
+    @action(detail=False, methods=["get"])
+    def due(self, request: Request) -> Response:
+        """Everything overdue or due within 30 days / 50 hours, most urgent first."""
+        items = maintenance.due_list(include_ok=request.query_params.get("all") == "1")[:500]
+        plans = [p for p, _ in items]
+        self._extra_context = {
+            "statuses": {p.pk: st for p, st in items},
+            "owners": _owners({p.unit_id for p in plans}),
+        }
+        counts = {"overdue": 0, "due_soon": 0}
+        for _, st in items:
+            if st.state in counts:
+                counts[st.state] += 1
+        return Response({"counts": counts, "results": self.get_serializer(plans, many=True).data})
+
+    @action(detail=True, methods=["post"], url_path="work-order")
+    def work_order(self, request: Request, pk: str | None = None) -> Response:
+        plan = self.get_object()
+        if request.user.role not in ("admin", "service"):  # type: ignore[union-attr]
+            raise PermissionDenied()
+        work_order = maintenance.work_order_for(plan)
+        return Response(
+            WorkOrderSerializer(
+                WorkOrder.objects.get(pk=work_order.pk), context=self.get_serializer_context()
+            ).data,
+            status=status.HTTP_201_CREATED,
+        )
