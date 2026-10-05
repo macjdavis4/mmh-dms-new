@@ -95,6 +95,21 @@ From Phase 4 on, phases are smaller (one usable piece each) so each pull request
 
 **Waiting on the owner**: nothing to set up. Fill in the template when the cards are scanned (see [MANUAL_STEPS](MANUAL_STEPS.md), "Phase 3").
 
+## Phase 4: Work orders
+
+**Built**
+- [x] Work orders numbered WO-20001 upwards (a database sequence; old cards' 4-digit numbers can't clash)
+- [x] Unit, customer (taken from the unit's current owner), type, shop or field, mechanic, due date, customer PO, on-site contact, notes
+- [x] Status: open → in progress → on hold (with what it's waiting for) → completed, or cancelled; reopen. Completing needs the correction, also enforced by the database
+- [x] Complaint / cause / correction; labor lines (mechanic, date, hours, what was done), remove with undo
+- [x] Hour meter at service saved as a dated reading on the unit (warns if lower than before)
+- [x] Service list (open, completed, cancelled, all; "Mine"; search), service history on the unit page, dashboard tile and quick action
+- [x] Global search finds work orders by number and units by the work order number on an old card
+- [x] Roles: admin and service edit; sales, parts and read-only can look; only admin removes
+- [x] Demo work orders in the seed data; behind the `service` feature flag (on)
+
+**Tests**: 221 backend tests (92% coverage), 31 Vitest, 35 Playwright end-to-end tests.
+
 ## Planned for Phase 7: units that come back
 
 A unit can be sold, come back (repossession, trade-in, buy-back, lease return, bought used) and be sold again, any number of times. It always stays one unit record (one serial), with its ownership history as the timeline. Phase 7 adds:
