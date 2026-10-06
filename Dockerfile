@@ -20,7 +20,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1
 # PostgreSQL 16 client (pg_dump must match the server's major version) from
-# the official PGDG repository, and `age` for encrypting backups.
+# the official PGDG repository, `age` for encrypting backups, and Tesseract
+# for reading scanned or photographed supplier invoices (runs locally).
 # `upgrade` pulls in Debian security fixes released after the base image.
 RUN apt-get update \
  && apt-get upgrade -y --no-install-recommends \
@@ -29,7 +30,7 @@ RUN apt-get update \
  && curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc \
  && echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
  && apt-get update \
- && apt-get install -y --no-install-recommends postgresql-client-16 age \
+ && apt-get install -y --no-install-recommends postgresql-client-16 age tesseract-ocr tesseract-ocr-eng \
  && apt-get purge -y gnupg && apt-get autoremove -y \
  && rm -rf /var/lib/apt/lists/*
 RUN groupadd --system --gid 10001 app && useradd --system --uid 10001 --gid app --home /app --shell /usr/sbin/nologin app
