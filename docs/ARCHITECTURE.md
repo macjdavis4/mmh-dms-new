@@ -11,7 +11,7 @@
  │  Caddy (Let's Encrypt via Cloudflare DNS challenge, HSTS, gzip/zstd)      │
  │     │ active.caddy → app-blue or app-green                               │
  │  app-blue / app-green: Gunicorn + Django + built React (WhiteNoise)       │
- │  worker: Procrastinate (nightly backups, media copy, job cleanup)         │
+ │  worker: Procrastinate (backups, media copy, cleanup, invoice reading)    │
  └──────────────┬──────────────────────────────────────────┬──────────────────┘
    private VPC, TLS (sslmode=require + DO CA)               │ S3 API
                 ▼                                           ▼
@@ -43,6 +43,7 @@
 | Unit serials | Stored as entered, plus a normalized copy (uppercase letters and digits) with a unique constraint over all rows, removed ones included | Catches `HHK-123` vs `hhk123`; a removed unit is restored, not duplicated |
 | Unit components | One row per component kind (engine, pump, ...) instead of 24 columns | Same shape for every component; easy to add a kind later |
 | Uploaded files | Private bucket, streamed through Django after a permission check; content checked with Pillow; WebP thumbnails | No guessable public URLs; a renamed `.exe` is refused |
+| Reading supplier invoices | pypdf for PDFs with text; Tesseract OCR (installed in the image) for scans and photos; run as a background job; suggestions only, a person checks every line | Nothing leaves our server and there's no per-page cost; OCR mistakes can't change stock unchecked |
 | Imports | Validate (no changes) → apply one transaction per row → undo per batch; match on normalized serial; audit entries tagged `import-<batch>` | Safe to re-run and retry; undo can tell the import's changes from later edits |
 | Work order numbers | Postgres sequence starting at 20001 | Never reused or duplicated, even with two people saving at once |
 | Import API | Versioned path, API keys hashed with SHA-256 (256-bit random keys), per-key throttle; requests act as the key's admin | The scanning app needs no user account; a key can be revoked without touching anyone's password |
