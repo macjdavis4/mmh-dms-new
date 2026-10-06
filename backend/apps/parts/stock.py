@@ -64,7 +64,7 @@ def _move(
                 "If the shelf has more, count it first."
             }
         )
-    movement = StockMovement(
+    movement = StockMovement(  # type: ignore[misc]  # MONEY fields are nullable
         part=part,
         kind=kind,
         quantity=quantity,
@@ -128,6 +128,8 @@ def count(part: Part, counted: Decimal, *, note: str = "", reference: str = "") 
 
 
 def _open_work_order(work_order: Any) -> None:
+    """Lock the work order so it can't be closed while parts go on or off it."""
+    work_order = type(work_order).objects.select_for_update().get(pk=work_order.pk)
     if not work_order.is_open:
         raise ValidationError(
             {"work_order": f"{work_order.number} is {work_order.get_status_display().lower()}."}

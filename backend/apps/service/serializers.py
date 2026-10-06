@@ -6,7 +6,9 @@ from typing import Any
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
+from apps.core.api import flag_enabled
 from apps.customers.models import Customer
+from apps.parts.serializers import used_parts_data
 from apps.units.models import Unit
 
 from .models import LaborLine, MaintenancePlan, WorkOrder
@@ -116,6 +118,7 @@ class WorkOrderSerializer(WorkOrderListSerializer):
     location_label = serializers.CharField(source="get_location_display", read_only=True)
     created_by_name = serializers.SerializerMethodField()
     maintenance_plan_name = serializers.SerializerMethodField()
+    parts_used = serializers.SerializerMethodField()
 
     class Meta(WorkOrderListSerializer.Meta):
         fields = [
@@ -129,6 +132,7 @@ class WorkOrderSerializer(WorkOrderListSerializer):
             "hours",
             "hour_meter",
             "labor",
+            "parts_used",
             "maintenance_plan",
             "maintenance_plan_name",
             "is_deleted",
@@ -153,11 +157,20 @@ class WorkOrderSerializer(WorkOrderListSerializer):
             "labor_hours",
             "hour_meter",
             "labor",
+            "parts_used",
             "is_deleted",
             "created_at",
             "created_by_name",
             "updated_at",
         ]
+
+    def get_parts_used(self, obj: WorkOrder) -> list[dict[str, Any]] | None:
+        """Net parts on the job, priced as issued. None when parts stock is off."""
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if not flag_enabled("parts", user) or not flag_enabled("parts-stock", user):
+            return None
+        return used_parts_data(obj)
 
     def get_labor(self, obj: WorkOrder) -> list[dict[str, Any]]:
         return LaborSerializer(obj.labor.select_related("mechanic"), many=True).data  # type: ignore[return-value]

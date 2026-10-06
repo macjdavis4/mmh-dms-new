@@ -11,6 +11,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.accounts.roles import Role
+from apps.parts import stock as parts_stock
 from apps.units import services as unit_services
 from apps.units.models import HourMeterReading, OwnershipRecord, Unit
 
@@ -88,6 +89,10 @@ def change_status(work_order: WorkOrder, new_status: str, *, reason: str = "") -
                 "status": f"A {locked.get_status_display().lower()} work order "
                 f"can't be marked {S(new_status).label.lower()}."
             }
+        )
+    if new_status == S.CANCELLED and parts_stock.parts_used(locked):
+        raise ValidationError(
+            {"status": "Parts are on this work order. Return them to stock before cancelling."}
         )
     if new_status == S.COMPLETED:
         missing = []
