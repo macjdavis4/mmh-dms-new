@@ -349,3 +349,7 @@ COMPANY_WEBSITE = env("COMPANY_WEBSITE", "maine-material.com")
 # Maine sales tax, percent. Each quote keeps its own rate; this is only the default.
 SALES_TAX_RATE = env("SALES_TAX_RATE", "5.5")
 PDF_COMPRESS = True  # tests turn this off so the text can be checked
+
+# Supplier invoices (Phase 11) are read by a background job. Tests and the
+# Playwright server have no worker, so they read right away instead.
+INVOICE_READ_INLINE = env_bool("INVOICE_READ_INLINE", False)

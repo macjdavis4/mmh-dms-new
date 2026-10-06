@@ -24,9 +24,11 @@ MIGRATION_LINTER_OPTIONS = {
     ],
     # Initial migrations only create brand-new tables, which no running code
     # uses yet. (The linter also misreads GIN indexes in customers/0001.)
-    "ignore_name": ["0001_initial"],
+    # parts/0008 only adds an expression index to a new, empty table.
+    "ignore_name": ["0001_initial", "0008_invoice_unique"],
 }
 
 # Uploaded files live in memory during tests (no MinIO needed).
 STORAGES["default"] = {"BACKEND": "django.core.files.storage.InMemoryStorage"}  # noqa: F405
 PDF_COMPRESS = False  # PDF text readable in tests
+INVOICE_READ_INLINE = True
