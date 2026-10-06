@@ -1,5 +1,5 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import { ChevronLeft, ChevronRight, MapPin, PackageMinus, Plus, Replace, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, MapPin, PackageMinus, Plus, ReceiptText, Replace, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 
@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import type { PartRow } from "@/lib/types";
 
 import { canEditParts, canSeePartCost, EMPTY_PART_FILTERS, type PartFilters, partParams, useBins, usePartFacets, useParts } from "./api";
+import { canSeeInvoices } from "./invoices/api";
 
 const PAGE_SIZE = 50;
 
@@ -157,6 +158,13 @@ export function PartsPage() {
         description="Find a part by its number, another brand's number, or what it is."
         actions={
           <>
+            {canSeeInvoices(user.role) && (
+              <Button asChild variant="outline">
+                <Link to="/parts/invoices">
+                  <ReceiptText className="size-4" /> Invoices
+                </Link>
+              </Button>
+            )}
             {stock && (
               <Button asChild variant="outline">
                 <Link to="/parts/low-stock">

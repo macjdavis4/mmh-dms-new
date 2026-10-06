@@ -9,6 +9,7 @@ spaces or punctuation) finds duplicates and matches searches, so
 from __future__ import annotations
 
 import re
+import uuid
 from decimal import Decimal
 from typing import ClassVar
 
@@ -264,6 +265,15 @@ class StockMovement(AuditedModel):
     )
     # On hand after this movement, for the history list.
     balance_after = models.DecimalField(max_digits=12, decimal_places=2)
+    # The supplier invoice line a receipt (or its reversal) came in on.
+    invoice_line = models.ForeignKey(
+        "InvoiceLine",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="movements",
+        db_index=False,  # few rows per line; a later migration can add one concurrently
+    )
 
     COST_FIELDS: ClassVar[tuple[str, ...]] = ("unit_cost",)
 
@@ -292,6 +302,10 @@ class StockMovement(AuditedModel):
             ),
             models.CheckConstraint(
                 condition=Q(balance_after__gte=0), name="movement_balance_not_negative"
+            ),
+            models.CheckConstraint(
+                condition=Q(invoice_line__isnull=True) | Q(kind__in=["receive", "reversal"]),
+                name="movement_invoice_only_on_receipts",
             ),
             models.CheckConstraint(
                 condition=(Q(unit_cost__isnull=True) | Q(unit_cost__gte=0))
@@ -347,3 +361,131 @@ class StockCheck(models.Model):
     @property
     def ok(self) -> bool:
         return self.finished_at is not None and not self.drift
+
+
+# --- Supplier invoices (Phase 11) ---------------------------------------------------------
+
+
+def invoice_file_path(instance: Invoice, filename: str) -> str:
+    ext = (filename.rsplit(".", 1)[-1] if "." in filename else "bin").lower()[:5]
+    return f"parts-invoices/{timezone.now():%Y/%m}/{uuid.uuid4().hex}.{ext}"
+
+
+class Invoice(SoftDeleteModel):
+    """A supplier's invoice or packing slip for parts. The file is read on
+    the server (PDF text, or Tesseract for scans and photos) into suggested
+    lines; a person checks them, then receives what arrived into stock."""
+
+    class Status(models.TextChoices):
+        READING = "reading", "Reading"
+        REVIEW = "review", "To check"
+        PARTIAL = "partial", "Partly received"
+        RECEIVED = "received", "Received"
+        CANCELLED = "cancelled", "Cancelled"
+
+    supplier = models.CharField(max_length=120, blank=True, default="")
+    invoice_number = models.CharField(max_length=60, blank=True, default="")
+    invoice_date = models.DateField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.REVIEW)
+    file = models.FileField(upload_to=invoice_file_path, max_length=300, blank=True, default="")
+    original_name = models.CharField(max_length=255, blank=True, default="")
+    content_type = models.CharField(max_length=100, blank=True, default="")
+    size_bytes = models.PositiveBigIntegerField(null=True, blank=True)
+    # What the reader found, kept as read; the lines below are its suggestions.
+    extracted_text = models.TextField(blank=True, default="")
+    read_method = models.CharField(max_length=20, blank=True, default="")  # pdf-text / ocr
+    read_error = models.CharField(max_length=300, blank=True, default="")
+    read_at = models.DateTimeField(null=True, blank=True)
+    # Totals as printed on the invoice, to check the lines against.
+    freight = models.DecimalField(**MONEY, validators=[MinValueValidator(Decimal("0"))])  # type: ignore[arg-type]
+    tax = models.DecimalField(**MONEY, validators=[MinValueValidator(Decimal("0"))])  # type: ignore[arg-type]
+    total = models.DecimalField(**MONEY, validators=[MinValueValidator(Decimal("0"))])  # type: ignore[arg-type]
+    note = models.TextField(blank=True, default="")
+    cancel_reason = models.CharField(max_length=200, blank=True, default="")
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(status__in=["reading", "review", "partial", "received", "cancelled"]),
+                name="invoice_status_valid",
+            ),
+            # The same supplier invoice can't be entered twice (and received twice).
+            models.UniqueConstraint(
+                Upper("supplier"),
+                Upper("invoice_number"),
+                condition=ALIVE & ~Q(invoice_number="") & ~Q(status="cancelled"),
+                name="invoice_unique_per_supplier",
+            ),
+            models.CheckConstraint(
+                condition=(Q(freight__isnull=True) | Q(freight__gte=0))
+                & (Q(tax__isnull=True) | Q(tax__gte=0))
+                & (Q(total__isnull=True) | Q(total__gte=0)),
+                name="invoice_money_not_negative",
+            ),
+            models.CheckConstraint(
+                condition=~Q(status="cancelled") | ~Q(cancel_reason=""),
+                name="invoice_cancel_has_reason",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        label = " ".join(x for x in (self.supplier, self.invoice_number) if x)
+        return label or f"Invoice uploaded {self.created_at:%Y-%m-%d}"
+
+
+class InvoiceLine(SoftDeleteModel):
+    """One line of a supplier invoice. Shipped is what this invoice says is
+    in the box; backordered is what the supplier says comes later. What has
+    actually been received is the sum of the stock movements on the line."""
+
+    invoice = models.ForeignKey(Invoice, on_delete=models.PROTECT, related_name="lines")
+    position = models.PositiveIntegerField(default=0)
+    # The line exactly as read from the file (blank when typed in).
+    raw_text = models.CharField(max_length=500, blank=True, default="")
+    part = models.ForeignKey(
+        Part, null=True, blank=True, on_delete=models.PROTECT, related_name="invoice_lines"
+    )
+    # As printed on the invoice; may be the supplier's own number.
+    part_number = models.CharField(max_length=60, blank=True, default="")
+    description = models.CharField(max_length=200, blank=True, default="")
+    quantity_shipped = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0"))
+    quantity_backordered = models.DecimalField(
+        max_digits=10, decimal_places=2, default=Decimal("0")
+    )
+    unit_cost = models.DecimalField(**MONEY, validators=[MinValueValidator(Decimal("0"))])  # type: ignore[arg-type]
+    # Freight, core charges, fees: on the invoice but not stock.
+    not_stocked = models.BooleanField(default=False)
+    # Why the reader wasn't sure (quantity x price doesn't match, part unknown...).
+    check_reason = models.CharField(max_length=200, blank=True, default="")
+    # The rest won't come (supplier cancelled the backorder).
+    closed_at = models.DateTimeField(null=True, blank=True)
+    closed_reason = models.CharField(max_length=200, blank=True, default="")
+
+    COST_FIELDS: ClassVar[tuple[str, ...]] = ("unit_cost",)
+
+    class Meta:
+        ordering = ["position", "created_at"]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(quantity_shipped__gte=0) & Q(quantity_backordered__gte=0),
+                name="invoice_line_quantities_not_negative",
+            ),
+            models.CheckConstraint(
+                condition=Q(not_stocked=True)
+                | Q(quantity_shipped__gt=0)
+                | Q(quantity_backordered__gt=0),
+                name="invoice_line_has_quantity",
+            ),
+            models.CheckConstraint(
+                condition=Q(unit_cost__isnull=True) | Q(unit_cost__gte=0),
+                name="invoice_line_cost_not_negative",
+            ),
+            models.CheckConstraint(
+                condition=Q(closed_at__isnull=True) | ~Q(closed_reason=""),
+                name="invoice_line_closed_has_reason",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.invoice}: {self.part_number or self.description}"

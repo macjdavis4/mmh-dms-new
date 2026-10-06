@@ -34,6 +34,12 @@ describe("navFor", () => {
     expect(off).not.toContain("Low stock");
   });
 
+  it("shows Parts invoices to admin, parts and sales only (they show our cost)", () => {
+    for (const role of ["admin", "parts", "sales"] as const) expect(labels(role)).toContain("Parts invoices");
+    for (const role of ["service", "read_only"] as const) expect(labels(role)).not.toContain("Parts invoices");
+    expect(findNavItem("/parts/invoices")?.flag).toBe("parts-invoices");
+  });
+
   it("drops empty sections", () => {
     expect(navFor("parts").map((s) => s.title)).toEqual(["Work", "You"]);
   });

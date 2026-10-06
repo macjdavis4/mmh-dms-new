@@ -294,6 +294,14 @@ Nothing to set up; the nightly stock check runs on its own. To start using it:
 2. [ ] Set a *Reorder at* and *Order this many* on the parts you want to watch (*Edit part*). Those at or below it appear under *Low stock*.
 3. [ ] When parts arrive, open the part and press *Receive*.
 
+## Phase 11: parts invoices
+
+Nothing to set up: the reader (Tesseract) is built into the app's server image, and nothing is sent to an outside service. To start using it:
+
+1. [ ] When parts arrive, open *Parts invoices* and press *Upload invoice* (or *Take a photo* on a phone). Lay the paper flat in good light, with the whole page in the picture.
+2. [ ] Check the lines against the paper, pick our part where one is missing, then press *Receive into stock* and enter what's actually in the box.
+3. [ ] Look at the *Backorders* tab now and then; press *Arrived* when they come, or *Won't come* if the supplier cancels.
+
 ---
 
 ## Ongoing

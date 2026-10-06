@@ -18,3 +18,4 @@ python-json-logger>=3.3,<5
 django-stubs-ext>=5.2,<5.3   # makes Django generics subscriptable for type hints
 Pillow>=11.0,<13          # photo validation and thumbnails
 reportlab>=4.4,<5          # work order and spec sheet PDFs (pure Python)
+pypdf>=6.1,<7             # reading text from supplier invoice PDFs (pure Python)

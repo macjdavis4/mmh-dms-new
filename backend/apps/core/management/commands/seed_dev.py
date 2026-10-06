@@ -19,7 +19,7 @@ from apps.accounts.models import User
 from apps.accounts.roles import Role
 from apps.core.context import acting_as
 from apps.core.models import FeatureFlag, SiteSettings
-from apps.parts.demo import load_demo_parts, load_demo_stock
+from apps.parts.demo import load_demo_invoices, load_demo_parts, load_demo_stock
 from apps.sales.demo import load_demo_quotes
 from apps.service.demo import load_demo_plans, load_demo_work_orders
 from apps.units.demo import load_demo_data
@@ -49,6 +49,7 @@ LIVE_FLAGS = [
     "sales",
     "parts",
     "parts-stock",
+    "parts-invoices",
 ]
 
 # Features still being built: created switched off.
@@ -105,6 +106,7 @@ class Command(BaseCommand):
             load_demo_quotes()
             load_demo_parts()
             load_demo_stock()
+            load_demo_invoices()
         self.stdout.write(
             self.style.SUCCESS(f"Seeded {len(USERS)} users. Password: {DEMO_PASSWORD}")
         )

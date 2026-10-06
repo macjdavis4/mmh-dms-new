@@ -153,6 +153,16 @@ The database refuses it, so this can only be a near-miss (for example `O` vs `0`
 - **A work order can't be cancelled**: return its parts to stock first.
 - **The stock check found differences** (red box on *Low stock*, a Sentry error "stock drift"): the stored count of a part no longer matches its history. Nothing is changed automatically. Run `python manage.py check_stock` to see them again. Find out why (a direct database edit, or a bug) before fixing; then fix the stored count in a database shell with `UPDATE parts_partstock SET on_hand = <ledger value> WHERE part_id = '<id>';` (the ledger is the truth), and run `check_stock` again until it reports no differences.
 
+### Parts invoices
+
+- Admin and parts staff upload invoices under *Parts invoices*; sales can look. Switch it off with the `parts-invoices` flag (receiving by hand on the part page keeps working).
+- **Stuck on "Reading the invoice…"**: the worker isn't running or is behind. Check the `worker` container and its log. The job is safe to retry; reading only happens while the invoice is still marked as reading. In development, set `INVOICE_READ_INLINE=true` to read during the upload instead.
+- **"The invoice reader isn't installed on the server"**: Tesseract is missing from the image. It is installed by the `Dockerfile`; rebuild and redeploy. PDFs with text still read without it.
+- **Read badly**: check against the paper and fix the lines, or *Read again* after uploading a clearer photo (flat, well lit, the whole page). Lines can always be typed in.
+- **"Already entered"**: the same supplier invoice number exists. Open the other one; cancel whichever is the mistake (only possible before anything is received from it).
+- **Received the wrong amount**: reverse that line in the part's *Stock history*; the quantity goes back on the invoice line, then receive the right amount.
+- Try the reader with `python manage.py make_sample_invoice /tmp/sample.pdf` (or `.png`).
+
 ## Read-only mode and the maintenance banner
 
 *Admin → Site settings*. Read-only mode blocks every change for everyone (sign-in still works) and shows a notice on every screen. Use it during database maintenance or a restore. The banner can show any message in information, warning or critical style, including on the sign-in page.

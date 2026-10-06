@@ -44,8 +44,8 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
           cache-dependency-path: backend/requirements/*.txt
-      - name: System packages (age for backup tests)
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq age postgresql-client
+      - name: System packages (age for backup tests, Tesseract for invoice reading)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq age postgresql-client tesseract-ocr tesseract-ocr-eng
       - name: Install dependencies (hash-checked)
         run: pip install --require-hashes -r requirements/base.txt -r requirements/dev.txt
       - name: Ruff lint
@@ -125,6 +125,8 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: pip install --require-hashes -r backend/requirements/base.txt
+      - name: Tesseract (invoice reading)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq tesseract-ocr tesseract-ocr-eng
       - run: npm ci --no-audit --no-fund
         working-directory: frontend
       - run: npm run build

@@ -11,8 +11,8 @@
 | 7 | Units changing hands (sales, trade-ins, repos) | Merged |
 | 8 | Quotes and sales | Merged |
 | 9 | Parts catalog | Merged |
-| 10 | Parts stock ledger | **In review** |
-| 11 | Receiving parts invoices | Not started |
+| 10 | Parts stock ledger | Merged |
+| 11 | Receiving parts invoices | **In review** |
 | 12 | Dashboard and reports | Not started |
 | 13 | Continuity (offline-ready app, paper fallback) | Not started |
 | 14 | Offline work orders (optional) | Ask before starting |
@@ -175,6 +175,27 @@ A unit can be sold, come back and be sold again any number of times. It stays on
 **Tests**: 310 backend tests (93% coverage), 47 Vitest, 47 Playwright end-to-end tests.
 
 **Known limitations**: a sale's unit price is the line price; a quote-wide discount isn't spread over the units on the sale records. Sales tax follows the rule above; check it with your accountant. No deposits, payments or invoices yet (invoice # is typed in). Quotes can't be emailed from the app yet.
+
+## Phase 11: Receiving parts invoices
+
+**Built**
+- [x] **Upload** a supplier invoice or packing slip: a PDF, or a photo (*Take a photo* on phones). Files are checked by their contents, kept privately, and opened through the app
+- [x] **Read on our server**: text straight from PDFs that have it (most emailed invoices); Tesseract OCR for scans and photos. Nothing is sent to an outside service. Reading runs as a background job and the page updates by itself
+- [x] **Suggestions**: supplier (one we already buy from), invoice #, date, freight, tax, total, and each line's part number, description, quantities (ordered / shipped / backordered), cost each. Each line is matched to our part by our number, another brand's number or the supplier's number; a replaced number leads to its replacement. The line as read is kept beside it
+- [x] **Check the lines**: lines the reader wasn't sure about are marked (part not in the catalog, quantity times price doesn't match, no quantity found). Pick our part, fix anything, mark freight and fees *Not a stock item*, add or remove lines, *Read again*. The lines, freight and tax are checked against the invoice total
+- [x] **Receive into stock**: count what's in the box; suggests what was shipped. Receive all or part of any line, as many times as needed. Stock goes up through the Phase 10 ledger with the invoice as the reference and the invoice's cost; optionally updates our cost in the catalog
+- [x] **Backorders**: whatever is still to come waits on its own tab. *Arrived* receives it, *Won't come* closes it (with a reason, undoable). The invoice shows *Partly received* until every line is in or closed
+- [x] **No double receiving**: the same supplier invoice number can't be entered twice (database rule), and the reader warns when it sees one already entered. Reversing a receipt on the part page puts the quantity back on the invoice line
+- [x] **Type one in** for paper invoices without a scan; **Cancel** (with a reason) before anything is received
+- [x] Invoices show our cost, so only admin, parts and sales can see them; admin and parts receive. Menu item *Parts invoices* and an *Invoices* button on the parts list
+- [x] Behind the `parts-invoices` feature flag (on). Demo data has one invoice to check and one partly received with a backorder (made-up PDFs). `manage.py make_sample_invoice file.pdf` (or `.png`) writes a sample to try
+- [x] New tools (approved): **pypdf** (pinned with hashes) and **Tesseract** (in the app image and CI)
+
+**Migrations**: `parts/0007_supplier_invoices` (new tables; invoice line link on stock movements, nullable, no index), `parts/0008_invoice_unique` (one invoice number per supplier; new empty table), `parts/0009_invoice_guards` (no hard deletes), `parts/0010_invoices_flag`.
+
+**Tests**: 366 backend tests (93% coverage), 53 Vitest, 55 Playwright end-to-end tests.
+
+**Known limitations**: reading is best on clear, typed invoices with one line per part; handwriting and very unusual layouts need typing in. English only. Only the first 20 pages of a PDF are read. No purchase orders yet, so backorders come from what the invoice says, not from what we ordered. No supplier list (supplier is free text, suggested from the ones already used).
 
 ## Phase 10: Parts stock ledger
 

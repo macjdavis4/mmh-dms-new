@@ -53,6 +53,7 @@ def _move(
     note: str = "",
     reverses: StockMovement | None = None,
     occurred_at: datetime | None = None,
+    invoice_line: Any = None,
 ) -> StockMovement:
     PartStock.objects.get_or_create(part=part)
     stock = PartStock.objects.select_for_update().get(part=part)
@@ -74,6 +75,7 @@ def _move(
         reference=reference,
         note=note,
         reverses=reverses,
+        invoice_line=invoice_line,
         balance_after=balance,
         occurred_at=occurred_at or timezone.now(),
     )
@@ -101,13 +103,22 @@ def receive(
     unit_cost: Decimal | None = None,
     reference: str = "",
     note: str = "",
+    invoice_line: Any = None,
 ) -> StockMovement:
-    """Parts arrived (by hand for now; from invoices in Phase 11)."""
+    """Parts arrived: typed in on the part page, or received from an invoice."""
     _positive(quantity)
     _usable(part)
     if unit_cost is None:
         unit_cost = part.cost
-    return _move(part, K.RECEIVE, quantity, unit_cost=unit_cost, reference=reference, note=note)
+    return _move(
+        part,
+        K.RECEIVE,
+        quantity,
+        unit_cost=unit_cost,
+        reference=reference,
+        note=note,
+        invoice_line=invoice_line,
+    )
 
 
 @transaction.atomic
@@ -200,7 +211,7 @@ def reverse(movement: StockMovement, *, note: str = "") -> StockMovement:
         raise ValidationError({"movement": "This has already been reversed."})
     if movement.work_order is not None:
         _open_work_order(movement.work_order)
-    return _move(
+    reversal = _move(
         movement.part,
         K.REVERSAL,
         -movement.quantity,
@@ -208,8 +219,15 @@ def reverse(movement: StockMovement, *, note: str = "") -> StockMovement:
         unit_cost=movement.unit_cost,
         unit_price=movement.unit_price,
         reverses=movement,
+        invoice_line=movement.invoice_line,
         note=note or f"Reverses: {movement.get_kind_display().lower()}",
+        reference=movement.reference,
     )
+    if movement.invoice_line is not None:
+        from .invoices import refresh_status
+
+        refresh_status(movement.invoice_line.invoice)
+    return reversal
 
 
 # --- Work order parts ---------------------------------------------------------------------
