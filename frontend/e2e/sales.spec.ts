@@ -106,7 +106,7 @@ test.describe("as admin", () => {
       data: { customer: customers.results[0]?.id, lines: [{ kind: "unit", unit: unit.id, unit_price: "27000" }] },
     });
     const quote = (await created.json()) as { id: string };
-    await page.request.post(`/api/v1/quotes/${quote.id}/sell`, { headers, data: { sale_date: new Date().toISOString().slice(0, 10) } });
+    await page.request.post(`/api/v1/quotes/${quote.id}/sell`, { headers, data: { sale_date: new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" }) } });
 
     await page.goto(`/sales/${quote.id}`);
     await page.getByRole("button", { name: "Void sale" }).click();

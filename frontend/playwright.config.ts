@@ -4,7 +4,7 @@ const baseURL = process.env.E2E_BASE_URL ?? "http://localhost:8000";
 // The cloud sandbox ships its own Chromium; CI installs Playwright's.
 const executablePath = process.env.PW_CHROMIUM_PATH;
 // Screenshots are taken for one phase at a time (default: the current one).
-const screenshotPhase = process.env.SCREENSHOT_PHASE ?? "9";
+const screenshotPhase = process.env.SCREENSHOT_PHASE ?? "10";
 
 export default defineConfig({
   testDir: "./e2e",
@@ -15,6 +15,9 @@ export default defineConfig({
   timeout: 30_000,
   use: {
     baseURL,
+    // The shop's time zone, as on the server: otherwise "today" in the
+    // browser is tomorrow for the server between 8 pm and midnight Eastern.
+    timezoneId: "America/New_York",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     ...devices["Desktop Chrome"],
