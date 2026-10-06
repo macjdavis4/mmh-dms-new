@@ -225,6 +225,7 @@ function ReceiveDialog({ invoice, onClose }: { invoice: Invoice; onClose: () => 
         <form
           id="receive-form"
           noValidate
+          className="min-w-0"
           onSubmit={(e) => {
             e.preventDefault();
             const lines = rows.map((r) => ({ line: r.line.id, quantity: qty[r.line.id] || "0" })).filter((r) => Number(r.quantity) > 0);
@@ -244,7 +245,7 @@ function ReceiveDialog({ invoice, onClose }: { invoice: Invoice; onClose: () => 
               <li key={r.line.id} className="flex items-center gap-3 py-3">
                 <span className="min-w-0 flex-1">
                   <span className="block font-mono font-semibold">{lineLabel(r.line)}</span>
-                  <span className="text-muted-foreground block truncate text-xs">
+                  <span className="text-muted-foreground block text-xs">
                     {r.line.part_summary?.description} · {formatQty(r.max)} to come · {formatQty(r.line.part_on_hand)} on the shelf now
                   </span>
                 </span>
@@ -444,7 +445,7 @@ function InvoiceView({ invoice }: { invoice: Invoice }) {
         </div>
       )}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] [&>*]:min-w-0">
         <SectionCard
           id="lines"
           title={editLines ? "Check the lines" : "Lines"}

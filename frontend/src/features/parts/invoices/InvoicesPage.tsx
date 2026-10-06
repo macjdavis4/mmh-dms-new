@@ -186,7 +186,7 @@ export function InvoicesPage() {
                   setPage(1);
                 }}
                 className={cn(
-                  "min-h-10 flex-1 rounded-lg px-3 text-sm font-semibold transition-colors sm:flex-none sm:px-4",
+                  "min-h-10 flex-1 rounded-lg px-2 text-sm font-semibold whitespace-nowrap transition-colors sm:flex-none sm:px-4",
                   tab === t.value ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
                 )}
               >
