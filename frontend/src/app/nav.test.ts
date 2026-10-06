@@ -27,6 +27,13 @@ describe("navFor", () => {
     expect(off).not.toContain("Bought and sold");
   });
 
+  it("shows Low stock to everyone unless parts stock is off", () => {
+    for (const role of ["admin", "sales", "service", "parts", "read_only"] as const) expect(labels(role)).toContain("Low stock");
+    const off = navFor("parts", { "parts-stock": false }).flatMap((s) => s.items.map((i) => i.label));
+    expect(off).toEqual(expect.arrayContaining(["Parts"]));
+    expect(off).not.toContain("Low stock");
+  });
+
   it("drops empty sections", () => {
     expect(navFor("parts").map((s) => s.title)).toEqual(["Work", "You"]);
   });
@@ -35,6 +42,7 @@ describe("navFor", () => {
     expect(findNavItem("/units")?.flag).toBe("customers-units");
     expect(findNavItem("/service")?.flag).toBe("service");
     expect(findNavItem("/parts")?.flag).toBe("parts");
+    expect(findNavItem("/parts/low-stock")?.flag).toBe("parts-stock");
     expect(findNavItem("/nope")).toBeUndefined();
   });
 });

@@ -566,6 +566,8 @@ export interface WorkOrder extends WorkOrderRow {
   notes: string;
   hour_meter: { hours: string; reading_date: string } | null;
   labor: LaborLine[];
+  /** Null when parts stock is switched off. */
+  parts_used: UsedPart[] | null;
   maintenance_plan: string | null;
   maintenance_plan_name: string;
   is_deleted: boolean;
@@ -774,6 +776,10 @@ export interface PartRow {
   vendor: string;
   superseded_by: string | null;
   superseded_by_summary: PartSummary | null;
+  /** From the stock ledger; "0.00" for a part never counted. */
+  on_hand: string | null;
+  /** At or below the reorder point. */
+  low: boolean;
   is_deleted: boolean;
 }
 
@@ -794,4 +800,47 @@ export interface PartFacets {
   categories: { value: string; label: string }[];
   units: { value: string; label: string }[];
   can_see_cost: boolean;
+}
+
+export type StockKind = "opening" | "receive" | "issue" | "return" | "adjust" | "reversal";
+
+/** One line in the append-only stock ledger. */
+export interface StockMovement {
+  id: string;
+  part: string;
+  part_summary: PartSummary;
+  kind: StockKind;
+  kind_label: string;
+  /** Signed: into stock is positive. */
+  quantity: string;
+  balance_after: string;
+  occurred_at: string;
+  work_order: string | null;
+  work_order_number: string | null;
+  /** Admin, sales and parts only. */
+  unit_cost?: string | null;
+  unit_price: string | null;
+  reference: string;
+  note: string;
+  reverses: string | null;
+  reversed: boolean;
+  can_reverse: boolean;
+  by: string;
+}
+
+export interface StockCheck {
+  id: number;
+  started_at: string;
+  finished_at: string | null;
+  parts_checked: number;
+  drift: { part: string; part_number: string; ledger: string; stored: string }[];
+  ok: boolean;
+}
+
+/** Net parts on a work order, priced as issued. */
+export interface UsedPart {
+  part: PartSummary;
+  quantity: string;
+  unit_price: string | null;
+  amount: string | null;
 }

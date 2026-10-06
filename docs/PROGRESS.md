@@ -10,8 +10,8 @@
 | 6 | Printouts (work order and spec sheet PDFs) | Merged |
 | 7 | Units changing hands (sales, trade-ins, repos) | Merged |
 | 8 | Quotes and sales | Merged |
-| 9 | Parts catalog | **In review** |
-| 10 | Parts stock ledger | Not started |
+| 9 | Parts catalog | Merged |
+| 10 | Parts stock ledger | **In review** |
 | 11 | Receiving parts invoices | Not started |
 | 12 | Dashboard and reports | Not started |
 | 13 | Continuity (offline-ready app, paper fallback) | Not started |
@@ -175,6 +175,27 @@ A unit can be sold, come back and be sold again any number of times. It stays on
 **Tests**: 310 backend tests (93% coverage), 47 Vitest, 47 Playwright end-to-end tests.
 
 **Known limitations**: a sale's unit price is the line price; a quote-wide discount isn't spread over the units on the sale records. Sales tax follows the rule above; check it with your accountant. No deposits, payments or invoices yet (invoice # is typed in). Quotes can't be emailed from the app yet.
+
+## Phase 10: Parts stock ledger
+
+**Built**
+- [x] **Append-only stock ledger**: every change to a part's stock is a line (opening count, received, used on a work order, returned from a work order, count adjustment, reversal) with who, when, how many, the count after, cost and price. The database refuses edits and deletes; a mistake is put right with a reversing line
+- [x] **On hand** is kept with each line in the same transaction and can never go below zero (checked by the app and the database). "Only 2 on hand. If the shelf has more, count it first."
+- [x] **Receive** (how many, our cost from the invoice, invoice #) and **Count** (enter what's on the shelf; the first count is the opening count, later ones record the difference) on the part page, for parts staff and admins
+- [x] **Stock history** on the part page, newest first, with a reverse button for parts staff and admins
+- [x] **Parts on work orders**: service, parts staff and admins add parts to an open work order (the picker shows how many are on hand) and return unused ones. Parts are priced at the list price when taken; the work order page and its printout list them with a total. A work order with parts on it can't be cancelled until they're returned
+- [x] **Low stock**: a page (and menu item) listing parts at or below their reorder point by bin, with how many to order and the supplier; the parts list shows *On hand* and filters by low, in stock and out of stock
+- [x] **Nightly stock check** (07:00 UTC, Procrastinate): recomputes every part's count from its history and compares. Any difference is recorded, shown at the top of *Low stock*, and logged as an error so Sentry alerts. Nothing is changed automatically. Admins can run it now with *Check now*; `manage.py check_stock` does the same
+- [x] A part with stock on hand can't be removed (count it to zero first)
+- [x] Mechanics, sales and read-only see quantities and history but not our cost
+- [x] Behind the `parts-stock` feature flag (on); demo data has opening counts, one delivery, parts on the three open demo work orders, and five parts low
+- [x] Test fix: the end-to-end browser now runs in Eastern time like the server (tests failed between 8 pm and midnight)
+
+**Migrations**: `parts/0004_stock_ledger` (new tables), `parts/0005_stock_guards` (append-only ledger, no hard deletes of stock rows), `parts/0006_stock_flag`.
+
+**Tests**: 344 backend tests (93% coverage), 48 Vitest, 52 Playwright end-to-end tests.
+
+**Known limitations**: receiving is by hand until invoices arrive (Phase 11). No transfer between bins or stores. Prices on a work order are list prices; no discounts or markups per customer yet. Parts on a work order aren't billed anywhere yet (no invoicing).
 
 ## Phase 9: Parts catalog
 

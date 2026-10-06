@@ -22,10 +22,12 @@ export interface PartFilters {
   category: string;
   bin: string;
   replaced: boolean;
+  /** "", "low", "in" or "out". */
+  stock: string;
   ordering: string;
 }
 
-export const EMPTY_PART_FILTERS: PartFilters = { q: "", category: "", bin: "", replaced: false, ordering: "number" };
+export const EMPTY_PART_FILTERS: PartFilters = { q: "", category: "", bin: "", replaced: false, stock: "", ordering: "number" };
 
 export function partParams(f: PartFilters): URLSearchParams {
   const params = new URLSearchParams();
@@ -33,6 +35,7 @@ export function partParams(f: PartFilters): URLSearchParams {
   if (f.category) params.set("category", f.category);
   if (f.bin) params.set("bin", f.bin);
   if (f.replaced) params.set("replaced", "1");
+  if (f.stock) params.set("stock", f.stock);
   if (f.ordering !== "number") params.set("ordering", f.ordering);
   return params;
 }

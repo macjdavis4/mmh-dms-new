@@ -273,3 +273,57 @@ def load_demo_parts() -> None:
     if old and new and old.superseded_by_id is None:
         old.superseded_by = new
         services.save_part(old)
+
+
+# Opening shelf counts. Parts left out (RK-CA100) have never been counted, so
+# they show as out of stock; several end up at or below their reorder point.
+OPENING = {
+    "31N4-01050": "8",
+    "31N4-01060": "3",
+    "31N4-02100": "7",
+    "XKBH-00117A": "4",
+    "31N4-40020": "1",
+    "BL-634": "120",
+    "31N5-50110": "5",
+    "LED-1280-W": "6",
+    "LED-BLUE-SPOT": "2",
+    "AW32-5G": "9",
+    "SS-BRG-KIT": "2",
+    "TIRE-815-15-S": "2",
+}
+# (part number, quantity, reference) received after the count.
+RECEIVED = [("31N4-01050", "12", "Hyundai invoice 55120 (demo)")]
+# (unit serial, work order complaint starts with, part number, quantity)
+USED = [
+    ("HHKHFV30K00057", "Mast chatters", "BL-634", "12"),
+    ("FGA25-70988", "Hydraulic leak", "AW32-5G", "1"),
+    ("HHKHHL03P00052", "Prep for delivery", "LED-BLUE-SPOT", "1"),
+]
+
+
+def load_demo_stock() -> None:
+    """Counts, a delivery, and parts on the open demo work orders. Safe to run
+    again: parts that already have stock history are left alone."""
+    from apps.service.models import WorkOrder
+
+    from . import stock
+    from .models import StockMovement
+
+    for number, counted in OPENING.items():
+        part = Part.objects.filter(part_number=number).first()
+        if part is None or StockMovement.objects.filter(part=part).exists():
+            continue
+        stock.count(part, Decimal(counted), note="Opening count (demo)")
+        for rec_number, qty, reference in RECEIVED:
+            if rec_number == number:
+                stock.receive(part, Decimal(qty), reference=reference)
+        for serial, complaint, used_number, used_qty in USED:
+            if used_number != number:
+                continue
+            work_order = WorkOrder.objects.filter(
+                unit__serial_number=serial,
+                complaint__startswith=complaint,
+                status__in=WorkOrder.OPEN_STATUSES,
+            ).first()
+            if work_order is not None:
+                stock.issue(part, work_order, Decimal(used_qty))

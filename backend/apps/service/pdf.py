@@ -10,6 +10,8 @@ from reportlab.lib.units import inch
 from reportlab.platypus import KeepTogether, Spacer, Table, TableStyle
 
 from apps.core.pdf import LINE, WIDTH, box, date_text, facts, grid, number, p, render, text
+from apps.parts import stock as parts_stock
+from apps.sales.pdf import dollars as money
 from apps.units import services as unit_services
 
 from .models import WorkOrder
@@ -46,6 +48,12 @@ def work_order_pdf(wo: WorkOrder) -> bytes:
     hours = reading.hours if reading else (latest.hours if latest else None)
     labor = list(wo.labor.select_related("mechanic"))
     total = sum((line.hours for line in labor), Decimal("0"))
+    parts = parts_stock.parts_used(wo)
+    parts_total = (
+        sum((row.amount for row in parts if row.amount is not None), Decimal("0"))
+        if parts
+        else None
+    )
     open_job = wo.status not in (WorkOrder.Status.COMPLETED, WorkOrder.Status.CANCELLED)
     owner = unit_services.open_ownership(unit)
     contact_phone = customer.phone if customer else ""
@@ -128,11 +136,21 @@ def work_order_pdf(wo: WorkOrder) -> bytes:
         p(f"Total labor: <b>{number(total)} h</b>" if labor else "", "right", raw=True),
         p("Parts used", "h2"),
         grid(
-            ["Part number", "Description", "Qty"],
-            [],
-            [0.25, 0.63, 0.12],
-            blank_rows=5 if open_job else 1,
+            ["Part number", "Description", "Qty", "Each", "Amount"],
+            [
+                [
+                    row.part.part_number,
+                    row.part.description,
+                    number(row.quantity),
+                    money(row.unit_price),
+                    money(row.amount),
+                ]
+                for row in parts
+            ],
+            [0.2, 0.44, 0.1, 0.12, 0.14],
+            blank_rows=(3 if parts else 5) if open_job else (0 if parts else 1),
         ),
+        p(f"Total parts: <b>{money(parts_total)}</b>" if parts else "", "right", raw=True),
     ]
     if wo.hold_reason:
         story.insert(2, p(f"<b>On hold:</b> {text(wo.hold_reason)}", "body", raw=True))

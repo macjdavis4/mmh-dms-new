@@ -144,6 +144,15 @@ The database refuses it, so this can only be a near-miss (for example `O` vs `0`
 - **A maker changed a number**: add the new part, then edit the old one and set *Replaced by*. Don't edit the old number in place; history and invoices refer to it.
 - A bin can't be removed while parts are in it; move them to another bin first.
 
+### Parts stock
+
+- Stock is an append-only ledger: lines are never edited or deleted. Switch the stock features off with the `parts-stock` flag (the catalog keeps working).
+- **A count is wrong**: count the shelf (*part page → Count*). The difference is recorded as an adjustment.
+- **Something was entered by mistake** (received twice, wrong part): reverse the line in the part's *Stock history*. Parts put on a work order by mistake: *Return* them from the work order.
+- **"Only N on hand"** when using a part: the record says fewer than the shelf has. Count the shelf first, then add the part.
+- **A work order can't be cancelled**: return its parts to stock first.
+- **The stock check found differences** (red box on *Low stock*, a Sentry error "stock drift"): the stored count of a part no longer matches its history. Nothing is changed automatically. Run `python manage.py check_stock` to see them again. Find out why (a direct database edit, or a bug) before fixing; then fix the stored count in a database shell with `UPDATE parts_partstock SET on_hand = <ledger value> WHERE part_id = '<id>';` (the ledger is the truth), and run `check_stock` again until it reports no differences.
+
 ## Read-only mode and the maintenance banner
 
 *Admin → Site settings*. Read-only mode blocks every change for everyone (sign-in still works) and shows a notice on every screen. Use it during database maintenance or a restore. The banner can show any message in information, warning or critical style, including on the sign-in page.

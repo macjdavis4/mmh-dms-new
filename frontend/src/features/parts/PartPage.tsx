@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, MapPin, Pencil, Replace, RotateCcw, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, ClipboardCheck, MapPin, PackagePlus, Pencil, Replace, RotateCcw, Trash2 } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
@@ -11,10 +11,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
-import { formatCents, formatDate, formatNumber } from "@/lib/format";
+import { isOn, useFlags } from "@/lib/flags";
+import { formatCents, formatDate, formatNumber, formatQty } from "@/lib/format";
 import type { PartSummary } from "@/lib/types";
 
-import { canEditParts, partLabel, usePart, usePartAction } from "./api";
+import { canEditParts, canSeePartCost, partLabel, usePart, usePartAction } from "./api";
+import { canKeepStock } from "./stock";
+import { CountDialog, ReceiveDialog } from "./StockDialogs";
+import { StockHistory } from "./StockHistory";
 
 function Fact({ label, value }: { label: string; value: ReactNode }) {
   return (
@@ -40,6 +44,8 @@ export function PartPage() {
   const part = usePart(id);
   const action = usePartAction(id);
   const [confirm, setConfirm] = useState(false);
+  const [stockDialog, setStockDialog] = useState<"receive" | "count" | null>(null);
+  const stockOn = isOn(useFlags().data?.flags, "parts-stock");
 
   if (part.isPending) {
     return (
@@ -66,6 +72,7 @@ export function PartPage() {
   }
   const p = part.data;
   const canEdit = canEditParts(user.role);
+  const keepsStock = stockOn && canKeepStock(user.role) && !p.is_deleted;
 
   return (
     <div className="flex flex-col gap-6">
@@ -123,8 +130,36 @@ export function PartPage() {
       )}
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <SectionCard id="stock" title="Where and how many">
+        <SectionCard
+          id="stock"
+          title="Where and how many"
+          actions={
+            keepsStock && (
+              <>
+                <Button variant="outline" onClick={() => setStockDialog("receive")}>
+                  <PackagePlus className="size-4" /> Receive
+                </Button>
+                <Button variant="outline" onClick={() => setStockDialog("count")}>
+                  <ClipboardCheck className="size-4" /> Count
+                </Button>
+              </>
+            )
+          }
+        >
           <dl className="grid grid-cols-2 gap-5">
+            {stockOn && (
+              <div className="col-span-2 flex flex-col">
+                <dt className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">On hand</dt>
+                <dd className="flex flex-wrap items-center gap-3">
+                  <span className="text-4xl font-extrabold tabular-nums">{formatQty(p.on_hand)}</span>
+                  {p.low && (
+                    <Badge variant="outline" className="border-warning/50 text-warning font-semibold">
+                      {Number(p.on_hand) > 0 ? "Low: time to reorder" : "Out of stock"}
+                    </Badge>
+                  )}
+                </dd>
+              </div>
+            )}
             <Fact
               label="Bin"
               value={
@@ -139,7 +174,6 @@ export function PartPage() {
             <Fact label="Reorder at" value={p.reorder_point !== null ? formatNumber(p.reorder_point) : ""} />
             <Fact label="Order this many" value={p.reorder_quantity !== null ? formatNumber(p.reorder_quantity) : ""} />
           </dl>
-          <p className="text-muted-foreground mt-4 text-xs">Quantities on hand arrive with the stock ledger.</p>
         </SectionCard>
         <SectionCard id="price" title="Price and supplier">
           <dl className="grid grid-cols-2 gap-5">
@@ -195,6 +229,15 @@ export function PartPage() {
           </dl>
         </SectionCard>
       </div>
+
+      {stockOn && (
+        <SectionCard id="history" title="Stock history" description="Every change to the count, newest first. Mistakes are put right with a reversing line, never erased.">
+          <StockHistory partId={p.id} canReverse={keepsStock} />
+        </SectionCard>
+      )}
+
+      {stockDialog === "receive" && <ReceiveDialog part={p} showCost={canSeePartCost(user.role)} onClose={() => setStockDialog(null)} />}
+      {stockDialog === "count" && <CountDialog part={p} onHand={p.on_hand ?? "0"} onClose={() => setStockDialog(null)} />}
 
       <ConfirmDialog
         open={confirm}

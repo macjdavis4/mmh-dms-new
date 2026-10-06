@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { WorkOrderParts } from "@/features/parts/WorkOrderParts";
 import { ApiError } from "@/lib/api";
 import { formatDate, formatDateTime, formatNumber, todayISO } from "@/lib/format";
 import type { WorkOrder } from "@/lib/types";
@@ -414,6 +415,7 @@ function WorkOrderView({ wo }: { wo: WorkOrder }) {
       </div>
 
       <Labor wo={wo} canEdit={canEdit} />
+      {wo.parts_used !== null && <WorkOrderParts wo={{ ...wo, parts_used: wo.parts_used }} />}
 
       {editable && dirty && (
         <div className="bg-card/95 supports-[backdrop-filter]:bg-card/85 fixed inset-x-0 bottom-0 z-20 border-t backdrop-blur lg:left-64">
@@ -433,7 +435,7 @@ function WorkOrderView({ wo }: { wo: WorkOrder }) {
       <ConfirmDialog
         open={dialog === "cancel"}
         title={`Cancel ${wo.number}?`}
-        description="The work order and its labor are kept for the record. You can reopen it later."
+        description="The work order and its labor are kept for the record. You can reopen it later. Return any parts to stock first."
         confirmLabel="Cancel job"
         onCancel={() => setDialog(null)}
         onConfirm={() => move("cancelled")}

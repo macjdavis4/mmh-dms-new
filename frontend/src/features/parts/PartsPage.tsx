@@ -1,5 +1,5 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import { ChevronLeft, ChevronRight, MapPin, Plus, Replace, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, MapPin, PackageMinus, Plus, Replace, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 
@@ -11,7 +11,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { formatCents, formatNumber } from "@/lib/format";
+import { isOn, useFlags } from "@/lib/flags";
+import { formatCents, formatNumber, formatQty } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import type { PartRow } from "@/lib/types";
 
 import { canEditParts, canSeePartCost, EMPTY_PART_FILTERS, type PartFilters, partParams, useBins, usePartFacets, useParts } from "./api";
@@ -24,6 +26,7 @@ function readFilters(params: URLSearchParams): PartFilters {
     category: params.get("category") ?? "",
     bin: params.get("bin") ?? "",
     replaced: params.get("replaced") === "1",
+    stock: params.get("stock") ?? "",
     ordering: params.get("ordering") ?? "number",
   };
 }
@@ -37,7 +40,22 @@ function Replaced({ p }: { p: PartRow }) {
   );
 }
 
-function PartCard({ p, cost }: { p: PartRow; cost: boolean }) {
+const STOCK_FILTERS = [
+  { value: "low", label: "Low (at or below reorder point)" },
+  { value: "in", label: "In stock" },
+  { value: "out", label: "Out of stock" },
+];
+
+function OnHand({ p }: { p: PartRow }) {
+  return (
+    <span className={cn("font-semibold whitespace-nowrap tabular-nums", p.low && "text-warning")}>
+      {formatQty(p.on_hand)}
+      {p.low && <span className="sr-only"> (low)</span>}
+    </span>
+  );
+}
+
+function PartCard({ p, cost, stock }: { p: PartRow; cost: boolean; stock: boolean }) {
   return (
     <Link to={`/parts/${p.id}`} className="hover:bg-muted/60 flex flex-col gap-1.5 p-4">
       <span className="flex items-start justify-between gap-3">
@@ -56,6 +74,11 @@ function PartCard({ p, cost }: { p: PartRow; cost: boolean }) {
           </span>
         )}
         {cost && p.cost && <span>Cost {formatCents(p.cost)}</span>}
+        {stock && (
+          <span className={cn("font-semibold", p.low ? "text-warning" : "text-foreground")}>
+            {formatQty(p.on_hand)} on hand{p.low && " · low"}
+          </span>
+        )}
       </span>
       <Replaced p={p} />
     </Link>
@@ -71,6 +94,7 @@ export function PartsPage() {
   const parts = useParts(filters, page, PAGE_SIZE);
   const facets = usePartFacets();
   const bins = useBins();
+  const stock = isOn(useFlags().data?.flags, "parts-stock");
   const update = (patch: Partial<PartFilters>) => {
     setParams(partParams({ ...filters, ...patch }), { replace: true });
     setPage(1);
@@ -103,6 +127,7 @@ export function PartsPage() {
       },
       { id: "category", header: "Category", cell: ({ row }) => row.original.category_label },
       { id: "bin", header: "Bin", cell: ({ row }) => <span className="font-mono">{row.original.bin_code ?? "—"}</span> },
+      ...(stock ? [{ id: "on_hand", header: "On hand", cell: ({ row }) => <OnHand p={row.original} /> } satisfies ColumnDef<PartRow>] : []),
       {
         id: "reorder",
         header: "Reorder at",
@@ -120,7 +145,7 @@ export function PartsPage() {
         : []),
       { id: "price", header: "List price", cell: ({ row }) => <span className="font-semibold tabular-nums">{formatCents(row.original.list_price)}</span> },
     ],
-    [cost],
+    [cost, stock],
   );
   const total = parts.data?.count ?? 0;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -132,6 +157,13 @@ export function PartsPage() {
         description="Find a part by its number, another brand's number, or what it is."
         actions={
           <>
+            {stock && (
+              <Button asChild variant="outline">
+                <Link to="/parts/low-stock">
+                  <PackageMinus className="size-4" /> Low stock
+                </Link>
+              </Button>
+            )}
             <Button asChild variant="outline">
               <Link to="/parts/bins">
                 <MapPin className="size-4" /> Bins
@@ -147,8 +179,8 @@ export function PartsPage() {
           </>
         }
       />
-      <div className="mb-4 grid gap-3 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)] lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
-        <Field id="parts-search" label="Search">
+      <div className="mb-4 grid gap-3 sm:grid-cols-2 md:items-end lg:grid-cols-3 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
+        <Field id="parts-search" label="Search" className="sm:col-span-2 lg:col-span-3 xl:col-span-1">
           <Input
             id="parts-search"
             type="search"
@@ -175,7 +207,12 @@ export function PartsPage() {
             options={(bins.data ?? []).map((b) => ({ value: b.id, label: b.code }))}
           />
         </Field>
-        <div className="flex flex-wrap items-center gap-2 md:col-span-3 lg:col-span-1">
+        {stock && (
+          <Field id="parts-stock" label="Stock">
+            <NativeSelect id="parts-stock" value={filters.stock} onChange={(v) => update({ stock: v })} placeholder="Any amount" options={STOCK_FILTERS} />
+          </Field>
+        )}
+        <div className="flex flex-wrap items-center gap-2 sm:col-span-2 lg:col-span-3 xl:col-span-1">
           <label className="flex min-h-11 items-center gap-2 text-sm font-medium">
             <input type="checkbox" className="accent-primary size-5" checked={filters.replaced} onChange={(e) => update({ replaced: e.target.checked })} />
             Show replaced parts
@@ -190,14 +227,14 @@ export function PartsPage() {
       <Card className="gap-0 overflow-hidden py-0">
         <DataTable
           caption="Parts"
-          tableFrom="lg"
+          tableFrom="xl"
           columns={columns}
           data={parts.data?.results}
           isLoading={parts.isPending}
           error={parts.error}
           onRetry={() => void parts.refetch()}
           getRowId={(p) => p.id}
-          renderCard={(row) => <PartCard p={row.original} cost={cost} />}
+          renderCard={(row) => <PartCard p={row.original} cost={cost} stock={stock} />}
           empty={{
             title: filtered ? "No parts match" : "No parts in the catalog yet",
             message: filtered ? "Try another number or fewer words. Replaced parts are hidden unless you tick Show replaced parts." : "Add the parts you stock.",

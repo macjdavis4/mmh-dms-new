@@ -4,6 +4,7 @@ import { useId, useState } from "react";
 
 import { useDebounced } from "@/hooks/useDebounced";
 import { api, type Paginated } from "@/lib/api";
+import { formatQty } from "@/lib/format";
 import type { PartRow, PartSummary } from "@/lib/types";
 
 /** Type-to-search part picker (number, other brand's number or description). */
@@ -13,12 +14,15 @@ export function PartPicker({
   onChange,
   excludeId,
   invalid,
+  showStock,
 }: {
   id: string;
   value: PartSummary | null;
   onChange: (value: PartSummary | null) => void;
   excludeId?: string;
   invalid?: boolean;
+  /** Show how many are on hand beside each match. */
+  showStock?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -89,7 +93,12 @@ export function PartPicker({
                 }}
                 className="hover:bg-muted flex min-h-12 w-full flex-col justify-center px-3 py-1.5 text-left text-sm"
               >
-                <span className="font-mono font-semibold">{p.part_number}</span>
+                <span className="flex items-baseline justify-between gap-3">
+                  <span className="font-mono font-semibold">{p.part_number}</span>
+                  {showStock && p.on_hand !== null && (
+                    <span className={Number(p.on_hand) > 0 ? "text-xs font-semibold" : "text-destructive text-xs font-semibold"}>{formatQty(p.on_hand)} on hand</span>
+                  )}
+                </span>
                 <span className="text-muted-foreground text-xs">{[p.manufacturer, p.description].filter(Boolean).join(" · ")}</span>
               </button>
             </li>
