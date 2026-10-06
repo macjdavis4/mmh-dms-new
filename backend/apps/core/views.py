@@ -160,7 +160,10 @@ class AdminHealthView(APIView):
                     "WHERE status IN ('todo','doing','failed') GROUP BY status"
                 )
                 jobs = {row[0]: row[1] for row in cur.fetchall()}
-        latest = BackupRun.objects.order_by("-started_at").first()
+        latest = (
+            BackupRun.objects.exclude(kind=BackupRun.Kind.PAPER).order_by("-started_at").first()
+        )
+        paper = BackupRun.objects.filter(kind=BackupRun.Kind.PAPER).order_by("-started_at").first()
         return Response(
             {
                 "database": db_detail,
@@ -172,6 +175,13 @@ class AdminHealthView(APIView):
                     "finished_at": latest.finished_at,
                 }
                 if latest
+                else None,
+                "last_paper_backup": {
+                    "status": paper.status,
+                    "started_at": paper.started_at,
+                    "finished_at": paper.finished_at,
+                }
+                if paper
                 else None,
                 "version": settings.APP_VERSION,
                 "environment": settings.APP_ENV,

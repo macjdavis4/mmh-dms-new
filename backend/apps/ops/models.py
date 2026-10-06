@@ -12,6 +12,7 @@ class BackupRun(TimeStampedModel):
     class Kind(models.TextChoices):
         DATABASE = "database", "Database dump"
         MEDIA = "media", "Media copy"
+        PAPER = "paper", "Paper backup"
 
     class Status(models.TextChoices):
         RUNNING = "running", "Running"
@@ -34,7 +35,8 @@ class BackupRun(TimeStampedModel):
         ordering = ["-started_at"]
         constraints = [
             models.CheckConstraint(
-                condition=models.Q(kind__in=["database", "media"]), name="backuprun_kind_valid"
+                condition=models.Q(kind__in=["database", "media", "paper"]),
+                name="backuprun_kind_valid",
             ),
             models.CheckConstraint(
                 condition=models.Q(status__in=["running", "succeeded", "failed", "skipped"]),

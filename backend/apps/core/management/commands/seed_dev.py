@@ -51,6 +51,7 @@ LIVE_FLAGS = [
     "parts-stock",
     "parts-invoices",
     "reports",
+    "offline",
 ]
 
 # Features still being built: created switched off.
