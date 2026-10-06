@@ -12,8 +12,8 @@
 | 8 | Quotes and sales | Merged |
 | 9 | Parts catalog | Merged |
 | 10 | Parts stock ledger | Merged |
-| 11 | Receiving parts invoices | **In review** |
-| 12 | Dashboard and reports | Not started |
+| 11 | Receiving parts invoices | Merged |
+| 12 | Dashboard and reports | **In review** |
 | 13 | Continuity (offline-ready app, paper fallback) | Not started |
 | 14 | Offline work orders (optional) | Ask before starting |
 
@@ -175,6 +175,32 @@ A unit can be sold, come back and be sold again any number of times. It stays on
 **Tests**: 310 backend tests (93% coverage), 47 Vitest, 47 Playwright end-to-end tests.
 
 **Known limitations**: a sale's unit price is the line price; a quote-wide discount isn't spread over the units on the sale records. Sales tax follows the rule above; check it with your accountant. No deposits, payments or invoices yet (invoice # is typed in). Quotes can't be emailed from the app yet.
+
+## Phase 12: Dashboard and reports
+
+**Built**
+- [x] **Dashboard tiles**, counted live on the server and chosen by role and feature flags: units in stock, open work orders, assigned to me (service and admin), maintenance due, open quotes and units sold this month (admin and sales), low-stock parts, parts on the shelf at cost (admin, sales, parts), invoices to check and parts on backorder. Tiles that need attention turn amber; each opens the page or report behind it. The "Phase N" placeholders are gone
+- [x] **Quick actions** updated (new work order, add or browse units, receive a parts invoice, import cards, reports) and a **Reports** card on the dashboard
+- [x] **Reports** page and menu item, with seven reports:
+  - *Units sold*: date, unit, serial, customer, why, invoice #, price, our cost, margin (admin, sales)
+  - *Units in stock*: today's stock, oldest first, with days in stock, cost and asking price (admin, sales)
+  - *Parts valuation*: on hand × our cost per part, total and by category (admin, sales, parts)
+  - *Parts used on work orders*: by part, net of returns, at list price; our cost for admin, sales and parts only (everyone)
+  - *Parts received*: by invoice, at our cost (admin, sales, parts)
+  - *Labor by mechanic*: hours, work orders and days worked (admin, service)
+  - *Work orders completed*: days open, labor hours and parts (everyone)
+- [x] Date ranges: this month, last month, this year, last year, last 12 months, or any dates (kept in the address, so a report can be bookmarked or sent)
+- [x] **Download CSV** for every report (opens in Excel; text that a spreadsheet would run as a formula is made safe). Totals row included
+- [x] Tables on desktop, cards on tablets and phones; every row links to its unit, part, invoice or work order
+- [x] The server decides who sees which report and which money columns; tested for every role
+- [x] Behind the `reports` feature flag (on)
+- [x] The work order list can open filtered to "mine" (`/service?mine=1`)
+
+**Migrations**: `reports/0001_reports_flag` (the feature flag only; reports store nothing).
+
+**Tests**: 386 backend tests (93% coverage), 56 Vitest, 57 Playwright end-to-end tests.
+
+**Known limitations**: no charts yet (numbers and tables only). Reports aren't emailed on a schedule. Sales tax and payments aren't reported (there's no invoicing). "Units sold this month" counts units leaving our stock by the date they changed hands.
 
 ## Phase 11: Receiving parts invoices
 

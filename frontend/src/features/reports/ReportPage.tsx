@@ -30,7 +30,7 @@ function Table({ data }: { data: ReportData }) {
   const navigate = useNavigate();
   const hasTotals = Object.keys(data.totals).length > 0;
   return (
-    <div className="hidden overflow-x-auto lg:block">
+    <div className="hidden overflow-x-auto xl:block">
       <table className="w-full text-sm" aria-label={data.title}>
         <thead className="bg-muted/60 text-muted-foreground text-xs tracking-wide uppercase">
           <tr>
@@ -49,7 +49,7 @@ function Table({ data }: { data: ReportData }) {
               onClick={row._to ? () => void navigate(row._to) : undefined}
             >
               {data.columns.map((c, j) => (
-                <td key={c.key} className={cn("px-4 py-2.5", isNumeric(c.kind) ? "text-right whitespace-nowrap tabular-nums" : "text-left")}>
+                <td key={c.key} className={cn("px-4 py-2.5", isNumeric(c.kind) ? "text-right whitespace-nowrap tabular-nums" : "text-left", c.kind === "date" && "whitespace-nowrap")}>
                   {j === 0 && row._to ? (
                     <Link to={row._to} className="text-primary font-semibold hover:underline" onClick={(e) => e.stopPropagation()}>
                       {formatCell(row[c.key], c.kind)}
@@ -79,25 +79,38 @@ function Table({ data }: { data: ReportData }) {
 }
 
 function Cards({ data }: { data: ReportData }) {
-  const primary = data.columns.filter((c, i) => i === 0 || c.primary);
-  const [first, ...rest] = primary;
+  const shown = data.columns.filter((c, i) => i === 0 || c.primary);
+  const [first, ...rest] = shown;
   if (!first) return null;
-  const totals = data.columns.filter((c) => c.key in data.totals);
+  // Text goes on its own line under the title; numbers and dates get a label.
+  const words = rest.filter((c) => c.kind === "text");
+  const figures = rest.filter((c) => c.kind !== "text");
+  const totalFigures = data.columns.filter((c) => c.kind !== "text" && c.key in data.totals);
+  const totalWords = data.columns.filter((c) => c.kind === "text" && c.key in data.totals);
   return (
-    <div className="lg:hidden">
+    <div className="xl:hidden">
       <ul className="divide-y" aria-label={data.title}>
         {data.rows.map((row, i) => {
           const body = (
             <>
-              <span className="block font-semibold">{formatCell(row[first.key], first.kind)}</span>
-              <dl className="mt-1 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                {rest.map((c) => (
-                  <div key={c.key} className="flex min-w-0 justify-between gap-2">
-                    <dt className="text-muted-foreground truncate">{c.label}</dt>
-                    <dd className="font-medium whitespace-nowrap tabular-nums">{formatCell(row[c.key], c.kind)}</dd>
-                  </div>
-                ))}
-              </dl>
+              <span className="block font-semibold break-words">{formatCell(row[first.key], first.kind)}</span>
+              {words.map((c) => (
+                <span key={c.key} className="text-muted-foreground block text-sm break-words">
+                  {formatCell(row[c.key], c.kind)}
+                </span>
+              ))}
+              {figures.length > 0 && (
+                <dl className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1 text-sm sm:grid-cols-3">
+                  {figures.map((c) => (
+                    <div key={c.key} className="flex min-w-0 items-baseline justify-between gap-2">
+                      <dt className="text-muted-foreground truncate">{c.label}</dt>
+                      <dd className={cn("font-semibold whitespace-nowrap tabular-nums", c.kind === "money" && String(row[c.key] ?? "").startsWith("-") && "text-destructive")}>
+                        {formatCell(row[c.key], c.kind)}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
             </>
           );
           return (
@@ -113,15 +126,22 @@ function Cards({ data }: { data: ReportData }) {
           );
         })}
       </ul>
-      {totals.length > 0 && (
-        <dl className="bg-muted/60 grid grid-cols-2 gap-x-4 gap-y-1 border-t p-4 text-sm" aria-label="Totals">
-          {totals.map((c) => (
-            <div key={c.key} className="flex min-w-0 justify-between gap-2">
-              <dt className="text-muted-foreground truncate">{c.label}</dt>
-              <dd className="font-bold whitespace-nowrap tabular-nums">{formatCell(data.totals[c.key], c.kind)}</dd>
-            </div>
+      {(totalFigures.length > 0 || totalWords.length > 0) && (
+        <div className="bg-muted/60 border-t p-4 text-sm" aria-label="Totals">
+          {totalWords.map((c) => (
+            <span key={c.key} className="block font-bold">
+              Total: {formatCell(data.totals[c.key], c.kind)}
+            </span>
           ))}
-        </dl>
+          <dl className="mt-1 grid grid-cols-2 gap-x-6 gap-y-1 sm:grid-cols-3">
+            {totalFigures.map((c) => (
+              <div key={c.key} className="flex min-w-0 items-baseline justify-between gap-2">
+                <dt className="text-muted-foreground truncate">{c.label}</dt>
+                <dd className="font-bold whitespace-nowrap tabular-nums">{formatCell(data.totals[c.key], c.kind)}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
       )}
     </div>
   );

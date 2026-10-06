@@ -302,6 +302,10 @@ Nothing to set up: the reader (Tesseract) is built into the app's server image, 
 2. [ ] Check the lines against the paper, pick our part where one is missing, then press *Receive into stock* and enter what's actually in the box.
 3. [ ] Look at the *Backorders* tab now and then; press *Arrived* when they come, or *Won't come* if the supplier cancels.
 
+## Phase 12: dashboard and reports
+
+Nothing to set up. Each person's dashboard shows the numbers for their job. Reports are under *Reports* in the menu. Use *Download CSV* to open one in Excel.
+
 ---
 
 ## Ongoing

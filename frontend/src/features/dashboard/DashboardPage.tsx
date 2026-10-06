@@ -214,7 +214,7 @@ export function DashboardPage() {
     actions.push({ label: "Import unit cards", icon: FileUp, to: "/imports/new", hint: "Upload a spreadsheet of cards" });
   }
   if (on("reports")) {
-    actions.push({ label: "Reports", icon: BarChart3, to: "/reports", hint: "Sales, stock, parts and service totals" });
+    actions.push({ label: "Reports", icon: BarChart3, to: "/reports", hint: "Totals for any dates, ready to download" });
   }
   const tiles = dashboard.data?.tiles;
   return (

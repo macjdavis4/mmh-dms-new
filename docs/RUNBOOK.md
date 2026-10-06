@@ -163,6 +163,14 @@ The database refuses it, so this can only be a near-miss (for example `O` vs `0`
 - **Received the wrong amount**: reverse that line in the part's *Stock history*; the quantity goes back on the invoice line, then receive the right amount.
 - Try the reader with `python manage.py make_sample_invoice /tmp/sample.pdf` (or `.png`).
 
+### Dashboard and reports
+
+- Dashboard numbers and reports are counted live from the records; nothing is cached or stored, so they always match the rest of the app. Switch the reports off with the `reports` flag (the dashboard keeps its tiles).
+- **A number looks wrong**: open the report behind the tile (click it) and the rows that make it up. Fix the underlying record (a unit's cost, a part's cost, a work order's labor); the report follows.
+- **A report is slow**: narrow the dates. Ranges are limited to five years.
+- **CSV opens with odd characters**: it is UTF-8 with a byte-order mark, which Excel reads correctly when the file is double-clicked.
+- Who sees what is set in `apps/reports/definitions.py` (`roles=` on each report and column); change it there and the tests in `tests/test_reports.py` will say whether every role still gets what it should.
+
 ## Read-only mode and the maintenance banner
 
 *Admin → Site settings*. Read-only mode blocks every change for everyone (sign-in still works) and shows a notice on every screen. Use it during database maintenance or a restore. The banner can show any message in information, warning or critical style, including on the sign-in page.
