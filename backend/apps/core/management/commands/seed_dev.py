@@ -48,6 +48,7 @@ LIVE_FLAGS = [
     "units-changing-hands",
     "sales",
     "parts",
+    "parts-stock",
 ]
 
 # Features still being built: created switched off.

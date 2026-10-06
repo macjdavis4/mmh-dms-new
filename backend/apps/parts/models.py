@@ -16,8 +16,9 @@ from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import F, Q
 from django.db.models.functions import Upper
+from django.utils import timezone
 
-from apps.core.models import SoftDeleteModel
+from apps.core.models import AuditedModel, SoftDeleteModel
 
 ALIVE = Q(deleted_at__isnull=True)
 MONEY = {"max_digits": 12, "decimal_places": 2, "null": True, "blank": True}
@@ -223,3 +224,126 @@ class CrossReference(SoftDeleteModel):
     def save(self, *args: object, **kwargs: object) -> None:
         self.number_normalized = normalize_number(self.part_number)
         super().save(*args, **kwargs)  # type: ignore[arg-type]
+
+
+# --- Stock (Phase 10) ------------------------------------------------------------------------
+
+
+class StockMovement(AuditedModel):
+    """One line in the append-only stock ledger. On hand is the sum of a
+    part's movements; nothing is ever edited or deleted (a mistake is put
+    right with a reversing movement)."""
+
+    class Kind(models.TextChoices):
+        OPENING = "opening", "Opening count"
+        RECEIVE = "receive", "Received"
+        ISSUE = "issue", "Used on a work order"
+        RETURN = "return", "Returned from a work order"
+        ADJUST = "adjust", "Count adjustment"
+        REVERSAL = "reversal", "Reversal"
+
+    part = models.ForeignKey(Part, on_delete=models.PROTECT, related_name="movements")
+    kind = models.CharField(max_length=20, choices=Kind.choices)
+    # Into stock is positive, out of stock negative.
+    quantity = models.DecimalField(max_digits=10, decimal_places=2)
+    occurred_at = models.DateTimeField(default=timezone.now)
+    work_order = models.ForeignKey(
+        "service.WorkOrder",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="part_movements",
+    )
+    # What one cost us, and (on a work order) what we charge for one.
+    unit_cost = models.DecimalField(**MONEY, validators=[MinValueValidator(Decimal("0"))])  # type: ignore[arg-type]
+    unit_price = models.DecimalField(**MONEY, validators=[MinValueValidator(Decimal("0"))])  # type: ignore[arg-type]
+    reference = models.CharField(max_length=60, blank=True, default="")  # invoice #, count sheet
+    note = models.CharField(max_length=200, blank=True, default="")
+    reverses = models.OneToOneField(
+        "self", null=True, blank=True, on_delete=models.PROTECT, related_name="reversed_by"
+    )
+    # On hand after this movement, for the history list.
+    balance_after = models.DecimalField(max_digits=12, decimal_places=2)
+
+    COST_FIELDS: ClassVar[tuple[str, ...]] = ("unit_cost",)
+
+    class Meta:
+        ordering = ["-occurred_at", "-created_at"]
+        constraints = [
+            models.CheckConstraint(condition=~Q(quantity=0), name="movement_not_zero"),
+            models.CheckConstraint(
+                condition=Q(
+                    kind__in=["opening", "receive", "issue", "return", "adjust", "reversal"]
+                ),
+                name="movement_kind_valid",
+            ),
+            # Which way each kind moves stock, and what it must point at.
+            models.CheckConstraint(
+                condition=Q(kind__in=["opening", "receive"], quantity__gt=0)
+                | Q(kind="issue", quantity__lt=0, work_order__isnull=False)
+                | Q(kind="return", quantity__gt=0, work_order__isnull=False)
+                | Q(kind="adjust")
+                | Q(kind="reversal", reverses__isnull=False),
+                name="movement_kind_fits",
+            ),
+            models.CheckConstraint(
+                condition=Q(work_order__isnull=True) | Q(kind__in=["issue", "return", "reversal"]),
+                name="movement_work_order_only_when_used",
+            ),
+            models.CheckConstraint(
+                condition=Q(balance_after__gte=0), name="movement_balance_not_negative"
+            ),
+            models.CheckConstraint(
+                condition=(Q(unit_cost__isnull=True) | Q(unit_cost__gte=0))
+                & (Q(unit_price__isnull=True) | Q(unit_price__gte=0)),
+                name="movement_money_not_negative",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["part", "-occurred_at"], name="movement_part_idx"),
+            models.Index(fields=["work_order"], name="movement_work_order_idx"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.get_kind_display()} {self.quantity} x {self.part.part_number}"
+
+
+class PartStock(models.Model):
+    """How many of a part we have, kept in step with the ledger in the same
+    transaction as each movement. The nightly check recomputes it from the
+    ledger and alerts if they ever differ."""
+
+    part = models.OneToOneField(
+        Part, primary_key=True, on_delete=models.PROTECT, related_name="stock"
+    )
+    on_hand = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0"))
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(condition=Q(on_hand__gte=0), name="stock_not_negative"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.part.part_number}: {self.on_hand}"
+
+
+class StockCheck(models.Model):
+    """One run of the nightly ledger check."""
+
+    id = models.BigAutoField(primary_key=True)
+    started_at = models.DateTimeField(default=timezone.now)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    parts_checked = models.PositiveIntegerField(default=0)
+    # [{part, part_number, ledger, stored}] for every part that differed.
+    drift = models.JSONField(default=list, blank=True)
+
+    class Meta:
+        ordering = ["-started_at"]
+
+    def __str__(self) -> str:
+        return f"Stock check {self.started_at:%Y-%m-%d}: {len(self.drift)} differences"
+
+    @property
+    def ok(self) -> bool:
+        return self.finished_at is not None and not self.drift

@@ -240,7 +240,7 @@ WHITENOISE_MAX_AGE = 60 * 60 * 24 * 365
 
 # --- Background jobs and backups ---------------------------------------------
 
-PROCRASTINATE_IMPORT_PATHS = ["apps.ops.tasks"]
+PROCRASTINATE_IMPORT_PATHS = ["apps.ops.tasks", "apps.parts.tasks"]
 BACKUP_BUCKET = env("BACKUP_BUCKET", "mmh-backups")
 BACKUP_S3_ENDPOINT_URL = env(
     "BACKUP_S3_ENDPOINT_URL", env("S3_ENDPOINT_URL", "http://localhost:9000")
