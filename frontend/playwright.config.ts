@@ -4,7 +4,7 @@ const baseURL = process.env.E2E_BASE_URL ?? "http://localhost:8000";
 // The cloud sandbox ships its own Chromium; CI installs Playwright's.
 const executablePath = process.env.PW_CHROMIUM_PATH;
 // Screenshots are taken for one phase at a time (default: the current one).
-const screenshotPhase = process.env.SCREENSHOT_PHASE ?? "12";
+const screenshotPhase = process.env.SCREENSHOT_PHASE ?? "13";
 
 export default defineConfig({
   testDir: "./e2e",

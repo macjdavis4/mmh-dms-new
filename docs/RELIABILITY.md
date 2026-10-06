@@ -50,6 +50,12 @@ That allows about **7 hours 18 minutes** of downtime a month. Planned maintenanc
 - JSON logs with a request ID on every line (the Cloudflare ray ID when present).
 - The admin dashboard shows database, schema, background job and last-backup status.
 
+## Working when the system is down (Phase 13)
+
+- **Saved copy on devices**: the app keeps its own files on each phone, tablet and PC (a service worker), so it still opens without a connection. While someone is signed in, it also keeps a copy of our stock and units worked on in the last 90 days, with their full spec cards (no costs, prices or customer contact details). It refreshes every 30 minutes, is wiped at sign-out or when nobody is signed in, and is never shown once it's more than 14 days old. When the system can't be reached, the app offers **Open the saved copy**: read-only, searchable, printable.
+- **Paper backup**: every night at 06:00 UTC the system saves printable files to the second-region backup bucket (`paper/<environment>/<date>/`, kept 30 days): every open work order in full, the customer phone list, the parts list with bins and counts, units in stock, and the same as spreadsheets. Admins download them under *Admin > Paper backup*; if the site is down, from the DigitalOcean website (steps on that page and in `docs/RUNBOOK.md`). They are not encrypted (so they can be opened without special tools); the bucket is private.
+- What still needs the system: making changes (work orders, sales, stock). Write on the printed work orders and enter the changes when the system is back.
+
 ## Known single points of failure (accepted for cost)
 
 - **One Droplet**: an outage there means downtime, but no data loss. Rebuild takes under an hour.

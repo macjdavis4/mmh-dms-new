@@ -1,35 +1,8 @@
-import { expect, type Page, test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
-import { apiLogin, authFile, USERS } from "./helpers";
+import { apiLogin, authFile, savedCopyReady, USERS } from "./helpers";
 
 const BASE = "http://localhost:8000";
-
-/** Wait until the service worker controls the page and the saved copy is on the device. */
-async function savedCopyReady(page: Page): Promise<number> {
-  await page.evaluate(async () => {
-    await navigator.serviceWorker.ready;
-  });
-  // The first visit installs the service worker; a reload puts the page under its control.
-  await page.reload();
-  await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
-  const count = async () =>
-    page.evaluate(
-      () =>
-        new Promise<number>((resolve) => {
-          const req = indexedDB.open("mmh-offline", 1);
-          req.onupgradeneeded = () => req.result.createObjectStore("packs");
-          req.onsuccess = () => {
-            const tx = req.result.transaction("packs", "readonly");
-            const get = tx.objectStore("packs").get("units");
-            get.onsuccess = () => resolve((get.result as { units?: unknown[] } | undefined)?.units?.length ?? 0);
-            get.onerror = () => resolve(0);
-          };
-          req.onerror = () => resolve(0);
-        }),
-    );
-  await expect.poll(count, { timeout: 15_000 }).toBeGreaterThan(0);
-  return count();
-}
 
 test.describe("as a mechanic (service)", () => {
   test.use({ storageState: authFile("service") });

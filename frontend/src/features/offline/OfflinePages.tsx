@@ -204,7 +204,7 @@ export function OfflineUnitPage() {
         ).map(([label, value]) => (
           <div key={label} className="min-w-0">
             <dt className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">{label}</dt>
-            <dd className="truncate text-lg font-bold">{value}</dd>
+            <dd className="text-base font-bold break-words sm:text-lg">{value}</dd>
           </div>
         ))}
       </dl>
