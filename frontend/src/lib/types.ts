@@ -94,6 +94,7 @@ export interface AdminHealth {
   migrations: string;
   jobs: Record<string, number>;
   last_backup: { status: string; started_at: string; finished_at: string | null } | null;
+  last_paper_backup: { status: string; started_at: string; finished_at: string | null } | null;
   version: string;
   environment: string;
 }

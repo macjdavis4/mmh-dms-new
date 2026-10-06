@@ -62,9 +62,9 @@ def test_read_only_mode_blocks_writes_but_not_sign_in_or_switching_it_off(
 @pytest.mark.django_db
 def test_feature_flags_endpoint(client_for: Any) -> None:
     FeatureFlag.objects.create(key="parts-ocr", enabled=True, roles=["parts"])
-    FeatureFlag.objects.create(key="offline", enabled=False)
+    FeatureFlag.objects.create(key="sample-feature", enabled=False)
     flags = client_for("parts").get("/api/v1/feature-flags").json()["flags"]
-    assert flags["offline"] is False
+    assert flags["sample-feature"] is False
     assert flags["parts-ocr"] is True
     assert client_for("sales").get("/api/v1/feature-flags").json()["flags"]["parts-ocr"] is False
 

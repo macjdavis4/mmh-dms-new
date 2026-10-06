@@ -171,6 +171,13 @@ The database refuses it, so this can only be a near-miss (for example `O` vs `0`
 - **CSV opens with odd characters**: it is UTF-8 with a byte-order mark, which Excel reads correctly when the file is double-clicked.
 - Who sees what is set in `apps/reports/definitions.py` (`roles=` on each report and column); change it there and the tests in `tests/test_reports.py` will say whether every role still gets what it should.
 
+### Working when the system is down
+
+- **Devices**: open the app as usual. If it can't reach the system it says so and offers *Open the saved copy* (stock and recent units with spec cards, read-only). A device only has a copy if someone signed in on it while online in the last 14 days. Switch saving off with the `offline` flag; copies are wiped the next time each device reaches the system.
+- **Paper**: *Admin > Paper backup* has last night's files. If the site itself is down: sign in at cloud.digitalocean.com → *Spaces Object Storage* → the bucket ending in `-backups` → `paper/production/` → the latest date → download `paper-backup.zip` (or a PDF) and print. Staging files are under `paper/staging/`.
+- **A paper backup failed** (red row in System health, error in Sentry): open *Admin > Paper backup* for the error, then *Make one now*. It is safe to run again. Locally: `python manage.py shell -c "from apps.ops.paper import run_paper_backup; print(run_paper_backup(force=True).status)"`.
+- **Someone sees an old app after a release**: the app updates itself once all its tabs are closed; closing and reopening the browser is enough.
+
 ## Read-only mode and the maintenance banner
 
 *Admin → Site settings*. Read-only mode blocks every change for everyone (sign-in still works) and shows a notice on every screen. Use it during database maintenance or a restore. The banner can show any message in information, warning or critical style, including on the sign-in page.

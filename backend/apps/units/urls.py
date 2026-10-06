@@ -1,5 +1,7 @@
+from django.urls import path
 from rest_framework.routers import SimpleRouter
 
+from .offline import OfflineUnitsView
 from .views import (
     HourReadingViewSet,
     OwnershipRecordViewSet,
@@ -14,4 +16,7 @@ router.register("unit-files", UnitFileViewSet, basename="unit-files")
 router.register("hour-readings", HourReadingViewSet, basename="hour-readings")
 router.register("ownership-records", OwnershipRecordViewSet, basename="ownership-records")
 router.register("unit-changes", UnitChangeViewSet, basename="unit-changes")
-urlpatterns = router.urls
+urlpatterns = [
+    path("offline/units", OfflineUnitsView.as_view(), name="offline-units"),
+    *router.urls,
+]

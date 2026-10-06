@@ -11,7 +11,7 @@ from procrastinate.contrib.django import app
 
 from apps.core.context import acting_as
 
-from . import backup
+from . import backup, paper
 
 _RETRY = RetryStrategy(max_attempts=3, wait=600)
 
@@ -27,6 +27,14 @@ _RETRY = RetryStrategy(max_attempts=3, wait=600)
 def nightly_database_backup(timestamp: int) -> None:
     with acting_as(source="job"):
         backup.run_database_backup()
+
+
+@app.periodic(cron="0 6 * * *", periodic_id="nightly-paper-backup")
+@app.task(queue="maintenance", queueing_lock="paper-backup", lock="paper-backup", retry=_RETRY)
+def nightly_paper_backup(timestamp: int) -> None:
+    """Printable files for when the app is down (apps/ops/paper.py)."""
+    with acting_as(source="job"):
+        paper.run_paper_backup()
 
 
 @app.periodic(cron="15 7 * * *", periodic_id="nightly-media-replication")

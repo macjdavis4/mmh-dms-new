@@ -13,8 +13,8 @@
 | 9 | Parts catalog | Merged |
 | 10 | Parts stock ledger | Merged |
 | 11 | Receiving parts invoices | Merged |
-| 12 | Dashboard and reports | **In review** |
-| 13 | Continuity (offline-ready app, paper fallback) | Not started |
+| 12 | Dashboard and reports | Merged |
+| 13 | Continuity (offline-ready app, paper fallback) | **In review** |
 | 14 | Offline work orders (optional) | Ask before starting |
 
 From Phase 4 on, phases are smaller (one usable piece each) so each pull request stays easy to review.
@@ -175,6 +175,22 @@ A unit can be sold, come back and be sold again any number of times. It stays on
 **Tests**: 310 backend tests (93% coverage), 47 Vitest, 47 Playwright end-to-end tests.
 
 **Known limitations**: a sale's unit price is the line price; a quote-wide discount isn't spread over the units on the sale records. Sales tax follows the rule above; check it with your accountant. No deposits, payments or invoices yet (invoice # is typed in). Quotes can't be emailed from the app yet.
+
+## Phase 13: Continuity (offline-ready app, paper backup)
+
+**Built**
+- [x] **Offline-ready app**: a small, hand-written service worker (no new library) keeps the app's own files on each device, so it opens without a connection. It never stores data from the server; API calls always go to the network
+- [x] **Saved copy on devices** (as decided): our stock and units worked on in the last 90 days, with their full spec cards. No costs, prices or customer contact details. Saved in the browser's own storage for the signed-in person, refreshed every 30 minutes while online, wiped at sign-out, when nobody is signed in, when someone else signs in, or when the `offline` flag is switched off; never shown after 14 days
+- [x] **Offline mode**: a banner when the device loses its connection; when the system can't be reached, *Open the saved copy* leads to a read-only, searchable list (all units or our stock) and each unit's full spec card, printable
+- [x] **Nightly paper backup** (06:00 UTC, Procrastinate; idempotent): every open work order printed in full in one PDF, customer phone list, parts list with bins and counts, units in stock, plus customers, units (with spec cards), parts and work orders as CSV, and a ZIP of everything. No costs or prices on paper. Saved to the existing second-region backup bucket under `paper/<environment>/<date>/` (no new bucket), kept 30 days
+- [x] **Admin > Paper backup**: the latest files to print or download, *Make one now*, recent nights, and the steps to get the files from DigitalOcean if the site is down. The dashboard's System health card shows the last paper backup
+- [x] The unit spec card is shared by the unit page and the saved copy (one layout)
+
+**Migrations**: `ops/0003_paper_backups` (a new backup kind; check constraint widened), `ops/0004_offline_flag`.
+
+**Tests**: 400 backend tests (94% coverage), 58 Vitest, 60 Playwright end-to-end tests, including switching the browser offline.
+
+**Known limitations**: the saved copy is read-only (changes need the system; Phase 14 would add offline work orders). Photos aren't saved for offline. The parts catalog isn't in the saved copy (as decided). Paper backups aren't emailed (there's no email service).
 
 ## Phase 12: Dashboard and reports
 

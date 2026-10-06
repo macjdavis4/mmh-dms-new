@@ -33,3 +33,4 @@ MIGRATION_LINTER_OPTIONS = {
 STORAGES["default"] = {"BACKEND": "django.core.files.storage.InMemoryStorage"}  # noqa: F405
 PDF_COMPRESS = False  # PDF text readable in tests
 INVOICE_READ_INLINE = True
+STORAGES["paper"] = {"BACKEND": "django.core.files.storage.InMemoryStorage"}  # noqa: F405

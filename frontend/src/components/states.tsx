@@ -1,8 +1,10 @@
 import { AlertCircle, Inbox, Loader2, RefreshCw } from "lucide-react";
 import type { ReactNode } from "react";
+import { Link } from "react-router";
 
 import { LogoMark } from "@/components/brand/Logo";
 import { Button } from "@/components/ui/button";
+import { useOfflinePack } from "@/lib/offline/sync";
 import { cn } from "@/lib/utils";
 
 export function FullPageLoading() {
@@ -20,11 +22,14 @@ export function FullPageLoading() {
 export function FullPageError({ onRetry }: { onRetry: () => void }) {
   return (
     <div className="grid min-h-dvh place-items-center p-6">
-      <ErrorState
-        title="Can't reach the system"
-        message="Check your internet connection. If it keeps happening, the server may be down for maintenance."
-        onRetry={onRetry}
-      />
+      <div className="flex flex-col items-center gap-4">
+        <ErrorState
+          title="Can't reach the system"
+          message="Check your internet connection. If it keeps happening, the server may be down for maintenance."
+          onRetry={onRetry}
+        />
+        <SavedCopyLink />
+      </div>
     </div>
   );
 }
@@ -96,5 +101,16 @@ export function PageHeader({
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
     </div>
+  );
+}
+
+/** "Open the saved copy" when this device has one (Phase 13). */
+function SavedCopyLink() {
+  const pack = useOfflinePack();
+  if (!pack.data) return null;
+  return (
+    <Button asChild variant="cta" size="lg">
+      <Link to="/offline">Open the saved copy ({pack.data.units.length} units)</Link>
+    </Button>
   );
 }

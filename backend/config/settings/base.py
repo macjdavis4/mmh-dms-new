@@ -254,6 +254,25 @@ BACKUP_S3_SECRET_ACCESS_KEY = env(
 # age public key (age1...). Backups are encrypted to it; the matching private
 # key is kept offline and in the restore-test GitHub environment only.
 BACKUP_AGE_RECIPIENT = env("BACKUP_AGE_RECIPIENT", "")
+
+# Nightly paper-backup files (Phase 13): printable PDFs and CSVs, in the
+# second-region backup bucket under paper/<environment>/. Not encrypted, so
+# they can be opened from the DigitalOcean website when the app is down; the
+# bucket is private. Kept 30 days (lifecycle rule in infra/terraform).
+STORAGES["paper"] = {
+    "BACKEND": "storages.backends.s3.S3Storage",
+    "OPTIONS": {
+        "bucket_name": BACKUP_BUCKET,
+        "endpoint_url": BACKUP_S3_ENDPOINT_URL,
+        "access_key": BACKUP_S3_ACCESS_KEY_ID,
+        "secret_key": BACKUP_S3_SECRET_ACCESS_KEY,
+        "region_name": BACKUP_S3_REGION,
+        "default_acl": "private",
+        "querystring_auth": True,
+        "file_overwrite": True,
+        "location": f"paper/{APP_ENV}",
+    },
+}
 # A dedicated direct (non-pooled) connection string used by pg_dump.
 BACKUP_DATABASE_URL = env(
     "BACKUP_DATABASE_URL", env("DATABASE_URL", "postgres://mmh:mmh@localhost:5432/mmh")

@@ -306,6 +306,14 @@ Nothing to set up: the reader (Tesseract) is built into the app's server image, 
 
 Nothing to set up. Each person's dashboard shows the numbers for their job. Reports are under *Reports* in the menu. Use *Download CSV* to open one in Excel.
 
+## Phase 13: continuity
+
+No new bucket or service is needed: the paper backups go into the backup bucket set up in Phase 1, in a `paper/` folder.
+
+1. [ ] When you run the Phase 1 Terraform steps (or if you already have), run `terraform apply` again for staging and production once this is merged. It adds the rule that deletes paper backups after 30 days. Nothing else changes.
+2. [ ] Once the system is live, open *Admin > Paper backup*, press *Make one now*, and print `open-work-orders.pdf` once to see what you'd get on a bad day.
+3. [ ] On each shop tablet, sign in once while online so it keeps a saved copy. Sign out on shared devices at the end of the day (that wipes the copy).
+
 ---
 
 ## Ongoing

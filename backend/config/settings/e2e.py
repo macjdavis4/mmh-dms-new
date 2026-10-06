@@ -19,3 +19,7 @@ STORAGES["default"] = {  # noqa: F405
     "OPTIONS": {"location": "/tmp/mmh-e2e-media"},  # noqa: S108 - throwaway test files
 }
 INVOICE_READ_INLINE = True  # no worker in Playwright runs
+STORAGES["paper"] = {  # noqa: F405
+    "BACKEND": "django.core.files.storage.FileSystemStorage",
+    "OPTIONS": {"location": "/tmp/mmh-e2e-paper"},  # noqa: S108 - throwaway test files
+}

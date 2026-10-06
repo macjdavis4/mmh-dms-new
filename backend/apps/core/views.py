@@ -42,6 +42,22 @@ def spa_index(request: HttpRequest) -> HttpResponse:
     return HttpResponse(template.render({"mmh_config": json.dumps(config)}, request))
 
 
+_SERVICE_WORKER = Path(settings.BASE_DIR) / "frontend_dist" / "sw.js"
+
+
+def service_worker(request: HttpRequest) -> HttpResponse:
+    """The offline service worker (Phase 13), at the site root so it covers
+    every page. Never cached, so a new release is picked up straight away."""
+    if not _SERVICE_WORKER.exists():
+        return HttpResponse("// no service worker in this build\n", content_type="text/javascript")
+    response = HttpResponse(
+        _SERVICE_WORKER.read_bytes(), content_type="text/javascript; charset=utf-8"
+    )
+    response["Cache-Control"] = "no-cache, max-age=0"
+    response["Service-Worker-Allowed"] = "/"
+    return response
+
+
 # --- System status (banner, read-only flag) -----------------------------------
 
 
@@ -160,7 +176,10 @@ class AdminHealthView(APIView):
                     "WHERE status IN ('todo','doing','failed') GROUP BY status"
                 )
                 jobs = {row[0]: row[1] for row in cur.fetchall()}
-        latest = BackupRun.objects.order_by("-started_at").first()
+        latest = (
+            BackupRun.objects.exclude(kind=BackupRun.Kind.PAPER).order_by("-started_at").first()
+        )
+        paper = BackupRun.objects.filter(kind=BackupRun.Kind.PAPER).order_by("-started_at").first()
         return Response(
             {
                 "database": db_detail,
@@ -172,6 +191,13 @@ class AdminHealthView(APIView):
                     "finished_at": latest.finished_at,
                 }
                 if latest
+                else None,
+                "last_paper_backup": {
+                    "status": paper.status,
+                    "started_at": paper.started_at,
+                    "finished_at": paper.finished_at,
+                }
+                if paper
                 else None,
                 "version": settings.APP_VERSION,
                 "environment": settings.APP_ENV,

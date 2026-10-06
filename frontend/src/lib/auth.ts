@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { clearPack } from "@/lib/offline/store";
 import { api } from "./api";
 import type { Me, SystemStatus } from "./types";
 
@@ -53,7 +54,11 @@ export function useVerifyCode() {
 export function useLogout() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: () => api<undefined>("/api/v1/auth/logout", { method: "POST" }),
+    // The device's offline copy goes first, even if the server can't be reached.
+    mutationFn: async () => {
+      await clearPack();
+      return api<undefined>("/api/v1/auth/logout", { method: "POST" });
+    },
     onSettled: () => {
       qc.clear();
       qc.setQueryData(meKey, { authenticated: false });

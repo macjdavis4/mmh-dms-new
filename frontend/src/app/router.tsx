@@ -5,10 +5,16 @@ import { LoginPage } from "@/features/auth/LoginPage";
 import { DashboardPage } from "@/features/dashboard/DashboardPage";
 import { NotFoundPage } from "@/features/misc/ComingSoonPage";
 
+import { OfflineListPage, OfflineUnitPage } from "@/features/offline/OfflinePages";
+
 import { RequireAuth, RequireRole } from "./guards";
 import { RouteError } from "./RouteError";
 
 export const routes = [
+  // The saved copy for when the system can't be reached (Phase 13). Outside
+  // the sign-in check on purpose: it needs no server. Wiped at sign-out.
+  { path: "/offline", element: <OfflineListPage /> },
+  { path: "/offline/units/:id", element: <OfflineUnitPage /> },
   {
     path: "/login",
     element: (
@@ -181,6 +187,10 @@ export const routes = [
           {
             path: "api-keys",
             lazy: async () => ({ Component: (await import("@/features/admin/ApiKeysPage")).ApiKeysPage }),
+          },
+          {
+            path: "paper-backup",
+            lazy: async () => ({ Component: (await import("@/features/admin/PaperBackupPage")).PaperBackupPage }),
           },
           {
             path: "audit",

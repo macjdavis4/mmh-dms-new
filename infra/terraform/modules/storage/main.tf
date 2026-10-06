@@ -58,6 +58,19 @@ resource "digitalocean_spaces_bucket" "backups" {
     }
   }
 
+  # Nightly paper-backup files (printable PDFs and CSVs): a month is plenty.
+  lifecycle_rule {
+    id      = "expire-paper-backups"
+    enabled = true
+    prefix  = "paper/"
+    expiration {
+      days = 30
+    }
+    noncurrent_version_expiration {
+      days = 30
+    }
+  }
+
   lifecycle_rule {
     id      = "expire-old-media-versions"
     enabled = true
