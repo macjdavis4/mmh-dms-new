@@ -286,6 +286,14 @@ Nothing to set up. To get ready for the stock ledger (Phase 10):
 1. [ ] Write down your bin codes (aisle-shelf-level, e.g. A-03-2) and add them under *Parts → Bins*.
 2. [ ] If you have a parts list in a spreadsheet (part number, description, price, bin), send it to me: a parts import is quicker than typing them in, and I can add one.
 
+## Phase 10: parts stock ledger
+
+Nothing to set up; the nightly stock check runs on its own. To start using it:
+
+1. [ ] For each part, open it and press *Count*, entering what's on the shelf. Do the busiest parts first; parts never counted show as out of stock.
+2. [ ] Set a *Reorder at* and *Order this many* on the parts you want to watch (*Edit part*). Those at or below it appear under *Low stock*.
+3. [ ] When parts arrive, open the part and press *Receive*.
+
 ---
 
 ## Ongoing
