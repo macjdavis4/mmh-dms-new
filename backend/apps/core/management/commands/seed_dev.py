@@ -50,6 +50,7 @@ LIVE_FLAGS = [
     "parts",
     "parts-stock",
     "parts-invoices",
+    "reports",
 ]
 
 # Features still being built: created switched off.

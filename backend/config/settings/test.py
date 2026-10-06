@@ -21,6 +21,7 @@ MIGRATION_LINTER_OPTIONS = {
         "service",
         "sales",
         "parts",
+        "reports",
     ],
     # Initial migrations only create brand-new tables, which no running code
     # uses yet. (The linter also misreads GIN indexes in customers/0001.)
