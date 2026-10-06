@@ -179,6 +179,15 @@ function SystemHealthCard() {
                   : "None yet"
               }
             />
+            <StatusRow
+              ok={data.last_paper_backup?.status === "succeeded"}
+              label="Paper backup"
+              detail={
+                data.last_paper_backup
+                  ? `${data.last_paper_backup.status === "succeeded" ? "OK" : data.last_paper_backup.status} · ${new Date(data.last_paper_backup.started_at).toLocaleString()}`
+                  : "None yet"
+              }
+            />
           </ul>
         )}
         {data && (

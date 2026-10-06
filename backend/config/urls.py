@@ -3,7 +3,7 @@ from django.urls import include, path, re_path
 from django_otp.admin import OTPAdminSite
 
 from apps.core import health
-from apps.core.views import spa_index
+from apps.core.views import service_worker, spa_index
 
 # The Django admin requires a 2FA code, not just a password.
 admin.site.__class__ = OTPAdminSite
@@ -25,5 +25,6 @@ urlpatterns = [
     # Django admin is kept as an emergency tool for admins (2FA enforced).
     path("django-admin/", admin.site.urls),
     # Everything else is the React app; it handles its own routing and 404s.
+    path("sw.js", service_worker, name="service-worker"),
     re_path(r"^(?!api/|static/|django-admin/).*$", spa_index, name="spa"),
 ]

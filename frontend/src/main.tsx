@@ -22,6 +22,14 @@ if (config.sentryDsn) {
   );
 }
 
+// Keep the app on the device so it opens without a connection (Phase 13).
+// Production builds only: the dev server serves files on the fly.
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => undefined);
+  });
+}
+
 const queryClient = makeQueryClient();
 const root = document.getElementById("root");
 if (!root) throw new Error("#root missing");

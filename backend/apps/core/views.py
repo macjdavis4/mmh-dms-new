@@ -42,6 +42,22 @@ def spa_index(request: HttpRequest) -> HttpResponse:
     return HttpResponse(template.render({"mmh_config": json.dumps(config)}, request))
 
 
+_SERVICE_WORKER = Path(settings.BASE_DIR) / "frontend_dist" / "sw.js"
+
+
+def service_worker(request: HttpRequest) -> HttpResponse:
+    """The offline service worker (Phase 13), at the site root so it covers
+    every page. Never cached, so a new release is picked up straight away."""
+    if not _SERVICE_WORKER.exists():
+        return HttpResponse("// no service worker in this build\n", content_type="text/javascript")
+    response = HttpResponse(
+        _SERVICE_WORKER.read_bytes(), content_type="text/javascript; charset=utf-8"
+    )
+    response["Cache-Control"] = "no-cache, max-age=0"
+    response["Service-Worker-Allowed"] = "/"
+    return response
+
+
 # --- System status (banner, read-only flag) -----------------------------------
 
 

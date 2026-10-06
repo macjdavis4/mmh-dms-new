@@ -179,3 +179,19 @@ def test_offline_flag_and_anonymous(client_for: Any, anon_client: Any, demo: Non
     flag.enabled = False
     flag.save()
     assert client_for("admin").get(OFFLINE).status_code == 404
+
+
+def test_service_worker_served_at_root(client: Any, tmp_path: Any, monkeypatch: Any) -> None:
+    from apps.core import views
+
+    monkeypatch.setattr(views, "_SERVICE_WORKER", tmp_path / "nope.js")
+    missing = client.get("/sw.js")
+    assert missing.status_code == 200 and b"no service worker" in missing.content
+    built = tmp_path / "sw.js"
+    built.write_text("self.addEventListener('fetch', () => {});")
+    monkeypatch.setattr(views, "_SERVICE_WORKER", built)
+    res = client.get("/sw.js")
+    assert res["Content-Type"].startswith("text/javascript")
+    assert res["Cache-Control"] == "no-cache, max-age=0"
+    assert res["Service-Worker-Allowed"] == "/"
+    assert b"addEventListener" in res.content

@@ -9,6 +9,9 @@ import type { CurrentUser } from "@/lib/types";
 
 import { GlobalSearch, MobileSearchButton } from "./GlobalSearch";
 import { SidebarNav } from "./SidebarNav";
+import { useOfflineSync } from "@/lib/offline/sync";
+
+import { OfflineBanner } from "./OfflineBanner";
 import { EnvironmentTag, SystemBanner } from "./SystemBanner";
 import { ThemeToggle } from "./ThemeToggle";
 import { UserMenu } from "./UserMenu";
@@ -33,6 +36,7 @@ function SidebarBody({ user, onNavigate }: { user: CurrentUser; onNavigate?: () 
 
 export function AppShell({ user }: { user: CurrentUser }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  useOfflineSync(user.id);
   return (
     <div className="min-h-dvh">
       <a
@@ -58,6 +62,7 @@ export function AppShell({ user }: { user: CurrentUser }) {
 
       <div className="flex min-h-dvh flex-col lg:pl-64">
         <SystemBanner />
+        <OfflineBanner />
         <header className="bg-card/95 supports-[backdrop-filter]:bg-card/85 sticky top-0 z-20 border-b backdrop-blur">
           <div className="flex h-16 items-center gap-2 px-3 sm:px-5 lg:gap-4 lg:px-8">
             <Button
