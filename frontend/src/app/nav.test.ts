@@ -40,6 +40,11 @@ describe("navFor", () => {
     expect(findNavItem("/parts/invoices")?.flag).toBe("parts-invoices");
   });
 
+  it("shows Reports to everyone unless switched off", () => {
+    for (const role of ["admin", "sales", "service", "parts", "read_only"] as const) expect(labels(role)).toContain("Reports");
+    expect(navFor("admin", { reports: false }).flatMap((s) => s.items.map((i) => i.label))).not.toContain("Reports");
+  });
+
   it("drops empty sections", () => {
     expect(navFor("parts").map((s) => s.title)).toEqual(["Work", "You"]);
   });

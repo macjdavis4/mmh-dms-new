@@ -1,5 +1,6 @@
 import {
   ArrowRightLeft,
+  BarChart3,
   CalendarClock,
   FileUp,
   Gauge,
@@ -108,6 +109,13 @@ export const NAV: NavSection[] = [
         icon: PackageMinus,
         flag: "parts-stock",
         description: "Parts at or below their reorder point, and the nightly stock check.",
+      },
+      {
+        label: "Reports",
+        to: "/reports",
+        icon: BarChart3,
+        flag: "reports",
+        description: "Sales, stock, parts and service totals for any dates, with CSV downloads.",
       },
       {
         label: "Imports",

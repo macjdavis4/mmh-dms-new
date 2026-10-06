@@ -59,7 +59,7 @@ def tiles_for(user: Any) -> list[Tile]:
         tiles.append(_count("open-work-orders", "Open work orders", open_wos.count(), "/service"))
         if role in (Role.SERVICE, Role.ADMIN):
             mine = open_wos.filter(assigned_to=user).count()
-            tiles.append(_count("my-work-orders", "Assigned to me", mine, "/service?assigned=me"))
+            tiles.append(_count("my-work-orders", "Assigned to me", mine, "/service?mine=1"))
         due = sum(1 for _, st in maintenance.due_list() if st.state in ("overdue", "due_soon"))
         tiles.append(
             _count(

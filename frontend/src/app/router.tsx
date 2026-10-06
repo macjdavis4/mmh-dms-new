@@ -117,6 +117,14 @@ export const routes = [
         ],
       },
       {
+        path: "reports",
+        lazy: async () => ({ Component: (await import("@/features/reports/ReportsPage")).ReportsPage }),
+      },
+      {
+        path: "reports/:key",
+        lazy: async () => ({ Component: (await import("@/features/reports/ReportPage")).ReportPage }),
+      },
+      {
         path: "parts/low-stock",
         lazy: async () => ({ Component: (await import("@/features/parts/LowStockPage")).LowStockPage }),
       },

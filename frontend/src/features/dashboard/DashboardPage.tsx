@@ -2,28 +2,38 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Activity,
   ArrowRight,
+  BarChart3,
   CheckCircle2,
   CircleAlert,
+  ClipboardList,
   ClipboardPlus,
   Database,
+  DollarSign,
+  FileText,
   FileUp,
   HardDriveDownload,
+  type LucideIcon,
   PackageCheck,
+  PackageMinus,
+  ReceiptText,
+  Timer,
   Truck,
+  UserCheck,
   Wrench,
 } from "lucide-react";
 import { Link } from "react-router";
 
 import { useCurrentUser } from "@/app/guards";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { canEditWorkOrders, useWorkOrderCounts } from "@/features/service/api";
-import { useDuePlans } from "@/features/service/maintenance";
+import { canSeeInvoices } from "@/features/parts/invoices/api";
+import { useDashboard, useReports } from "@/features/reports/api";
+import { canEditWorkOrders } from "@/features/service/api";
 import { canEditUnits } from "@/features/units/permissions";
-import { api, type Paginated } from "@/lib/api";
+import { api } from "@/lib/api";
 import { isOn, useFlags } from "@/lib/flags";
-import type { AdminHealth, UnitRow } from "@/lib/types";
+import { formatCents } from "@/lib/format";
+import type { AdminHealth, DashboardTile } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 function greeting(now = new Date()): string {
@@ -33,17 +43,79 @@ function greeting(now = new Date()): string {
   return "Good evening";
 }
 
-type Tile = { label: string; icon: typeof Truck; phase: number; to?: string; count?: number | undefined };
+const ICONS: Record<string, LucideIcon> = {
+  "units-in-stock": Truck,
+  "open-work-orders": Wrench,
+  "my-work-orders": UserCheck,
+  "maintenance-due": Activity,
+  "open-quotes": FileText,
+  "sales-this-month": DollarSign,
+  "low-stock": PackageMinus,
+  "parts-value": PackageCheck,
+  "invoices-to-check": ReceiptText,
+  "backorders": Timer,
+};
 
-const TILES: Tile[] = [
-  { label: "Low-stock parts", icon: PackageCheck, phase: 10 },
-];
+type QuickAction = { label: string; icon: LucideIcon; to: string; hint: string };
 
-type QuickAction = { label: string; icon: typeof Truck; to: string; phase?: number; hint?: string };
+function TileCard({ tile }: { tile: DashboardTile }) {
+  const Icon = ICONS[tile.key] ?? ClipboardList;
+  const warn = tile.tone === "warning";
+  return (
+    <Link to={tile.to} className="focus-visible:ring-ring rounded-xl focus-visible:ring-2 focus-visible:outline-none">
+      <Card className={cn("hover:border-primary/40 h-full gap-3 py-5 transition-colors", warn && "border-warning/50")}>
+        <CardContent className="flex flex-col gap-3 px-5">
+          <span
+            className={cn(
+              "grid size-10 place-items-center rounded-xl",
+              warn ? "bg-warning/15 text-warning" : "bg-primary/10 text-primary dark:bg-primary/15",
+            )}
+          >
+            <Icon className="size-5" aria-hidden="true" />
+          </span>
+          <div>
+            <p className={cn("font-extrabold tabular-nums", tile.kind === "money" ? "text-2xl" : "text-3xl", warn && "text-warning")}>
+              {tile.kind === "money" ? formatCents(tile.value) : Number(tile.value).toLocaleString("en-US")}
+            </p>
+            <p className="text-sm font-semibold">{tile.label}</p>
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
+  );
+}
 
-const QUICK_ACTIONS: QuickAction[] = [
-  { label: "Receive a parts invoice", icon: PackageCheck, to: "/parts", phase: 11 },
-];
+function ReportsCard() {
+  const reports = useReports();
+  return (
+    <Card className="h-full">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <BarChart3 className="size-5" aria-hidden="true" /> Reports
+        </CardTitle>
+        <CardDescription>Totals for any dates, ready to download.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {reports.isPending ? (
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-6" />
+            <Skeleton className="h-6" />
+          </div>
+        ) : (
+          <ul className="divide-y">
+            {(reports.data?.reports ?? []).map((r) => (
+              <li key={r.key}>
+                <Link to={`/reports/${r.key}`} className="hover:text-primary flex min-h-11 items-center justify-between gap-2 text-sm font-medium">
+                  {r.title} <ArrowRight className="text-muted-foreground size-4" aria-hidden="true" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 function StatusRow({ ok, label, detail }: { ok: boolean; label: string; detail: string }) {
   return (
@@ -119,54 +191,32 @@ function SystemHealthCard() {
   );
 }
 
-function useStockCount(enabled: boolean) {
-  return useQuery({
-    queryKey: ["units", "dashboard-count"],
-    queryFn: () => api<Paginated<UnitRow>>("/api/v1/units?scope=stock&page_size=1"),
-    enabled,
-    select: (d) => d.count,
-  });
-}
-
 export function DashboardPage() {
   const user = useCurrentUser();
   const flags = useFlags();
-  const unitsOn = isOn(flags.data?.flags, "customers-units");
-  const stock = useStockCount(unitsOn);
-  const serviceOn = isOn(flags.data?.flags, "service");
-  const workOrders = useWorkOrderCounts(serviceOn);
-  const serviceTile: Tile = serviceOn
-    ? { label: "Open work orders", icon: Wrench, phase: 4, to: "/service", count: workOrders.data?.open }
-    : { label: "Open work orders", icon: Wrench, phase: 4 };
-  const due = useDuePlans(false, serviceOn);
-  const pmTile: Tile = serviceOn
-    ? {
-        label: "PM due in 30 days",
-        icon: Activity,
-        phase: 5,
-        to: "/service/maintenance",
-        count: due.data ? due.data.counts.overdue + due.data.counts.due_soon : undefined,
-      }
-    : { label: "PM due in 30 days", icon: Activity, phase: 5 };
-  const tiles: Tile[] = unitsOn
-    ? [{ label: "Units in stock", icon: Truck, phase: 2, to: "/units", count: stock.data }, serviceTile, pmTile, ...TILES]
-    : [{ label: "Units in stock", icon: Truck, phase: 2 }, serviceTile, pmTile, ...TILES];
-  const actions: QuickAction[] = [...QUICK_ACTIONS];
-  if (serviceOn && canEditWorkOrders(user.role)) {
-    actions.unshift({ label: "New work order", icon: ClipboardPlus, to: "/service/new", hint: "Open a job on a unit" });
+  const dashboard = useDashboard();
+  const on = (key: string) => isOn(flags.data?.flags, key);
+  const actions: QuickAction[] = [];
+  if (on("service") && canEditWorkOrders(user.role)) {
+    actions.push({ label: "New work order", icon: ClipboardPlus, to: "/service/new", hint: "Open a job on a unit" });
   }
-  if (isOn(flags.data?.flags, "batch-import") && ["admin", "sales", "service"].includes(user.role)) {
-    actions.push({ label: "Import unit cards", icon: FileUp, to: "/imports/new", hint: "Upload a spreadsheet of cards" });
-  }
-  if (unitsOn) {
-    actions.splice(
-      1,
-      0,
+  if (on("customers-units")) {
+    actions.push(
       canEditUnits(user.role)
         ? { label: "Add a unit", icon: Truck, to: "/units/new", hint: "Enter a unit card" }
-        : { label: "Browse stock", icon: Truck, to: "/units", hint: "See units for sale" },
+        : { label: "Browse units", icon: Truck, to: "/units", hint: "Find a unit by serial or customer" },
     );
   }
+  if (on("parts") && on("parts-invoices") && canSeeInvoices(user.role)) {
+    actions.push({ label: "Receive a parts invoice", icon: PackageCheck, to: "/parts/invoices", hint: "Upload it, check it, receive it" });
+  }
+  if (on("batch-import") && ["admin", "sales", "service"].includes(user.role)) {
+    actions.push({ label: "Import unit cards", icon: FileUp, to: "/imports/new", hint: "Upload a spreadsheet of cards" });
+  }
+  if (on("reports")) {
+    actions.push({ label: "Reports", icon: BarChart3, to: "/reports", hint: "Sales, stock, parts and service totals" });
+  }
+  const tiles = dashboard.data?.tiles;
   return (
     <div className="flex flex-col gap-8">
       <div>
@@ -182,48 +232,15 @@ export function DashboardPage() {
         <h2 id="tiles-heading" className="sr-only">
           At a glance
         </h2>
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
-          {tiles.map((tile) => {
-            const live = tile.to !== undefined;
-            const body = (
-              <Card className={cn("h-full gap-3 py-5", live && "hover:border-primary/40 transition-colors")}>
-                <CardContent className="flex flex-col gap-3 px-5">
-                  <div className="flex items-center justify-between">
-                    <span className="bg-primary/10 text-primary grid size-10 place-items-center rounded-xl dark:bg-primary/15">
-                      <tile.icon className="size-5" aria-hidden="true" />
-                    </span>
-                    {!live && (
-                      <Badge variant="outline" className="text-muted-foreground font-medium">
-                        Phase {tile.phase}
-                      </Badge>
-                    )}
-                  </div>
-                  <div>
-                    {live && tile.count === undefined ? (
-                      <Skeleton className="h-9 w-16" />
-                    ) : (
-                      <p className={cn("text-3xl font-extrabold", !live && "text-muted-foreground")}>
-                        {live ? tile.count : "—"}
-                      </p>
-                    )}
-                    <p className="text-sm font-semibold">{tile.label}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-            return tile.to ? (
-              <Link
-                key={tile.label}
-                to={tile.to}
-                className="focus-visible:ring-ring rounded-xl focus-visible:ring-2 focus-visible:outline-none"
-              >
-                {body}
-              </Link>
-            ) : (
-              <div key={tile.label}>{body}</div>
-            );
-          })}
-        </div>
+        {dashboard.isError ? (
+          <p className="text-destructive text-sm font-semibold">Couldn't load the numbers. They'll try again shortly.</p>
+        ) : (
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4" aria-busy={!tiles}>
+            {tiles
+              ? tiles.map((tile) => <TileCard key={tile.key} tile={tile} />)
+              : Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-36 rounded-xl" />)}
+          </div>
+        )}
       </section>
 
       <div className="grid gap-6 lg:grid-cols-5">
@@ -233,7 +250,6 @@ export function DashboardPage() {
               <CardTitle id="actions-heading" className="text-lg">
                 Quick actions
               </CardTitle>
-              <CardDescription>These turn on as each part of the system is finished.</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-3 sm:grid-cols-2">
               {actions.map((action) => (
@@ -247,33 +263,17 @@ export function DashboardPage() {
                   </span>
                   <span className="flex-1">
                     <span className="block font-semibold">{action.label}</span>
-                    <span className="text-muted-foreground text-xs">
-                      {action.phase ? `Coming in phase ${action.phase}` : action.hint}
-                    </span>
+                    <span className="text-muted-foreground text-xs">{action.hint}</span>
                   </span>
-                  <ArrowRight
-                    className="text-muted-foreground size-4 transition-transform group-hover:translate-x-0.5"
-                    aria-hidden="true"
-                  />
+                  <ArrowRight className="text-muted-foreground size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
                 </Link>
               ))}
             </CardContent>
           </Card>
         </section>
-        <div className="lg:col-span-2">
-          {user.role === "admin" ? (
-            <SystemHealthCard />
-          ) : (
-            <Card className="h-full">
-              <CardHeader>
-                <CardTitle className="text-lg">Welcome</CardTitle>
-                <CardDescription>
-                  This is the new home for unit cards, work orders, sales and parts. Sections appear in the menu as
-                  they're ready.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-          )}
+        <div className="flex flex-col gap-6 lg:col-span-2">
+          {user.role === "admin" && <SystemHealthCard />}
+          {on("reports") && <ReportsCard />}
         </div>
       </div>
     </div>
