@@ -179,8 +179,8 @@ export function PartsPage() {
           </>
         }
       />
-      <div className="mb-4 grid gap-3 sm:grid-cols-2 md:items-end lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
-        <Field id="parts-search" label="Search" className="sm:col-span-2 lg:col-span-1">
+      <div className="mb-4 grid gap-3 sm:grid-cols-2 md:items-end lg:grid-cols-3 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
+        <Field id="parts-search" label="Search" className="sm:col-span-2 lg:col-span-3 xl:col-span-1">
           <Input
             id="parts-search"
             type="search"
@@ -212,7 +212,7 @@ export function PartsPage() {
             <NativeSelect id="parts-stock" value={filters.stock} onChange={(v) => update({ stock: v })} placeholder="Any amount" options={STOCK_FILTERS} />
           </Field>
         )}
-        <div className="flex flex-wrap items-center gap-2 sm:col-span-2 lg:col-span-4 xl:col-span-1">
+        <div className="flex flex-wrap items-center gap-2 sm:col-span-2 lg:col-span-3 xl:col-span-1">
           <label className="flex min-h-11 items-center gap-2 text-sm font-medium">
             <input type="checkbox" className="accent-primary size-5" checked={filters.replaced} onChange={(e) => update({ replaced: e.target.checked })} />
             Show replaced parts
@@ -227,7 +227,7 @@ export function PartsPage() {
       <Card className="gap-0 overflow-hidden py-0">
         <DataTable
           caption="Parts"
-          tableFrom="lg"
+          tableFrom="xl"
           columns={columns}
           data={parts.data?.results}
           isLoading={parts.isPending}

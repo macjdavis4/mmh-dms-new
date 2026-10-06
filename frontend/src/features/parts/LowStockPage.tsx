@@ -134,7 +134,7 @@ export function LowStockPage() {
       <Card className="gap-0 overflow-hidden py-0">
         <DataTable
           caption="Low stock"
-          tableFrom="lg"
+          tableFrom="xl"
           columns={columns}
           data={low.data?.results}
           isLoading={low.isPending}
