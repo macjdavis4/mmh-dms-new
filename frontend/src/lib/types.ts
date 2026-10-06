@@ -844,3 +844,81 @@ export interface UsedPart {
   unit_price: string | null;
   amount: string | null;
 }
+
+export type InvoiceStatus = "reading" | "review" | "partial" | "received" | "cancelled";
+
+export interface InvoiceRow {
+  id: string;
+  title: string;
+  supplier: string;
+  invoice_number: string;
+  invoice_date: string | null;
+  status: InvoiceStatus;
+  status_label: string;
+  total: string | null;
+  line_count: number;
+  /** Lines the reader wasn't sure about. */
+  to_check: number;
+  original_name: string;
+  read_error: string;
+  created_at: string;
+}
+
+export interface InvoiceLine {
+  id: string;
+  position: number;
+  /** The line exactly as read from the file. */
+  raw_text: string;
+  part: string | null;
+  part_summary: PartSummary | null;
+  part_on_hand: string | null;
+  /** As printed on the invoice. */
+  part_number: string;
+  description: string;
+  quantity_shipped: string;
+  quantity_backordered: string;
+  unit_cost: string | null;
+  amount: string | null;
+  not_stocked: boolean;
+  check_reason: string;
+  received: string;
+  outstanding: string;
+  closed_at: string | null;
+  closed_reason: string;
+}
+
+export interface Invoice {
+  id: string;
+  title: string;
+  supplier: string;
+  invoice_number: string;
+  invoice_date: string | null;
+  status: InvoiceStatus;
+  status_label: string;
+  freight: string | null;
+  tax: string | null;
+  total: string | null;
+  lines_total: string;
+  note: string;
+  cancel_reason: string;
+  original_name: string;
+  content_type: string;
+  has_file: boolean;
+  is_image: boolean;
+  read_method: string;
+  read_error: string;
+  read_at: string | null;
+  extracted_text: string;
+  has_receipts: boolean;
+  duplicate: { id: string; label: string } | null;
+  lines: InvoiceLine[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BackorderLine extends InvoiceLine {
+  invoice_id: string;
+  invoice_label: string;
+  invoice_date: string | null;
+  supplier: string;
+}

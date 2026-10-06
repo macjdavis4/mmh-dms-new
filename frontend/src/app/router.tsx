@@ -104,6 +104,19 @@ export const routes = [
         lazy: async () => ({ Component: (await import("@/features/parts/PartsPage")).PartsPage }),
       },
       {
+        element: <RequireRole roles={["admin", "parts", "sales"]} />,
+        children: [
+          {
+            path: "parts/invoices",
+            lazy: async () => ({ Component: (await import("@/features/parts/invoices/InvoicesPage")).InvoicesPage }),
+          },
+          {
+            path: "parts/invoices/:id",
+            lazy: async () => ({ Component: (await import("@/features/parts/invoices/InvoicePage")).InvoicePage }),
+          },
+        ],
+      },
+      {
         path: "parts/low-stock",
         lazy: async () => ({ Component: (await import("@/features/parts/LowStockPage")).LowStockPage }),
       },

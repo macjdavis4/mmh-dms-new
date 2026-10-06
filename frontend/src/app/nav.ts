@@ -7,6 +7,7 @@ import {
   type LucideIcon,
   Package,
   PackageMinus,
+  ReceiptText,
   ScrollText,
   Settings2,
   ShoppingCart,
@@ -92,6 +93,14 @@ export const NAV: NavSection[] = [
         icon: Package,
         flag: "parts",
         description: "Parts catalog: numbers, bins, reorder points and other brands' numbers.",
+      },
+      {
+        label: "Parts invoices",
+        to: "/parts/invoices",
+        icon: ReceiptText,
+        roles: ["admin", "parts", "sales"],
+        flag: "parts-invoices",
+        description: "Upload supplier invoices, check them, and receive the parts into stock.",
       },
       {
         label: "Low stock",
