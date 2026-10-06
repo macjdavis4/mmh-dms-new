@@ -135,8 +135,11 @@ def read_file(data: bytes, content_type: str) -> ReadResult:
 MONEY_RE = re.compile(r"^\(?\$?(\d{1,3}(?:,\d{3})+|\d+)\.(\d{2})\)?$")
 QTY_RE = re.compile(r"^\d{1,5}(?:\.\d{1,2})?$")
 PART_RE = re.compile(r"^(?=.*\d)[A-Z0-9][A-Z0-9\-./]{2,39}$", re.IGNORECASE)
+# "Invoice No: HMA-558812": on one line, and the number has a digit in it.
 INVOICE_NO_RE = re.compile(
-    r"\binvoice\s*(?:no\.?|number|num|#)?\s*[:#]?\s*([A-Z0-9][A-Z0-9\-/]{2,30})\b", re.IGNORECASE
+    r"\binvoice[ \t]*(?:no\.?|number|num|#)?[ \t]*[:#]?[ \t]*"
+    r"((?=[A-Z0-9\-/]*\d)[A-Z0-9][A-Z0-9\-/]{2,30})\b",
+    re.IGNORECASE,
 )
 DATE_WORD_RE = re.compile(r"\b(?:invoice\s+)?date\b\s*[:.]?\s*(.{6,20})", re.IGNORECASE)
 TOTAL_RE = re.compile(
@@ -314,6 +317,8 @@ def suggest(text: str) -> Suggestion:
     if result.invoice_date is None:
         result.invoice_date = parse_date(text)
     result.total = _header_money(TOTAL_RE, text, last=True)
+    result.freight = _header_money(FREIGHT_RE, text)
+    result.tax = _header_money(TAX_RE, text)
     for raw in text.splitlines():
         if not raw.strip() or (TOTAL_RE.search(raw) and not PART_RE.match(raw.split()[0])):
             continue
@@ -321,11 +326,7 @@ def suggest(text: str) -> Suggestion:
         if line is None:
             continue
         # Freight and tax on their own lines are header amounts, not lines.
-        if not line.part_number and FREIGHT_RE.search(raw):
-            result.freight = _header_money(FREIGHT_RE, raw)
-            continue
-        if not line.part_number and TAX_RE.search(raw):
-            result.tax = _header_money(TAX_RE, raw)
+        if not line.part_number and (FREIGHT_RE.search(raw) or TAX_RE.search(raw)):
             continue
         if re.search(r"\bsub\s*-?total\b", raw, re.IGNORECASE):
             continue

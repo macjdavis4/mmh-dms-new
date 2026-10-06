@@ -327,3 +327,46 @@ def load_demo_stock() -> None:
             ).first()
             if work_order is not None:
                 stock.issue(part, work_order, Decimal(used_qty))
+
+
+# A second invoice that has been partly received: two air filters are on backorder.
+PARTIAL_INVOICE = "HMA-558790"
+PARTIAL_LINES = [
+    (6, 4, 2, "31N4-02100", "AIR FILTER ELEMENT OUTER", "18.60"),
+    (2, 2, 0, "31N5-50110", "IGNITION KEY SWITCH", "24.10"),
+]
+
+
+def load_demo_invoices() -> None:
+    """One invoice waiting to be checked and one partly received, both read
+    from made-up PDFs. Safe to run again."""
+    from django.core.files.base import ContentFile
+
+    from . import invoices, sample_invoice
+    from .models import Invoice
+
+    for number, lines, receive in (
+        (PARTIAL_INVOICE, PARTIAL_LINES, True),
+        (sample_invoice.NUMBER, sample_invoice.LINES, False),
+    ):
+        if Invoice.all_objects.filter(invoice_number=number).exists():
+            continue
+        invoice = Invoice(
+            status=Invoice.Status.READING,
+            original_name=f"{number}.pdf",
+            content_type="application/pdf",
+        )
+        data = sample_invoice.pdf(lines, number=number)
+        invoice.size_bytes = len(data)
+        invoice.file.save(f"{number}.pdf", ContentFile(data), save=False)
+        invoice.note = "Demo data: made-up invoice."
+        invoice.save()
+        invoices.read_invoice(invoice.pk)
+        invoice.refresh_from_db()
+        if receive:
+            rows = [
+                {"line": line.pk, "quantity": line.quantity_shipped}
+                for line in invoice.lines.all()
+                if line.part_id is not None
+            ]
+            invoices.receive(invoice, rows)
