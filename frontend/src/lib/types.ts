@@ -922,3 +922,43 @@ export interface BackorderLine extends InvoiceLine {
   invoice_date: string | null;
   supplier: string;
 }
+
+export interface DashboardTile {
+  key: string;
+  label: string;
+  /** A count, or money as "1234.50". */
+  value: string;
+  kind: "count" | "money";
+  to: string;
+  /** "warning" when the number needs attention. */
+  tone: "" | "warning";
+  hint: string;
+}
+
+export interface ReportSummary {
+  key: string;
+  title: string;
+  description: string;
+  group: string;
+  /** False: a snapshot of today, no date range. */
+  uses_period: boolean;
+}
+
+export type ReportCellKind = "text" | "date" | "money" | "qty" | "int" | "days";
+
+export interface ReportColumn {
+  key: string;
+  label: string;
+  kind: ReportCellKind;
+  /** Shown on phones. */
+  primary: boolean;
+}
+
+export interface ReportData extends ReportSummary {
+  period: { from: string | null; to: string | null; preset: string; label: string };
+  generated_at: string;
+  columns: ReportColumn[];
+  rows: (Record<string, string | number | null> & { _to: string })[];
+  totals: Record<string, string | number>;
+  notes: string[];
+}

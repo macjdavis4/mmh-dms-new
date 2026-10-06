@@ -55,7 +55,7 @@ export function WorkOrdersPage() {
   const user = useCurrentUser();
   const [params, setParams] = useSearchParams();
   const unit = params.get("unit") ?? undefined;
-  const [filters, setFilters] = useState<WorkOrderFilters>({ scope: unit ? "all" : "open", q: "", mine: false });
+  const [filters, setFilters] = useState<WorkOrderFilters>({ scope: unit ? "all" : "open", q: "", mine: params.get("mine") === "1" });
   const [page, setPage] = useState(1);
   const orders = useWorkOrders({ ...filters, ...(unit ? { unit } : {}) }, page, PAGE_SIZE);
   const update = (patch: Partial<WorkOrderFilters>) => {
