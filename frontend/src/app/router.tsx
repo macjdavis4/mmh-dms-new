@@ -104,6 +104,10 @@ export const routes = [
         lazy: async () => ({ Component: (await import("@/features/parts/PartsPage")).PartsPage }),
       },
       {
+        path: "parts/low-stock",
+        lazy: async () => ({ Component: (await import("@/features/parts/LowStockPage")).LowStockPage }),
+      },
+      {
         path: "parts/bins",
         lazy: async () => ({ Component: (await import("@/features/parts/BinsPage")).BinsPage }),
       },

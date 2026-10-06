@@ -6,6 +6,7 @@ import {
   KeyRound,
   type LucideIcon,
   Package,
+  PackageMinus,
   ScrollText,
   Settings2,
   ShoppingCart,
@@ -91,6 +92,13 @@ export const NAV: NavSection[] = [
         icon: Package,
         flag: "parts",
         description: "Parts catalog: numbers, bins, reorder points and other brands' numbers.",
+      },
+      {
+        label: "Low stock",
+        to: "/parts/low-stock",
+        icon: PackageMinus,
+        flag: "parts-stock",
+        description: "Parts at or below their reorder point, and the nightly stock check.",
       },
       {
         label: "Imports",

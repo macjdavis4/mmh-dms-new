@@ -44,6 +44,14 @@ export function formatCents(value: string | number | null | undefined): string {
   return Number.isFinite(n) ? exact.format(n) : "—";
 }
 
+/** Stock quantities: "12", "1.5", "0.25". */
+export function formatQty(value: string | number | null | undefined): string {
+  if (value === null || value === undefined || value === "") return "—";
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) return String(value);
+  return n.toLocaleString("en-US", { maximumFractionDigits: 2 });
+}
+
 export function formatNumber(value: string | number | null | undefined, unit = ""): string {
   if (value === null || value === undefined || value === "") return "—";
   const n = typeof value === "number" ? value : Number(value);
