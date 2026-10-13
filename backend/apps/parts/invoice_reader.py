@@ -13,6 +13,7 @@ import logging
 import re
 import shutil
 import subprocess
+import time
 from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal, InvalidOperation
@@ -22,6 +23,11 @@ from PIL import Image, ImageOps
 logger = logging.getLogger(__name__)
 
 OCR_TIMEOUT_SECONDS = 120
+# One invoice may not tie up the worker (which also runs the nightly backups)
+# for longer than this, however many pictures a PDF holds.
+OCR_BUDGET_SECONDS = 300
+MAX_OCR_IMAGES = 30
+MAX_OCR_PIXELS = 40_000_000  # far beyond any phone photo or 300 dpi scan
 MAX_PAGES = 20
 # A PDF page with less text than this is treated as a scan and OCR'd.
 MIN_TEXT_CHARS = 40
@@ -58,7 +64,7 @@ def _prepare(img: Image.Image) -> bytes:
     return buf.getvalue()
 
 
-def ocr_image(data: bytes) -> str:
+def ocr_image(data: bytes, *, timeout: float = OCR_TIMEOUT_SECONDS) -> str:
     """Tesseract on one image. `--psm 6` reads it as one block of text, which
     keeps each table row on one line."""
     if not ocr_available():
@@ -66,6 +72,8 @@ def ocr_image(data: bytes) -> str:
         raise ReadError("The invoice reader isn't installed on the server. Type the lines in.")
     try:
         with Image.open(io.BytesIO(data)) as img:
+            if img.width * img.height > MAX_OCR_PIXELS:  # checked before decoding
+                raise ReadError("That picture is too large to read. Use a smaller photo.")
             png = _prepare(img)
     except (OSError, Image.DecompressionBombError) as exc:
         raise ReadError("That picture couldn't be opened.") from exc
@@ -74,7 +82,7 @@ def ocr_image(data: bytes) -> str:
             ["tesseract", "stdin", "stdout", "--psm", "6", "-l", "eng"],  # noqa: S607
             input=png,
             capture_output=True,
-            timeout=OCR_TIMEOUT_SECONDS,
+            timeout=max(1.0, min(timeout, OCR_TIMEOUT_SECONDS)),
             check=False,
         )
     except subprocess.TimeoutExpired as exc:
@@ -100,6 +108,8 @@ def read_pdf(data: bytes) -> ReadResult:
         pages = list(reader.pages)[:MAX_PAGES]
         texts: list[str] = []
         used_ocr = False
+        deadline = time.monotonic() + OCR_BUDGET_SECONDS
+        ocr_count = 0
         for page in pages:
             text = page.extract_text(extraction_mode="layout") or ""
             if len(re.sub(r"\s", "", text)) >= MIN_TEXT_CHARS:
@@ -107,7 +117,14 @@ def read_pdf(data: bytes) -> ReadResult:
                 continue
             # A scanned page: OCR the pictures on it.
             for image in page.images:
-                texts.append(ocr_image(image.data))
+                ocr_count += 1
+                remaining = deadline - time.monotonic()
+                if ocr_count > MAX_OCR_IMAGES or remaining <= 0:
+                    raise ReadError(
+                        "This PDF has too many pictures to read. Type the lines in, "
+                        "or scan just the invoice pages."
+                    )
+                texts.append(ocr_image(image.data, timeout=remaining))
                 used_ocr = True
     except ReadError:
         raise

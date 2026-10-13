@@ -35,6 +35,7 @@ from pypdf import PdfReader, PdfWriter
 from apps.core.pdf import grid, p, render
 from apps.customers.models import Contact, Customer
 from apps.parts.models import Part
+from apps.reports.registry import csv_text
 from apps.service.models import WorkOrder
 from apps.service.pdf import work_order_pdf
 from apps.units.models import Unit
@@ -88,19 +89,9 @@ def _csv(header: Sequence[str], rows: Iterable[Sequence[Any]]) -> bytes:
 
 
 def _safe(value: Any) -> str:
-    """A spreadsheet runs text starting with = + - @ as a formula; keep it text."""
-    text = "" if value is None else str(value)
-    if text[:1] in ("=", "+", "-", "@") and not _number(text):
-        return "'" + text
-    return text
-
-
-def _number(text: str) -> bool:
-    try:
-        float(text)
-    except ValueError:
-        return False
-    return True
+    """A spreadsheet runs text starting with = + - @ (or a tab or carriage
+    return) as a formula; keep it text. Same rule as the report exports."""
+    return csv_text(value)
 
 
 def _primary(contacts: Sequence[Contact]) -> Contact | None:
