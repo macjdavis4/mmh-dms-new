@@ -194,6 +194,14 @@ function StatusRow({
   );
 }
 
+/** Something new is sent every night (at least the database backup). */
+function offsiteFresh(offsite: AdminHealth["offsite"]): boolean {
+  if (!offsite.enabled || !offsite.last_copied_at) return false;
+  return (
+    Date.now() - new Date(offsite.last_copied_at).getTime() < 30 * 3600 * 1000
+  );
+}
+
 function SystemHealthCard() {
   const { data, isPending, isError } = useQuery({
     queryKey: ["admin", "health"],
@@ -248,6 +256,17 @@ function SystemHealthCard() {
                 backup
                   ? `${backup.status === "succeeded" ? "OK" : backup.status} · ${new Date(backup.started_at).toLocaleString()}`
                   : "None yet"
+              }
+            />
+            <StatusRow
+              ok={offsiteFresh(data.offsite)}
+              label="Locked off-site copy"
+              detail={
+                !data.offsite.enabled
+                  ? "Not set up yet"
+                  : data.offsite.last_copied_at
+                    ? `Last file sent ${new Date(data.offsite.last_copied_at).toLocaleString()}`
+                    : "Nothing sent yet"
               }
             />
             <StatusRow

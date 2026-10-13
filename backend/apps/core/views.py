@@ -204,8 +204,18 @@ class AdminHealthView(APIView):
                 "version": settings.APP_VERSION,
                 "environment": settings.APP_ENV,
                 "security_notices": _security_notices(),
+                "offsite": _offsite_status(),
             }
         )
+
+
+def _offsite_status() -> dict[str, Any]:
+    """The locked off-site copy (apps/ops/offsite.py): set up, and when it last sent a file."""
+    from apps.ops import offsite
+    from apps.ops.models import OffsiteCopy
+
+    last = OffsiteCopy.objects.order_by("-copied_at").values_list("copied_at", flat=True).first()
+    return {"enabled": offsite.enabled(), "last_copied_at": last}
 
 
 SECURITY_NOTICE_DAYS = 14

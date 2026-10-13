@@ -138,3 +138,14 @@ def test_copy_records_cannot_be_changed_or_deleted(stores: Any) -> None:
 def test_md5_is_sent_for_a_large_spooled_body(stores: Any) -> None:
     offsite._put(stores["offsite"], "test/big", io.BytesIO(b"x" * 3_000_000))
     assert stores["offsite"].store["test/big"] == b"x" * 3_000_000
+
+
+@pytest.mark.django_db
+def test_admin_health_shows_the_off_site_copy(settings: Any, admin_client: Any) -> None:
+    settings.OFFSITE_BUCKET = ""
+    assert admin_client.get("/api/v1/admin/health").json()["offsite"] == {
+        "enabled": False,
+        "last_copied_at": None,
+    }
+    OffsiteCopy.objects.create(key="test/media/x.jpg", size_bytes=1, md5="x")
+    assert admin_client.get("/api/v1/admin/health").json()["offsite"]["last_copied_at"]

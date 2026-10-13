@@ -111,6 +111,8 @@ export interface AdminHealth {
   } | null;
   version: string;
   environment: string;
+  /** The locked off-site copy (Backblaze B2). */
+  offsite: { enabled: boolean; last_copied_at: string | null };
   /** Two-factor resets and removals in the last two weeks. */
   security_notices: { at: string; text: string }[];
 }
