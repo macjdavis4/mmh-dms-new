@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
@@ -8,6 +9,7 @@ from django.conf import settings
 from django.db import connection
 from django.http import HttpRequest, HttpResponse
 from django.template import engines
+from django.utils import timezone
 from django.views.decorators.csrf import ensure_csrf_cookie
 from rest_framework import generics, serializers
 from rest_framework.permissions import AllowAny
@@ -201,5 +203,36 @@ class AdminHealthView(APIView):
                 else None,
                 "version": settings.APP_VERSION,
                 "environment": settings.APP_ENV,
+                "security_notices": _security_notices(),
             }
         )
+
+
+SECURITY_NOTICE_DAYS = 14
+CONFIRMED_LABELS = {
+    "in_person": "confirmed in person",
+    "called_back": "confirmed by calling back",
+}
+
+
+def _security_notices() -> list[dict[str, Any]]:
+    """Two-factor resets and removals in the last two weeks, shown to every
+    admin, so a reset talked out of someone by a scam caller gets noticed."""
+    since = timezone.now() - timedelta(days=SECURITY_NOTICE_DAYS)
+    entries = AuditLog.objects.filter(
+        action=AuditLog.Action.TWO_FACTOR_DISABLED, at__gte=since
+    ).select_related("actor")[:20]
+    notices = []
+    for entry in entries:
+        after = entry.after if isinstance(entry.after, dict) else {}
+        actor = entry.actor
+        by = (actor.full_name or actor.email) if actor else "the command line"
+        if actor is not None and str(actor.pk) == entry.object_id:
+            text = f"{entry.object_repr} turned off their own two-factor"
+        else:
+            how = CONFIRMED_LABELS.get(str(after.get("confirmed", "")), "")
+            text = f"Two-factor reset for {entry.object_repr} by {by}" + (
+                f" ({how})" if how else ""
+            )
+        notices.append({"at": entry.at, "text": text})
+    return notices

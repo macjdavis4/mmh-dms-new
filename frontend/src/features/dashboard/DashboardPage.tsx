@@ -16,6 +16,7 @@ import {
   PackageCheck,
   PackageMinus,
   ReceiptText,
+  ShieldAlert,
   Timer,
   Truck,
   UserCheck,
@@ -24,7 +25,13 @@ import {
 import { Link } from "react-router";
 
 import { useCurrentUser } from "@/app/guards";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { canSeeInvoices } from "@/features/parts/invoices/api";
 import { useDashboard, useReports } from "@/features/reports/api";
@@ -54,29 +61,52 @@ const ICONS: Record<string, LucideIcon> = {
   "low-stock": PackageMinus,
   "parts-value": PackageCheck,
   "invoices-to-check": ReceiptText,
-  "backorders": Timer,
+  backorders: Timer,
 };
 
-type QuickAction = { label: string; icon: LucideIcon; to: string; hint: string };
+type QuickAction = {
+  label: string;
+  icon: LucideIcon;
+  to: string;
+  hint: string;
+};
 
 function TileCard({ tile }: { tile: DashboardTile }) {
   const Icon = ICONS[tile.key] ?? ClipboardList;
   const warn = tile.tone === "warning";
   return (
-    <Link to={tile.to} className="focus-visible:ring-ring rounded-xl focus-visible:ring-2 focus-visible:outline-none">
-      <Card className={cn("hover:border-primary/40 h-full gap-3 py-5 transition-colors", warn && "border-warning/50")}>
+    <Link
+      to={tile.to}
+      className="focus-visible:ring-ring rounded-xl focus-visible:ring-2 focus-visible:outline-none"
+    >
+      <Card
+        className={cn(
+          "hover:border-primary/40 h-full gap-3 py-5 transition-colors",
+          warn && "border-warning/50",
+        )}
+      >
         <CardContent className="flex flex-col gap-3 px-5">
           <span
             className={cn(
               "grid size-10 place-items-center rounded-xl",
-              warn ? "bg-warning/15 text-warning" : "bg-primary/10 text-primary dark:bg-primary/15",
+              warn
+                ? "bg-warning/15 text-warning"
+                : "bg-primary/10 text-primary dark:bg-primary/15",
             )}
           >
             <Icon className="size-5" aria-hidden="true" />
           </span>
           <div>
-            <p className={cn("font-extrabold tabular-nums", tile.kind === "money" ? "text-2xl" : "text-3xl", warn && "text-warning")}>
-              {tile.kind === "money" ? formatCents(tile.value) : Number(tile.value).toLocaleString("en-US")}
+            <p
+              className={cn(
+                "font-extrabold tabular-nums",
+                tile.kind === "money" ? "text-2xl" : "text-3xl",
+                warn && "text-warning",
+              )}
+            >
+              {tile.kind === "money"
+                ? formatCents(tile.value)
+                : Number(tile.value).toLocaleString("en-US")}
             </p>
             <p className="text-sm font-semibold">{tile.label}</p>
           </div>
@@ -94,7 +124,9 @@ function ReportsCard() {
         <CardTitle className="flex items-center gap-2 text-lg">
           <BarChart3 className="size-5" aria-hidden="true" /> Reports
         </CardTitle>
-        <CardDescription>Totals for any dates, ready to download.</CardDescription>
+        <CardDescription>
+          Totals for any dates, ready to download.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         {reports.isPending ? (
@@ -106,8 +138,15 @@ function ReportsCard() {
           <ul className="divide-y">
             {(reports.data?.reports ?? []).map((r) => (
               <li key={r.key}>
-                <Link to={`/reports/${r.key}`} className="hover:text-primary flex min-h-11 items-center justify-between gap-2 text-sm font-medium">
-                  {r.title} <ArrowRight className="text-muted-foreground size-4" aria-hidden="true" />
+                <Link
+                  to={`/reports/${r.key}`}
+                  className="hover:text-primary flex min-h-11 items-center justify-between gap-2 text-sm font-medium"
+                >
+                  {r.title}{" "}
+                  <ArrowRight
+                    className="text-muted-foreground size-4"
+                    aria-hidden="true"
+                  />
                 </Link>
               </li>
             ))}
@@ -118,18 +157,39 @@ function ReportsCard() {
   );
 }
 
-function StatusRow({ ok, label, detail }: { ok: boolean; label: string; detail: string }) {
+function StatusRow({
+  ok,
+  label,
+  detail,
+}: {
+  ok: boolean;
+  label: string;
+  detail: string;
+}) {
   return (
     <li className="flex items-center justify-between gap-3 py-2.5">
       <span className="flex items-center gap-2 text-sm font-medium">
         {ok ? (
-          <CheckCircle2 className="text-success size-[18px]" aria-hidden="true" />
+          <CheckCircle2
+            className="text-success size-[18px]"
+            aria-hidden="true"
+          />
         ) : (
-          <CircleAlert className="text-destructive size-[18px]" aria-hidden="true" />
+          <CircleAlert
+            className="text-destructive size-[18px]"
+            aria-hidden="true"
+          />
         )}
         {label}
       </span>
-      <span className={cn("text-sm", ok ? "text-muted-foreground" : "text-destructive font-semibold")}>{detail}</span>
+      <span
+        className={cn(
+          "text-sm",
+          ok ? "text-muted-foreground" : "text-destructive font-semibold",
+        )}
+      >
+        {detail}
+      </span>
     </li>
   );
 }
@@ -157,10 +217,16 @@ function SystemHealthCard() {
             <Skeleton className="h-6" />
           </div>
         ) : isError ? (
-          <p className="text-destructive text-sm font-semibold">Couldn't check system health.</p>
+          <p className="text-destructive text-sm font-semibold">
+            Couldn't check system health.
+          </p>
         ) : (
           <ul className="divide-y">
-            <StatusRow ok={data.database === "ok"} label="Database" detail={data.database === "ok" ? "Connected" : data.database} />
+            <StatusRow
+              ok={data.database === "ok"}
+              label="Database"
+              detail={data.database === "ok" ? "Connected" : data.database}
+            />
             <StatusRow
               ok={data.migrations === "ok"}
               label="Database schema"
@@ -169,7 +235,11 @@ function SystemHealthCard() {
             <StatusRow
               ok={(data.jobs.failed ?? 0) === 0}
               label="Background jobs"
-              detail={(data.jobs.failed ?? 0) > 0 ? `${data.jobs.failed ?? 0} failed` : `${data.jobs.todo ?? 0} waiting`}
+              detail={
+                (data.jobs.failed ?? 0) > 0
+                  ? `${data.jobs.failed ?? 0} failed`
+                  : `${data.jobs.todo ?? 0} waiting`
+              }
             />
             <StatusRow
               ok={backup?.status === "succeeded"}
@@ -191,9 +261,31 @@ function SystemHealthCard() {
             />
           </ul>
         )}
+        {data && data.security_notices.length > 0 && (
+          <div
+            className="border-warning/50 bg-warning/10 mt-4 rounded-md border p-3"
+            role="status"
+          >
+            <p className="flex items-center gap-1.5 text-sm font-semibold">
+              <ShieldAlert className="size-4" aria-hidden="true" /> Two-factor
+              changes (last 2 weeks)
+            </p>
+            <ul className="mt-2 flex flex-col gap-1 text-sm">
+              {data.security_notices.map((n) => (
+                <li key={n.at + n.text}>
+                  {n.text} · {new Date(n.at).toLocaleString()}
+                </li>
+              ))}
+            </ul>
+            <p className="text-muted-foreground mt-2 text-xs">
+              Not expected? Check with the person straight away.
+            </p>
+          </div>
+        )}
         {data && (
           <p className="text-muted-foreground mt-3 flex items-center gap-1.5 text-xs">
-            <HardDriveDownload className="size-3.5" aria-hidden="true" /> Version {data.version} · {data.environment}
+            <HardDriveDownload className="size-3.5" aria-hidden="true" />{" "}
+            Version {data.version} · {data.environment}
           </p>
         )}
       </CardContent>
@@ -208,30 +300,67 @@ export function DashboardPage() {
   const on = (key: string) => isOn(flags.data?.flags, key);
   const actions: QuickAction[] = [];
   if (on("service") && canEditWorkOrders(user.roles)) {
-    actions.push({ label: "New work order", icon: ClipboardPlus, to: "/service/new", hint: "Open a job on a unit" });
+    actions.push({
+      label: "New work order",
+      icon: ClipboardPlus,
+      to: "/service/new",
+      hint: "Open a job on a unit",
+    });
   }
   if (on("customers-units")) {
     actions.push(
       canEditUnits(user.roles)
-        ? { label: "Add a unit", icon: Truck, to: "/units/new", hint: "Enter a unit card" }
-        : { label: "Browse units", icon: Truck, to: "/units", hint: "Find a unit by serial or customer" },
+        ? {
+            label: "Add a unit",
+            icon: Truck,
+            to: "/units/new",
+            hint: "Enter a unit card",
+          }
+        : {
+            label: "Browse units",
+            icon: Truck,
+            to: "/units",
+            hint: "Find a unit by serial or customer",
+          },
     );
   }
   if (on("parts") && on("parts-invoices") && canSeeInvoices(user.roles)) {
-    actions.push({ label: "Receive a parts invoice", icon: PackageCheck, to: "/parts/invoices", hint: "Upload it, check it, receive it" });
+    actions.push({
+      label: "Receive a parts invoice",
+      icon: PackageCheck,
+      to: "/parts/invoices",
+      hint: "Upload it, check it, receive it",
+    });
   }
-  if (on("batch-import") && hasAnyRole(user.roles, ["admin", "sales", "service"])) {
-    actions.push({ label: "Import unit cards", icon: FileUp, to: "/imports/new", hint: "Upload a spreadsheet of cards" });
+  if (
+    on("batch-import") &&
+    hasAnyRole(user.roles, ["admin", "sales", "service"])
+  ) {
+    actions.push({
+      label: "Import unit cards",
+      icon: FileUp,
+      to: "/imports/new",
+      hint: "Upload a spreadsheet of cards",
+    });
   }
   if (on("reports")) {
-    actions.push({ label: "Reports", icon: BarChart3, to: "/reports", hint: "Totals for any dates, ready to download" });
+    actions.push({
+      label: "Reports",
+      icon: BarChart3,
+      to: "/reports",
+      hint: "Totals for any dates, ready to download",
+    });
   }
   const tiles = dashboard.data?.tiles;
   return (
     <div className="flex flex-col gap-8">
       <div>
         <p className="text-muted-foreground text-sm font-medium">
-          {new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
+          {new Date().toLocaleDateString(undefined, {
+            weekday: "long",
+            month: "long",
+            day: "numeric",
+          })}
         </p>
         <h1 className="mt-1 text-2xl font-extrabold tracking-tight sm:text-3xl">
           {greeting()}, {user.first_name || user.email.split("@")[0]}
@@ -243,12 +372,19 @@ export function DashboardPage() {
           At a glance
         </h2>
         {dashboard.isError ? (
-          <p className="text-destructive text-sm font-semibold">Couldn't load the numbers. They'll try again shortly.</p>
+          <p className="text-destructive text-sm font-semibold">
+            Couldn't load the numbers. They'll try again shortly.
+          </p>
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4" aria-busy={!tiles}>
+          <div
+            className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4"
+            aria-busy={!tiles}
+          >
             {tiles
               ? tiles.map((tile) => <TileCard key={tile.key} tile={tile} />)
-              : Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-36 rounded-xl" />)}
+              : Array.from({ length: 4 }, (_, i) => (
+                  <Skeleton key={i} className="h-36 rounded-xl" />
+                ))}
           </div>
         )}
       </section>
@@ -273,9 +409,14 @@ export function DashboardPage() {
                   </span>
                   <span className="flex-1">
                     <span className="block font-semibold">{action.label}</span>
-                    <span className="text-muted-foreground text-xs">{action.hint}</span>
+                    <span className="text-muted-foreground text-xs">
+                      {action.hint}
+                    </span>
                   </span>
-                  <ArrowRight className="text-muted-foreground size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                  <ArrowRight
+                    className="text-muted-foreground size-4 transition-transform group-hover:translate-x-0.5"
+                    aria-hidden="true"
+                  />
                 </Link>
               ))}
             </CardContent>

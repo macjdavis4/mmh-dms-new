@@ -46,7 +46,12 @@ def test_reset_2fa_deletes_devices_so_old_phone_cannot_sign_in_to_django_admin(
     old = TOTPDevice.objects.create(user=victim, name="old phone", confirmed=True)
     codes = StaticDevice.objects.create(user=victim, name="Recovery codes", confirmed=True)
     codes.token_set.create(token="aaaa-bbbb")
-    assert admin_client.post(f"/api/v1/admin/users/{victim.pk}/reset-2fa").status_code == 200
+    assert (
+        admin_client.post(
+            f"/api/v1/admin/users/{victim.pk}/reset-2fa", {"confirmed": "in_person"}, format="json"
+        ).status_code
+        == 200
+    )
     assert not TOTPDevice.objects.filter(user=victim).exists()
     assert not StaticDevice.objects.filter(user=victim).exists()
 
@@ -87,7 +92,12 @@ def test_reset_2fa_signs_the_person_out_everywhere(admin_client: APIClient, make
     victim = make_user(Role.ADMIN)
     stolen_laptop = signed_in_client(victim)
     assert stolen_laptop.get("/api/v1/admin/users").status_code == 200
-    assert admin_client.post(f"/api/v1/admin/users/{victim.pk}/reset-2fa").status_code == 200
+    assert (
+        admin_client.post(
+            f"/api/v1/admin/users/{victim.pk}/reset-2fa", {"confirmed": "in_person"}, format="json"
+        ).status_code
+        == 200
+    )
     me = stolen_laptop.get("/api/v1/auth/me").json()
     assert me["authenticated"] is False
     # The admin who did the reset stays signed in.
@@ -252,3 +262,89 @@ def test_paper_backup_csv_neutralises_every_formula_start() -> None:
         assert _safe(text).startswith("'")
     assert _safe("-12.50") == "-12.50"
     assert _safe(Decimal("3")) == "3"
+
+
+# --- Session lifetime -------------------------------------------------------------------------
+
+
+def _age_session(client: APIClient, seconds: int) -> None:
+    import time
+
+    from apps.accounts.middleware import SIGNED_IN_AT
+
+    session = client.session
+    session[SIGNED_IN_AT] = int(time.time()) - seconds
+    session.save()
+
+
+@pytest.mark.django_db
+def test_a_busy_session_still_ends_after_a_week(make_user: Any) -> None:
+    client = signed_in_client(make_user(Role.SALES))
+    _age_session(client, 6 * 24 * 3600)
+    assert client.get("/api/v1/auth/me").json()["authenticated"] is True
+    _age_session(client, 7 * 24 * 3600 + 60)
+    assert client.get("/api/v1/auth/me").json()["authenticated"] is False
+    assert client.get("/api/v1/units").status_code in (401, 403)
+
+
+@pytest.mark.django_db
+def test_admin_sessions_end_after_a_working_day(admin_client: APIClient) -> None:
+    _age_session(admin_client, 11 * 3600)
+    assert admin_client.get("/api/v1/admin/users").status_code == 200
+    _age_session(admin_client, 12 * 3600 + 60)
+    assert admin_client.get("/api/v1/admin/users").status_code in (401, 403)
+
+
+@pytest.mark.django_db
+def test_sessions_from_before_the_limit_start_their_clock_now(make_user: Any) -> None:
+    from apps.accounts.middleware import SIGNED_IN_AT
+
+    client = signed_in_client(make_user(Role.SERVICE))
+    session = client.session
+    del session[SIGNED_IN_AT]
+    session.save()
+    assert client.get("/api/v1/auth/me").json()["authenticated"] is True
+    assert isinstance(client.session.get(SIGNED_IN_AT), int)
+
+
+# --- 2FA reset safeguards (phone scams) -------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_reset_2fa_needs_to_say_how_the_person_was_confirmed(
+    admin_client: APIClient, make_user: Any
+) -> None:
+    user = make_user(Role.SALES)
+    TOTPDevice.objects.create(user=user, name="phone", confirmed=True)
+    for body in ({}, {"confirmed": "they emailed me"}):
+        res = admin_client.post(f"/api/v1/admin/users/{user.pk}/reset-2fa", body, format="json")
+        assert res.status_code == 400
+    assert TOTPDevice.objects.filter(user=user).exists()
+
+
+@pytest.mark.django_db
+def test_every_admin_sees_recent_2fa_resets(
+    admin_client: APIClient, make_user: Any, admin_user: Any
+) -> None:
+    user = make_user(Role.SALES)
+    user.first_name, user.last_name = "Pat", "Doe"
+    user.save()
+    admin_client.post(
+        f"/api/v1/admin/users/{user.pk}/reset-2fa", {"confirmed": "called_back"}, format="json"
+    )
+    other_admin = signed_in_client(make_user(Role.ADMIN))
+    notices = other_admin.get("/api/v1/admin/health").json()["security_notices"]
+    assert len(notices) == 1
+    assert "Pat Doe" in notices[0]["text"]
+    assert "calling back" in notices[0]["text"]
+
+
+@pytest.mark.django_db
+def test_command_line_reset_deletes_devices_and_signs_out(make_user: Any) -> None:
+    from django.core.management import call_command
+
+    victim = make_user(Role.ADMIN)
+    laptop = signed_in_client(victim)
+    call_command("reset_2fa", victim.email)
+    assert not TOTPDevice.objects.filter(user=victim).exists()
+    assert laptop.get("/api/v1/auth/me").json()["authenticated"] is False
