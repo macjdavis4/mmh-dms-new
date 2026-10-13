@@ -278,6 +278,14 @@ STORAGES["paper"] = {
         "location": f"paper/{APP_ENV}",
     },
 }
+# The locked off-site copy (Backblaze B2, outside DigitalOcean). The bucket
+# has Object Lock on, so nothing can be deleted or changed for 30 days, and
+# the key here can add files but not delete them. Empty = not set up yet.
+OFFSITE_BUCKET = env("OFFSITE_BUCKET", "")
+OFFSITE_ENDPOINT_URL = env("OFFSITE_ENDPOINT_URL", "")
+OFFSITE_ACCESS_KEY_ID = env("OFFSITE_ACCESS_KEY_ID", "")
+OFFSITE_SECRET_ACCESS_KEY = env("OFFSITE_SECRET_ACCESS_KEY", "")
+
 # A dedicated direct (non-pooled) connection string used by pg_dump.
 BACKUP_DATABASE_URL = env(
     "BACKUP_DATABASE_URL", env("DATABASE_URL", "postgres://mmh:mmh@localhost:5432/mmh")
