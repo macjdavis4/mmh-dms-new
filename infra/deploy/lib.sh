@@ -83,8 +83,12 @@ switch_traffic() {
   local color=$1
   mkdir -p "$MMH_HOME/upstream"
   sed "s/__COLOR__/$color/" "$RELEASE_DIR/upstream.caddy.tmpl" >"$MMH_HOME/upstream/active.caddy.new"
+  # The deploy entry point runs with umask 077, which would make this 0600 and
+  # unreadable by Caddy (its container drops all capabilities). No secrets in it.
+  chmod 0644 "$MMH_HOME/upstream/active.caddy.new"
   mv "$MMH_HOME/upstream/active.caddy.new" "$MMH_HOME/upstream/active.caddy"
-  if [ -n "$(compose ps -q caddy 2>/dev/null)" ]; then
+  # Reload only a running Caddy; a stopped or crash-looping one is (re)started.
+  if [ -n "$(compose ps --status running -q caddy 2>/dev/null)" ]; then
     compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
   else
     compose up -d caddy
