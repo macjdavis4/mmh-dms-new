@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 
 REQUIRED_SECRETS = [
@@ -41,9 +42,21 @@ OPTIONAL_SECRETS = [
 ]
 
 
+# The server's deploy entry point reads these three with grep/cut (not a shell
+# source), so single quotes would end up inside the value and make the registry
+# login fail with "denied". Their values are plain characters, so they go out
+# unquoted; every other line is quoted as before.
+UNQUOTED = {"APP_IMAGE_REPO", "GHCR_USER", "GHCR_TOKEN"}
+SAFE_UNQUOTED = re.compile(r"^[A-Za-z0-9._/:-]+$")
+
+
 def quote(name: str, value: str) -> str:
     if "\n" in value or "'" in value:
         raise SystemExit(f"{name} contains a newline or single quote, which is not allowed")
+    if name in UNQUOTED:
+        if not SAFE_UNQUOTED.match(value):
+            raise SystemExit(f"{name} may only contain letters, digits and . _ / : -")
+        return f"{name}={value}"
     return f"{name}='{value}'"
 
 
