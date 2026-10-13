@@ -297,7 +297,14 @@ def parse_row(raw: dict[str, str], *, can_price: bool) -> ParsedRow:
         elif kind == "money":
             money = _money(value)
             if money is None:
-                _keep_as_written(parsed, col, value, "Not an amount of money.")
+                # Never keep a price "as written": notes, warnings and the
+                # review note are visible to roles that must not see prices.
+                parsed.errors.append(
+                    Message(
+                        col.name,
+                        "Not an amount of money. Use a plain amount, like 38900 or $38,900.00.",
+                    )
+                )
                 continue
             _set(parsed, col, money)
         elif kind == "date":

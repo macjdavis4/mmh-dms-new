@@ -147,6 +147,7 @@ def markdown() -> str:
         '- **Units already in the DMS** (same serial) are updated with the card\'s values, unless you choose "Leave existing units alone". Blank cells never erase anything.',
         "- **Importing the same file again** changes nothing.",
         "- Values that can't be read as a number or date (for example `5 ton` in `capacity_lbs`) are kept, exactly as written, in the unit's notes, and the unit is flagged **Needs review**.",
+        "- Prices (`cost`, `asking_price`, `sale_price`) are never kept as written, because notes are visible to everyone. A price that isn't a plain amount stops that row with an error.",
         "- Every unit added with a warning is flagged **Needs review**. Find them under *Units → filter: Only units that need review*.",
         "- The hour meter becomes a dated reading (the card date, or the import date).",
         "- The owner of a unit already in the DMS is never changed by an import. Use **Change owner** on the unit page.",

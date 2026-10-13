@@ -17,7 +17,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from apps.accounts.permissions import HasRole
-from apps.accounts.roles import Role
+from apps.accounts.roles import Role, has_any_role
 from apps.core.api import RequiresFlag, SoftDeleteViewSetMixin
 from apps.core.models import AuditLog
 from apps.core.pdf import pdf_response, safe_filename
@@ -312,6 +312,11 @@ class UnitViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet[Unit]):
             content_type=ContentType.objects.get_for_model(Unit), object_id=str(unit.pk)
         ).select_related("actor", "content_type")[:100]
         rows = AuditLogSerializer(entries, many=True).data
+        if not has_any_role(request.user, ("admin",)):
+            # Where staff worked from is for the admin audit log only.
+            for row in rows:
+                row.pop("ip", None)
+                row.pop("request_id", None)
         if not can_see_pricing({"request": request}):
             for row in rows:
                 for side in ("before", "after"):
