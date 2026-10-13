@@ -22,6 +22,11 @@ variable "admin_ssh_public_key" {
   type        = string
   description = "Owner's SSH public key (for emergency access from the office)."
 }
+variable "existing_admin_ssh_key_name" {
+  type        = string
+  default     = null
+  description = "Name of an admin SSH key already registered in DigitalOcean (by another environment). When set, no new key is registered."
+}
 variable "deploy_ssh_public_key" {
   type        = string
   description = "Public half of the GitHub Actions deploy key. Can only run the deploy script."
