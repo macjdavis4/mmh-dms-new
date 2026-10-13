@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from typing import Any
 
 from axes.signals import user_locked_out
@@ -11,12 +12,18 @@ from django.dispatch import receiver
 from apps.core.context import get_context
 from apps.core.models import AuditLog
 
+from .middleware import SIGNED_IN_AT
+
 
 @receiver(user_logged_in)
 def on_login(sender: Any, request: Any, user: Any, **kwargs: Any) -> None:
     ctx = get_context()
     ctx.user_id = user.pk
     ctx.user_role = getattr(user, "roles_text", "") or getattr(user, "role", "")
+    session = getattr(request, "session", None)
+    if session is not None:
+        # The clock for the hard session limit (SessionLifetimeMiddleware).
+        session[SIGNED_IN_AT] = int(time.time())
     AuditLog.record(AuditLog.Action.LOGIN, user, actor=user)
 
 
