@@ -11,9 +11,26 @@ terraform {
 
 data "cloudflare_ip_ranges" "cf" {}
 
+# DigitalOcean allows each public key to be registered once per account, so
+# only one environment registers the admin key; the other looks it up by name.
 resource "digitalocean_ssh_key" "admin" {
+  count      = var.existing_admin_ssh_key_name == null ? 1 : 0
   name       = "mmh-${var.environment}-admin"
   public_key = var.admin_ssh_public_key
+}
+
+moved {
+  from = digitalocean_ssh_key.admin
+  to   = digitalocean_ssh_key.admin[0]
+}
+
+data "digitalocean_ssh_key" "existing" {
+  count = var.existing_admin_ssh_key_name == null ? 0 : 1
+  name  = var.existing_admin_ssh_key_name
+}
+
+locals {
+  admin_ssh_key_fingerprint = var.existing_admin_ssh_key_name == null ? digitalocean_ssh_key.admin[0].fingerprint : data.digitalocean_ssh_key.existing[0].fingerprint
 }
 
 resource "digitalocean_droplet" "app" {
@@ -25,7 +42,7 @@ resource "digitalocean_droplet" "app" {
   ipv6       = true
   monitoring = true
   backups    = var.droplet_backups
-  ssh_keys   = [digitalocean_ssh_key.admin.fingerprint]
+  ssh_keys   = [local.admin_ssh_key_fingerprint]
   tags       = ["mmh", "mmh-${var.environment}"]
 
   dynamic "backup_policy" {

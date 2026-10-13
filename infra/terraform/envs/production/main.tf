@@ -48,6 +48,9 @@ module "app" {
   deploy_ssh_public_key = var.deploy_ssh_public_key
   admin_ssh_cidrs       = var.admin_ssh_cidrs
   db_ca_certificate     = module.database.ca_certificate
+
+  # Staging already registered this key (DigitalOcean allows it once per account).
+  existing_admin_ssh_key_name = "mmh-staging-admin"
 }
 
 module "database" {
