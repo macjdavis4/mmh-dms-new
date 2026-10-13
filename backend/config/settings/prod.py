@@ -25,5 +25,8 @@ if SENTRY_DSN:
         environment=APP_ENV,
         release=APP_VERSION,
         send_default_pii=False,
+        # Never attach request bodies: password changes and 2FA codes use
+        # field names the default scrubber doesn't know (new_password, code).
+        max_request_body_size="never",
         traces_sample_rate=float(env("SENTRY_TRACES_SAMPLE_RATE", "0.05")),
     )

@@ -9,8 +9,6 @@ from django.contrib.auth.password_validation import validate_password
 from django.db import transaction
 from django.db.models import Q, QuerySet
 from django_otp import user_has_device
-from django_otp.plugins.otp_static.models import StaticDevice
-from django_otp.plugins.otp_totp.models import TOTPDevice
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.request import Request
@@ -18,6 +16,7 @@ from rest_framework.response import Response
 
 from apps.core.models import AuditLog
 
+from .devices import end_sessions, remove_two_factor_devices
 from .models import User
 from .permissions import IsAdmin
 from .roles import Role, normalize_roles, roles_problem
@@ -190,10 +189,8 @@ class UserAdminViewSet(viewsets.ModelViewSet[User]):
         """For a lost phone. The person sets 2FA up again at next sign-in."""
         user = self.get_object()
         with transaction.atomic():
-            for model in (TOTPDevice, StaticDevice):
-                for device in model.objects.filter(user=user, confirmed=True):
-                    device.confirmed = False
-                    device.save()
+            remove_two_factor_devices(user)
+            end_sessions(user, keep=request.session.session_key)
             AuditLog.record(AuditLog.Action.TWO_FACTOR_DISABLED, user, after={"by_admin": True})
         return Response(self.get_serializer(user).data)
 

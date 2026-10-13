@@ -1,12 +1,12 @@
 from django.contrib import admin
 from django.urls import include, path, re_path
-from django_otp.admin import OTPAdminSite
 
+from apps.accounts.otp_admin import ConfirmedDeviceOTPAdminSite
 from apps.core import health
 from apps.core.views import service_worker, spa_index
 
 # The Django admin requires a 2FA code, not just a password.
-admin.site.__class__ = OTPAdminSite
+admin.site.__class__ = ConfirmedDeviceOTPAdminSite
 
 urlpatterns = [
     path("healthz", health.healthz, name="healthz"),
