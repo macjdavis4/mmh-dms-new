@@ -32,6 +32,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useDebounced } from "@/hooks/useDebounced";
 import { ApiError } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
+import { hasAnyRole } from "@/lib/roles";
 import type { ImportBatch, ImportRow } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -484,7 +485,7 @@ export function ImportBatchPage() {
           )}
         </div>
       )}
-      {b.status === "imported" && !b.can_undo && user.role !== "admin" && (
+      {b.status === "imported" && !b.can_undo && !hasAnyRole(user.roles, ["admin"]) && (
         <p className="text-muted-foreground text-sm">Only an admin or the person who ran this import can undo it.</p>
       )}
 

@@ -109,7 +109,7 @@ function PartForm({ part }: { part?: Part }) {
         .filter((c) => c.part_number.trim())
         .map((c) => ({ ...(c.id ? { id: c.id } : {}), manufacturer: c.manufacturer.trim(), part_number: c.part_number.trim(), note: c.note })),
     };
-    if (canSeePartCost(user.role)) body.cost = orNull(d.cost);
+    if (canSeePartCost(user.roles)) body.cost = orNull(d.cost);
     save.mutate(body, {
       onSuccess: (p) => {
         toast.success(part ? "Part saved" : `${p.part_number} added`);
@@ -192,7 +192,7 @@ function PartForm({ part }: { part?: Part }) {
             <Field id="p-price" label="List price" error={err?.fieldError("list_price")}>
               <Input id="p-price" inputMode="decimal" className="font-mono" value={d.list_price} placeholder="$" onChange={(e) => set({ list_price: money(e.target.value) })} />
             </Field>
-            {canSeePartCost(user.role) && (
+            {canSeePartCost(user.roles) && (
               <Field id="p-cost" label="Our cost" error={err?.fieldError("cost")}>
                 <Input id="p-cost" inputMode="decimal" className="font-mono" value={d.cost} placeholder="$" onChange={(e) => set({ cost: money(e.target.value) })} />
               </Field>

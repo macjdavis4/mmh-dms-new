@@ -176,7 +176,7 @@ export function UnitMaintenance({ unitId, removed }: { unitId: string; removed: 
   const remove = usePlanRemove();
   const [dialog, setDialog] = useState<MaintenancePlan | "new" | null>(null);
   if (!on || plans.isError) return null;
-  const canEdit = canEditWorkOrders(user.role) && !removed;
+  const canEdit = canEditWorkOrders(user.roles) && !removed;
 
   return (
     <SectionCard

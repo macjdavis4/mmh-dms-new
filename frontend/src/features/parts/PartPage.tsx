@@ -71,8 +71,8 @@ export function PartPage() {
     );
   }
   const p = part.data;
-  const canEdit = canEditParts(user.role);
-  const keepsStock = stockOn && canKeepStock(user.role) && !p.is_deleted;
+  const canEdit = canEditParts(user.roles);
+  const keepsStock = stockOn && canKeepStock(user.roles) && !p.is_deleted;
 
   return (
     <div className="flex flex-col gap-6">
@@ -236,7 +236,7 @@ export function PartPage() {
         </SectionCard>
       )}
 
-      {stockDialog === "receive" && <ReceiveDialog part={p} showCost={canSeePartCost(user.role)} onClose={() => setStockDialog(null)} />}
+      {stockDialog === "receive" && <ReceiveDialog part={p} showCost={canSeePartCost(user.roles)} onClose={() => setStockDialog(null)} />}
       {stockDialog === "count" && <CountDialog part={p} onHand={p.on_hand ?? "0"} onClose={() => setStockDialog(null)} />}
 
       <ConfirmDialog

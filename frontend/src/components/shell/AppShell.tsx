@@ -25,7 +25,7 @@ function SidebarBody({ user, onNavigate }: { user: CurrentUser; onNavigate?: () 
         </Link>
       </div>
       <div className="flex-1 overflow-y-auto px-3 py-4">
-        <SidebarNav role={user.role} {...(onNavigate ? { onNavigate } : {})} />
+        <SidebarNav roles={user.roles} {...(onNavigate ? { onNavigate } : {})} />
       </div>
       <div className="border-sidebar-border border-t p-4">
         <DealerBadgeSlot />
@@ -47,7 +47,7 @@ export function AppShell({ user }: { user: CurrentUser }) {
       </a>
 
       {/* Desktop and landscape tablet: fixed sidebar */}
-      <aside className="bg-sidebar text-sidebar-foreground border-sidebar-border fixed inset-y-0 left-0 z-30 hidden w-64 border-r lg:block">
+      <aside className="bg-sidebar text-sidebar-foreground border-sidebar-border fixed inset-y-0 left-0 z-30 hidden w-64 transform-gpu border-r [backface-visibility:hidden] [will-change:transform] lg:block">
         <SidebarBody user={user} />
       </aside>
 

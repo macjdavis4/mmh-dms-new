@@ -24,6 +24,8 @@ from django.db.models.fields.files import FieldFile
 from django.db.models.functions import Now
 from django.utils import timezone
 
+from apps.accounts.roles import has_any_role
+
 from .context import get_context
 
 
@@ -298,7 +300,12 @@ class AuditLog(models.Model):
         return cls.objects.create(
             action=action,
             actor_id=actor_id,
-            actor_role=getattr(actor, "role", "") or ctx.user_role,
+            actor_role=(
+                actor.roles_text
+                if actor is not None and hasattr(actor, "roles_text")
+                else getattr(actor, "role", "")
+            )
+            or ctx.user_role,
             source=ctx.source,
             content_type=ContentType.objects.get_for_model(obj) if obj is not None else None,
             object_id=str(obj.pk) if obj is not None else "",
@@ -386,4 +393,4 @@ class FeatureFlag(AuditedModel):
     def is_on_for(self, user: Any) -> bool:
         if not self.enabled:
             return False
-        return not self.roles or getattr(user, "role", None) in self.roles
+        return not self.roles or has_any_role(user, self.roles)

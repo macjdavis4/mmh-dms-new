@@ -44,4 +44,22 @@ describe("LoginPage", () => {
     await waitFor(() => expect(screen.getByRole("heading", { name: "Enter your code" })).toBeInTheDocument());
     expect(screen.getByRole("button", { name: /verify/i })).toBeDisabled();
   });
+
+  it("tells password managers not to fill the code box", async () => {
+    document.cookie = "mmh_csrftoken=t";
+    mockApi((url) =>
+      url === "/api/v1/auth/login" ? { body: { status: "otp_required" } } : { body: { authenticated: false } },
+    );
+    renderWithProviders(<LoginPage />, { path: "/login" });
+    await userEvent.type(await screen.findByLabelText("Email"), "boss@example.com");
+    await userEvent.type(screen.getByLabelText("Password"), "Correct-Horse-1");
+    await userEvent.click(screen.getByRole("button", { name: /sign in/i }));
+    const code = await screen.findByLabelText("Code");
+    expect(code).toHaveAttribute("type", "text");
+    expect(code).toHaveAttribute("name", "otp-code");
+    expect(code).toHaveAttribute("autocomplete", "one-time-code");
+    for (const ignore of ["data-1p-ignore", "data-lpignore", "data-bwignore", "data-protonpass-ignore"]) {
+      expect(code).toHaveAttribute(ignore);
+    }
+  });
 });

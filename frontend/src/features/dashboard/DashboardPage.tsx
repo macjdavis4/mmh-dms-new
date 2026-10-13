@@ -33,6 +33,7 @@ import { canEditUnits } from "@/features/units/permissions";
 import { api } from "@/lib/api";
 import { isOn, useFlags } from "@/lib/flags";
 import { formatCents } from "@/lib/format";
+import { hasAnyRole } from "@/lib/roles";
 import type { AdminHealth, DashboardTile } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -206,20 +207,20 @@ export function DashboardPage() {
   const dashboard = useDashboard();
   const on = (key: string) => isOn(flags.data?.flags, key);
   const actions: QuickAction[] = [];
-  if (on("service") && canEditWorkOrders(user.role)) {
+  if (on("service") && canEditWorkOrders(user.roles)) {
     actions.push({ label: "New work order", icon: ClipboardPlus, to: "/service/new", hint: "Open a job on a unit" });
   }
   if (on("customers-units")) {
     actions.push(
-      canEditUnits(user.role)
+      canEditUnits(user.roles)
         ? { label: "Add a unit", icon: Truck, to: "/units/new", hint: "Enter a unit card" }
         : { label: "Browse units", icon: Truck, to: "/units", hint: "Find a unit by serial or customer" },
     );
   }
-  if (on("parts") && on("parts-invoices") && canSeeInvoices(user.role)) {
+  if (on("parts") && on("parts-invoices") && canSeeInvoices(user.roles)) {
     actions.push({ label: "Receive a parts invoice", icon: PackageCheck, to: "/parts/invoices", hint: "Upload it, check it, receive it" });
   }
-  if (on("batch-import") && ["admin", "sales", "service"].includes(user.role)) {
+  if (on("batch-import") && hasAnyRole(user.roles, ["admin", "sales", "service"])) {
     actions.push({ label: "Import unit cards", icon: FileUp, to: "/imports/new", hint: "Upload a spreadsheet of cards" });
   }
   if (on("reports")) {
@@ -281,7 +282,7 @@ export function DashboardPage() {
           </Card>
         </section>
         <div className="flex flex-col gap-6 lg:col-span-2">
-          {user.role === "admin" && <SystemHealthCard />}
+          {hasAnyRole(user.roles, ["admin"]) && <SystemHealthCard />}
           {on("reports") && <ReportsCard />}
         </div>
       </div>

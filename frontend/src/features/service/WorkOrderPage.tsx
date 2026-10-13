@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { WorkOrderParts } from "@/features/parts/WorkOrderParts";
 import { ApiError } from "@/lib/api";
 import { formatDate, formatDateTime, formatNumber, todayISO } from "@/lib/format";
+import { hasAnyRole } from "@/lib/roles";
 import type { WorkOrder } from "@/lib/types";
 import { WORK_ORDER_KINDS } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -91,7 +92,7 @@ function Labor({ wo, canEdit }: { wo: WorkOrder; canEdit: boolean }) {
   const mechanics = useMechanics();
   const add = useAddLabor(wo.id);
   const remove = useLaborAction();
-  const [line, setLine] = useState({ mechanic: user.role === "service" || user.role === "admin" ? user.id : "", work_date: todayISO(), hours: "", description: "" });
+  const [line, setLine] = useState({ mechanic: hasAnyRole(user.roles, ["service", "admin"]) ? user.id : "", work_date: todayISO(), hours: "", description: "" });
   const err = add.error instanceof ApiError ? add.error : null;
   const total = wo.labor.reduce((sum, l) => sum + Number(l.hours), 0);
   const open = wo.status !== "cancelled";
@@ -178,7 +179,7 @@ function Labor({ wo, canEdit }: { wo: WorkOrder; canEdit: boolean }) {
 
 function WorkOrderView({ wo }: { wo: WorkOrder }) {
   const user = useCurrentUser();
-  const canEdit = canEditWorkOrders(user.role) && !wo.is_deleted;
+  const canEdit = canEditWorkOrders(user.roles) && !wo.is_deleted;
   const editable = canEdit && wo.status !== "cancelled";
   const mechanics = useMechanics();
   const save = useSaveWorkOrder(wo.id);

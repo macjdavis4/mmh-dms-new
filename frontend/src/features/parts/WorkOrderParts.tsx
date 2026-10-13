@@ -18,7 +18,7 @@ export function WorkOrderParts({ wo }: { wo: WorkOrder & { parts_used: UsedPart[
   const user = useCurrentUser();
   const [adding, setAdding] = useState(false);
   const [returning, setReturning] = useState<UsedPart | null>(null);
-  const canChange = canUseParts(user.role) && OPEN.includes(wo.status) && !wo.is_deleted;
+  const canChange = canUseParts(user.roles) && OPEN.includes(wo.status) && !wo.is_deleted;
   const total = wo.parts_used.reduce((sum, row) => sum + Number(row.amount ?? 0), 0);
   const count = wo.parts_used.length;
 

@@ -17,7 +17,7 @@ export function UnitServiceHistory({ unitId, removed }: { unitId: string; remove
   const flags = useFlags();
   const orders = useWorkOrders({ scope: "all", q: "", mine: false, unit: unitId }, 1, 20);
   if (!isOn(flags.data?.flags, "service") || orders.isError) return null;
-  const canAdd = canEditWorkOrders(user.role) && !removed;
+  const canAdd = canEditWorkOrders(user.roles) && !removed;
 
   return (
     <SectionCard

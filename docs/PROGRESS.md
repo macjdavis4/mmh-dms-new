@@ -279,3 +279,8 @@ A unit can be sold, come back and be sold again any number of times. It stays on
 
 **Known limitations**: no quantities on hand yet (Phase 10). No parts import from a spreadsheet yet; parts are added one at a time. One bin per part.
 
+
+## After launch
+
+- **Office-only access**: Cloudflare blocks everyone except the office/VPN address (except `/readyz` and `/healthz`). See *Network-only access* in `docs/MANUAL_STEPS.md`.
+- **Several roles per person**: any mix of sales, service and parts; admin and read-only stand alone. The database and the admin Users API enforce it. Follow-up release: make `roles` NOT EMPTY and drop the old `role` column.

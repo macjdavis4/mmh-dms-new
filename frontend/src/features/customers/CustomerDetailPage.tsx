@@ -86,7 +86,7 @@ export function CustomerDetailPage() {
   const [contactDialog, setContactDialog] = useState<Contact | "new" | null>(null);
   const [addressDialog, setAddressDialog] = useState<Address | "new" | null>(null);
   const [confirmRemove, setConfirmRemove] = useState(false);
-  const canEdit = canEditCustomers(user.role);
+  const canEdit = canEditCustomers(user.roles);
 
   if (customer.isError) {
     const notFound = customer.error instanceof ApiError && customer.error.status === 404;
@@ -142,7 +142,7 @@ export function CustomerDetailPage() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            {canSell(user.role) && isOn(flags, "sales") && (
+            {canSell(user.roles) && isOn(flags, "sales") && (
               <Button variant="cta" asChild>
                 <Link to={`/sales/new?customer=${c.id}`}>
                   <FileText className="size-4" /> New quote
@@ -154,7 +154,7 @@ export function CustomerDetailPage() {
                 <Pencil className="size-4" /> Edit
               </Button>
             )}
-            {canRemoveCustomers(user.role) && (
+            {canRemoveCustomers(user.roles) && (
               <Button variant="outline" onClick={() => setConfirmRemove(true)}>
                 <Trash2 className="size-4" /> Remove
               </Button>

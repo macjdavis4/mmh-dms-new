@@ -13,6 +13,7 @@ import { useUnit } from "@/features/units/api";
 import { type PickedUnit, toPicked, UnitPicker } from "@/features/units/UnitPicker";
 import { ApiError } from "@/lib/api";
 import { todayISO } from "@/lib/format";
+import { hasAnyRole } from "@/lib/roles";
 import { WORK_ORDER_KINDS } from "@/lib/types";
 
 import { useMechanics, useSaveWorkOrder } from "./api";
@@ -26,7 +27,7 @@ function NewWorkOrderForm({ initialUnit }: { initialUnit: PickedUnit | null }) {
   const [form, setForm] = useState({
     kind: "repair",
     location: "shop",
-    assigned_to: user.role === "service" ? user.id : "",
+    assigned_to: hasAnyRole(user.roles, ["service"]) ? user.id : "",
     complaint: "",
     contact: "",
     customer_po: "",

@@ -14,8 +14,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/form/Checkbox";
 import { api, ApiError } from "@/lib/api";
+import { isRoleDisabled, ROLE_ORDER, toggleRole } from "@/lib/roles";
 import { type AdminUser, ROLE_DESCRIPTIONS, ROLE_LABELS, type Role } from "@/lib/types";
 
 interface FormState {
@@ -23,7 +24,7 @@ interface FormState {
   last_name: string;
   email: string;
   phone: string;
-  role: Role;
+  roles: Role[];
   password: string;
 }
 
@@ -31,6 +32,7 @@ export function validateUserForm(form: FormState, isNew: boolean): Partial<Recor
   const errors: Partial<Record<keyof FormState, string>> = {};
   if (!form.first_name.trim()) errors.first_name = "Enter a first name.";
   if (!/^\S+@\S+\.\S+$/.test(form.email.trim())) errors.email = "Enter a valid email address.";
+  if (form.roles.length === 0) errors.roles = "Choose at least one role.";
   if (isNew && !form.password) errors.password = "Set a starting password.";
   if (form.password && form.password.length < 12) errors.password = "Use at least 12 characters.";
   return errors;
@@ -81,7 +83,7 @@ export function UserFormDialog({
     last_name: user?.last_name ?? "",
     email: user?.email ?? "",
     phone: user?.phone ?? "",
-    role: user?.role ?? "read_only",
+    roles: user?.roles ?? ["read_only"],
     password: "",
   });
   const [submitted, setSubmitted] = useState(false);
@@ -136,24 +138,35 @@ export function UserFormDialog({
           <Field id="phone" label="Mobile phone (optional)" error={err("phone")}>
             <Input id="phone" type="tel" autoComplete="off" value={form.phone} onChange={set("phone")} />
           </Field>
-          <Field id="role" label="Role" error={err("role")} hint={ROLE_DESCRIPTIONS[form.role]}>
-            <Select
-              value={form.role}
-              onValueChange={(v) => setForm((f) => ({ ...f, role: v as Role }))}
-              disabled={isSelf}
-            >
-              <SelectTrigger id="role" className="h-11 w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {(Object.keys(ROLE_LABELS) as Role[]).map((r) => (
-                  <SelectItem key={r} value={r} className="min-h-10">
-                    {ROLE_LABELS[r]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
+          <fieldset
+            className="flex flex-col gap-1"
+            aria-describedby={err("roles") ? "roles-error" : "roles-help"}
+            disabled={isSelf}
+          >
+            <legend className="mb-1 text-sm leading-none font-medium">Roles</legend>
+            {ROLE_ORDER.map((r) => (
+              <div key={r} className="flex flex-col">
+                <Checkbox
+                  id={`role-${r}`}
+                  checked={form.roles.includes(r)}
+                  disabled={isRoleDisabled(form.roles, r)}
+                  onChange={(checked) => setForm((f) => ({ ...f, roles: toggleRole(f.roles, r, checked) }))}
+                  label={ROLE_LABELS[r]}
+                />
+                <p className="text-muted-foreground -mt-2 pl-8 text-xs">{ROLE_DESCRIPTIONS[r]}</p>
+              </div>
+            ))}
+            {err("roles") ? (
+              <p id="roles-error" role="alert" className="text-destructive text-sm">
+                {err("roles")}
+              </p>
+            ) : (
+              <p id="roles-help" className="text-muted-foreground mt-1 text-xs">
+                Admin and Read only stand alone. Sales, Service and Parts can be combined.
+                {isSelf ? " You cannot change your own roles." : ""}
+              </p>
+            )}
+          </fieldset>
           <Field
             id="password"
             label={isNew ? "Starting password" : "New password"}

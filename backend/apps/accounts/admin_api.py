@@ -20,12 +20,17 @@ from apps.core.models import AuditLog
 
 from .models import User
 from .permissions import IsAdmin
-from .roles import Role
+from .roles import Role, normalize_roles, roles_problem
 
 
 class UserSerializer(serializers.ModelSerializer[User]):
     full_name = serializers.CharField(read_only=True)
-    role_label = serializers.CharField(source="get_role_display", read_only=True)
+    # Who they are in the system: one or more roles. Admin and read-only stand
+    # alone; sales, service and parts combine freely.
+    roles = serializers.ListField(
+        child=serializers.ChoiceField(choices=Role.choices), allow_empty=False, required=False
+    )
+    role_label = serializers.CharField(read_only=True)
     two_factor_enabled = serializers.SerializerMethodField()
     is_deleted = serializers.BooleanField(read_only=True)
     password = serializers.CharField(
@@ -42,6 +47,7 @@ class UserSerializer(serializers.ModelSerializer[User]):
             "full_name",
             "phone",
             "role",
+            "roles",
             "role_label",
             "is_active",
             "is_deleted",
@@ -50,6 +56,9 @@ class UserSerializer(serializers.ModelSerializer[User]):
             "created_at",
             "password",
         ]
+        # `role` is the first role by priority, kept for older clients: it can
+        # still be sent on its own to set a single role.
+        extra_kwargs = {"role": {"required": False}}
         read_only_fields = ["id", "last_login", "created_at"]
 
     def get_two_factor_enabled(self, obj: User) -> bool:
@@ -65,6 +74,15 @@ class UserSerializer(serializers.ModelSerializer[User]):
         return value
 
     def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
+        if "roles" not in attrs and "role" in attrs:
+            attrs["roles"] = [attrs["role"]]
+        if "roles" in attrs:
+            attrs["roles"] = normalize_roles(attrs["roles"])
+            if problem := roles_problem(attrs["roles"]):
+                raise serializers.ValidationError({"roles": [problem]})
+        elif self.instance is None:
+            attrs["roles"] = [Role.READ_ONLY.value]
+        attrs.pop("role", None)  # always derived from `roles`
         if self.instance is None and not attrs.get("password"):
             raise serializers.ValidationError({"password": ["Set a starting password."]})
         if attrs.get("password"):
@@ -81,9 +99,9 @@ class UserSerializer(serializers.ModelSerializer[User]):
                 ) from exc
         request = self.context["request"]
         if self.instance is not None and self.instance.pk == request.user.pk:
-            if attrs.get("role", self.instance.role) != Role.ADMIN:
+            if Role.ADMIN not in attrs.get("roles", self.instance.effective_roles):
                 raise serializers.ValidationError(
-                    {"role": ["You cannot remove your own admin role."]}
+                    {"roles": ["You cannot remove your own admin role."]}
                 )
             if attrs.get("is_active") is False:
                 raise serializers.ValidationError(
@@ -125,7 +143,8 @@ class UserAdminViewSet(viewsets.ModelViewSet[User]):
             User.all_objects.all() if params.get("include_deleted") == "1" else User.objects.all()
         )
         if role := params.get("role"):
-            qs = qs.filter(role=role)
+            # Anyone holding this role (alone or together with others).
+            qs = qs.filter(Q(roles__contains=[role]) | Q(roles=[], role=role))
         if q := params.get("q", "").strip():
             qs = qs.filter(
                 Q(email__icontains=q) | Q(first_name__icontains=q) | Q(last_name__icontains=q)
@@ -134,13 +153,12 @@ class UserAdminViewSet(viewsets.ModelViewSet[User]):
 
     def perform_update(self, serializer: Any) -> None:
         user: User = serializer.instance
-        demoting = (
-            user.role == Role.ADMIN
-            and serializer.validated_data.get("role", Role.ADMIN) != Role.ADMIN
+        demoting = user.has_role(Role.ADMIN) and Role.ADMIN not in serializer.validated_data.get(
+            "roles", [Role.ADMIN]
         )
         deactivating = serializer.validated_data.get("is_active") is False
         if (demoting or deactivating) and not _other_active_admins(user):
-            raise serializers.ValidationError({"role": ["At least one active admin is required."]})
+            raise serializers.ValidationError({"roles": ["At least one active admin is required."]})
         serializer.save()
 
     def destroy(self, request: Request, *args: Any, **kwargs: Any) -> Response:
@@ -150,7 +168,7 @@ class UserAdminViewSet(viewsets.ModelViewSet[User]):
                 {"code": "not_allowed", "detail": "You cannot remove your own account."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        if user.role == Role.ADMIN and not _other_active_admins(user):
+        if user.has_role(Role.ADMIN) and not _other_active_admins(user):
             return Response(
                 {"code": "not_allowed", "detail": "At least one active admin is required."},
                 status=status.HTTP_400_BAD_REQUEST,

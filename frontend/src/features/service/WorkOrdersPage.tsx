@@ -120,7 +120,7 @@ export function WorkOrdersPage() {
                 <CalendarClock className="size-4" /> Maintenance due
               </Link>
             </Button>
-            {canEditWorkOrders(user.role) && (
+            {canEditWorkOrders(user.roles) && (
               <Button asChild variant="cta">
                 <Link to="/service/new">
                   <Plus className="size-5" /> New work order
@@ -188,7 +188,7 @@ export function WorkOrdersPage() {
           empty={{
             title: filters.q || filters.mine ? "No work orders match" : filters.scope === "open" ? "No open work orders" : "No work orders",
             message: filters.scope === "open" && !filters.q ? "Nothing waiting. New jobs start from a unit's page or New work order." : "Try a different search.",
-            action: canEditWorkOrders(user.role) ? (
+            action: canEditWorkOrders(user.roles) ? (
               <Button asChild variant="cta">
                 <Link to="/service/new">
                   <Plus className="size-5" /> New work order

@@ -4,6 +4,8 @@ from typing import Any
 
 from rest_framework import serializers
 
+from apps.accounts.roles import has_any_role
+
 from .columns import BY_NAME, normalize_header
 from .models import ApiKey, ImportBatch, ImportFile, ImportRow
 
@@ -75,7 +77,7 @@ class ImportBatchSerializer(serializers.ModelSerializer):  # type: ignore[type-a
             or user is None
         ):
             return False
-        return getattr(user, "role", "") == "admin" or obj.created_by_id == user.pk  # type: ignore[attr-defined]
+        return has_any_role(user, ("admin",)) or obj.created_by_id == user.pk  # type: ignore[attr-defined]
 
 
 class ImportBatchListSerializer(ImportBatchSerializer):

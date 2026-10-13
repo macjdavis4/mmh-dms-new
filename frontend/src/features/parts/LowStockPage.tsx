@@ -130,7 +130,7 @@ export function LowStockPage() {
         <ArrowLeft className="size-4" /> Parts
       </Link>
       <PageHeader title="Low stock" description="Parts at or below their reorder point, by bin. Order the amount shown to restock." />
-      <CheckStatus check={low.data?.last_check} canRun={canRunStockCheck(user.role)} />
+      <CheckStatus check={low.data?.last_check} canRun={canRunStockCheck(user.roles)} />
       <Card className="gap-0 overflow-hidden py-0">
         <DataTable
           caption="Low stock"

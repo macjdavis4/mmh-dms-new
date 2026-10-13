@@ -66,6 +66,16 @@ export function RoleBadge({ role }: { role: Role }) {
   );
 }
 
+export function RoleBadges({ roles }: { roles: readonly Role[] }) {
+  return (
+    <span className="flex flex-wrap items-center gap-1">
+      {roles.map((r) => (
+        <RoleBadge key={r} role={r} />
+      ))}
+    </span>
+  );
+}
+
 function StatusBadge({ user }: { user: AdminUser }) {
   if (user.is_deleted) return <Badge variant="outline" className="text-muted-foreground">Removed</Badge>;
   if (!user.is_active) return <Badge variant="outline" className="text-warning border-warning/50">Inactive</Badge>;
@@ -148,7 +158,7 @@ export function UsersPage() {
           );
         },
       },
-      { id: "role", header: "Role", cell: ({ row }) => <RoleBadge role={row.original.role} /> },
+      { id: "role", header: "Roles", cell: ({ row }) => <RoleBadges roles={row.original.roles} /> },
       {
         id: "2fa",
         header: "Two-factor",
@@ -258,7 +268,7 @@ export function UsersPage() {
                   <p className="truncate font-semibold">{u.full_name || u.email}</p>
                   <p className="text-muted-foreground truncate text-sm">{u.email}</p>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <RoleBadge role={u.role} />
+                    <RoleBadges roles={u.roles} />
                     <StatusBadge user={u} />
                     <span className="text-muted-foreground text-xs">
                       {u.two_factor_enabled ? "2FA on" : "2FA off"} · {formatRelative(u.last_login)}

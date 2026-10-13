@@ -14,6 +14,7 @@ import type { Me } from "@/lib/types";
 
 import { AuthLayout } from "./AuthLayout";
 import { FormError } from "./FormError";
+import { OTP_INPUT_PROPS } from "./otpInputProps";
 
 interface SetupData {
   secret: string;
@@ -160,8 +161,7 @@ export function TwoFactorSetupFlow({ onDone }: { onDone: () => void }) {
             </Label>
             <Input
               id="setup-code"
-              inputMode="numeric"
-              autoComplete="one-time-code"
+              {...OTP_INPUT_PROPS}
               maxLength={7}
               value={code}
               onChange={(e) => setCode(e.target.value)}

@@ -341,7 +341,7 @@ function QuoteEditor({ quote, initial }: { quote?: Quote; initial: QuoteDraft })
           <RotateCcw className="size-4" /> Reopen
         </Button>
       )}
-      {s === "sold" && canVoidSales(user.role) && (
+      {s === "sold" && canVoidSales(user.roles) && (
         <Button variant="outline" onClick={() => setDialog("void")}>
           <Undo2 className="size-4" /> Void sale
         </Button>

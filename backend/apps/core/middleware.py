@@ -74,7 +74,7 @@ class AuditActorMiddleware:
         if user is not None and user.is_authenticated:
             ctx = get_context()
             ctx.user_id = user.pk
-            ctx.user_role = getattr(user, "role", "")
+            ctx.user_role = getattr(user, "roles_text", "") or getattr(user, "role", "")
         return self.get_response(request)
 
 

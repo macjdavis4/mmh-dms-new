@@ -20,6 +20,7 @@ import {
   Wrench,
 } from "lucide-react";
 
+import { hasAnyRole } from "@/lib/roles";
 import type { Role } from "@/lib/types";
 
 export interface NavItem {
@@ -144,11 +145,11 @@ export const NAV: NavSection[] = [
   },
 ];
 
-export function navFor(role: Role, flags?: Record<string, boolean>): NavSection[] {
+export function navFor(roles: readonly Role[], flags?: Record<string, boolean>): NavSection[] {
   return NAV.map((section) => ({
     ...section,
     items: section.items.filter(
-      (item) => (!item.roles || item.roles.includes(role)) && (!item.flag || (flags?.[item.flag] ?? true)),
+      (item) => (!item.roles || hasAnyRole(roles, item.roles)) && (!item.flag || (flags?.[item.flag] ?? true)),
     ),
   })).filter((section) => section.items.length > 0);
 }

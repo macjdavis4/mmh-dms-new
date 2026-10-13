@@ -75,8 +75,9 @@ def serialize_me(request: Request | HttpRequest) -> dict[str, Any]:
             "first_name": user.first_name,
             "last_name": user.last_name,
             "full_name": user.full_name,
-            "role": user.role,
-            "role_label": user.get_role_display(),
+            "role": user.role,  # first role by priority; older clients only
+            "roles": user.effective_roles,
+            "role_label": user.role_label,
             "can_see_pricing": user.can_see_pricing,
         },
         "two_factor": {

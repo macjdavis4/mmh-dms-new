@@ -11,6 +11,7 @@ import { ApiError } from "@/lib/api";
 import { useLogin, useMe, useVerifyCode } from "@/lib/auth";
 
 import { FormError } from "./FormError";
+import { OTP_INPUT_PROPS } from "./otpInputProps";
 
 function safeNext(raw: string | null): string {
   // Only allow in-app paths, never another site.
@@ -91,8 +92,7 @@ export function LoginPage() {
               <Label htmlFor="code">Code</Label>
               <Input
                 id="code"
-                inputMode="numeric"
-                autoComplete="one-time-code"
+                {...OTP_INPUT_PROPS}
                 // eslint-disable-next-line jsx-a11y/no-autofocus -- single-purpose code entry step
                 autoFocus
                 maxLength={20}

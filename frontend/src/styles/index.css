@@ -125,6 +125,9 @@
   }
   html {
     -webkit-text-size-adjust: 100%;
+    /* No rubber-band bounce at the top and bottom of the page, which can show
+       the page background behind the fixed sidebar for a moment. */
+    overscroll-behavior-y: none;
   }
   body {
     @apply bg-background text-foreground font-sans antialiased;

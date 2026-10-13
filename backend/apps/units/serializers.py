@@ -7,7 +7,7 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 from rest_framework import serializers
 
-from apps.accounts.roles import PRICE_ROLES
+from apps.accounts.roles import PRICE_ROLES, has_any_role
 from apps.customers.models import Customer
 
 from .models import (
@@ -26,7 +26,7 @@ STOCK_ROLES = PRICE_ROLES  # stock status follows the same rule as pricing
 
 def can_see_pricing(context: dict[str, Any]) -> bool:
     request = context.get("request")
-    return bool(request and getattr(request.user, "role", None) in PRICE_ROLES)
+    return bool(request and has_any_role(request.user, PRICE_ROLES))
 
 
 class PriceVisibilityMixin:

@@ -31,7 +31,7 @@ from django.core.files.uploadedfile import UploadedFile
 from django.db import IntegrityError, models, transaction
 from django.utils import timezone
 
-from apps.accounts.roles import PRICE_ROLES
+from apps.accounts.roles import PRICE_ROLES, has_any_role
 from apps.core.context import acting_as
 from apps.core.models import AuditLog
 from apps.customers.models import Customer
@@ -68,7 +68,7 @@ SUFFIXES = re.compile(r"\b(inc|llc|co|corp|corporation|company|ltd|the)\b")
 
 
 def can_price(user: Any) -> bool:
-    return getattr(user, "role", "") in PRICE_ROLES
+    return has_any_role(user, PRICE_ROLES)
 
 
 def customer_key(name: str) -> str:

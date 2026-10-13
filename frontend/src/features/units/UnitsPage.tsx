@@ -283,7 +283,7 @@ export function UnitsPage() {
         title="Units"
         description="Stock for sale and every customer forklift we look after."
         actions={
-          canEditUnits(user.role) && (
+          canEditUnits(user.roles) && (
             <Button asChild variant="cta">
               <Link to="/units/new">
                 <Plus className="size-5" /> Add unit
@@ -419,7 +419,7 @@ export function UnitsPage() {
                     <Button variant="outline" onClick={() => update({ ...EMPTY_FILTERS, scope: filters.scope })}>
                       <X className="size-4" /> Clear filters
                     </Button>
-                  ) : canEditUnits(user.role) ? (
+                  ) : canEditUnits(user.roles) ? (
                     <Button asChild variant="cta">
                       <Link to="/units/new">
                         <Plus className="size-5" /> Add unit

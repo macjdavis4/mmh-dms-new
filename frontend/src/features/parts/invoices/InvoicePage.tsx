@@ -330,7 +330,7 @@ function CancelDialog({ invoice, onClose }: { invoice: Invoice; onClose: () => v
 
 function InvoiceView({ invoice }: { invoice: Invoice }) {
   const user = useCurrentUser();
-  const canReceive = canReceiveInvoices(user.role);
+  const canReceive = canReceiveInvoices(user.roles);
   const save = useSaveInvoice(invoice.id);
   const action = useInvoiceAction(invoice.id);
   const [savedAt, setSavedAt] = useState(invoice.updated_at);
