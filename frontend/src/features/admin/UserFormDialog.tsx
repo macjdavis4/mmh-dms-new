@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/form/Checkbox";
 import { api, ApiError } from "@/lib/api";
-import { isRoleDisabled, ROLE_ORDER, toggleRole } from "@/lib/roles";
+import { ROLE_ORDER, toggleRole } from "@/lib/roles";
 import { type AdminUser, ROLE_DESCRIPTIONS, ROLE_LABELS, type Role } from "@/lib/types";
 
 interface FormState {
@@ -149,7 +149,6 @@ export function UserFormDialog({
                 <Checkbox
                   id={`role-${r}`}
                   checked={form.roles.includes(r)}
-                  disabled={isRoleDisabled(form.roles, r)}
                   onChange={(checked) => setForm((f) => ({ ...f, roles: toggleRole(f.roles, r, checked) }))}
                   label={ROLE_LABELS[r]}
                 />
@@ -162,7 +161,7 @@ export function UserFormDialog({
               </p>
             ) : (
               <p id="roles-help" className="text-muted-foreground mt-1 text-xs">
-                Admin and Read only stand alone. Sales, Service and Parts can be combined.
+                Admin and Read only stand alone: ticking either one replaces any other role. Sales, Service and Parts can be combined.
                 {isSelf ? " You cannot change your own roles." : ""}
               </p>
             )}

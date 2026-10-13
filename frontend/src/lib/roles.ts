@@ -13,19 +13,15 @@ export const COMBINABLE_ROLES: readonly Role[] = ["sales", "service", "parts"];
 /** Canonical display/storage order. */
 export const ROLE_ORDER: readonly Role[] = ["admin", "sales", "service", "parts", "read_only"];
 
-/** The roles after ticking or unticking one box, keeping the "admin / read only are alone" rule. */
+/**
+ * The roles after ticking or unticking one box. Ticking Admin or Read only
+ * replaces everything else; ticking Sales, Service or Parts replaces Admin or
+ * Read only. (Boxes are never locked, so no extra clicks are needed.)
+ */
 export function toggleRole(current: readonly Role[], role: Role, checked: boolean): Role[] {
   let next: Role[];
   if (!checked) next = current.filter((r) => r !== role);
   else if (EXCLUSIVE_ROLES.includes(role)) next = [role];
   else next = [...current.filter((r) => COMBINABLE_ROLES.includes(r)), role];
   return ROLE_ORDER.filter((r) => next.includes(r));
-}
-
-/** Whether a box is locked because of what is already ticked. */
-export function isRoleDisabled(current: readonly Role[], role: Role): boolean {
-  if (current.includes(role)) return false;
-  if (current.some((r) => EXCLUSIVE_ROLES.includes(r))) return true;
-  if (current.length > 0 && EXCLUSIVE_ROLES.includes(role)) return true;
-  return false;
 }

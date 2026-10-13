@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { Role } from "@/lib/types";
 
-import { isRoleDisabled, toggleRole } from "@/lib/roles";
+import { toggleRole } from "@/lib/roles";
 
 import { validateUserForm } from "./UserFormDialog";
 
@@ -36,23 +36,13 @@ describe("role selection rules", () => {
     expect(toggleRole(["parts", "sales"], "service", true)).toEqual(["sales", "service", "parts"]);
   });
 
-  it("a combinable role replaces a lone admin", () => {
+  it("a combinable role replaces a lone admin or read only", () => {
     expect(toggleRole(["admin"], "service", true)).toEqual(["service"]);
+    expect(toggleRole(["read_only"], "parts", true)).toEqual(["parts"]);
   });
 
   it("unticking removes only that role", () => {
     expect(toggleRole(["sales", "parts"], "sales", false)).toEqual(["parts"]);
     expect(toggleRole(["admin"], "admin", false)).toEqual([]);
-  });
-
-  it("locks the choices that cannot be combined", () => {
-    expect(isRoleDisabled(["admin"], "sales")).toBe(true);
-    expect(isRoleDisabled(["admin"], "read_only")).toBe(true);
-    expect(isRoleDisabled(["admin"], "admin")).toBe(false);
-    expect(isRoleDisabled(["sales"], "admin")).toBe(true);
-    expect(isRoleDisabled(["sales"], "read_only")).toBe(true);
-    expect(isRoleDisabled(["sales"], "parts")).toBe(false);
-    expect(isRoleDisabled([], "admin")).toBe(false);
-    expect(isRoleDisabled([], "sales")).toBe(false);
   });
 });
