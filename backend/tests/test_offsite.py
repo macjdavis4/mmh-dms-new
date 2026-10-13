@@ -1,6 +1,8 @@
 """The locked off-site copy (apps/ops/offsite.py). The real thing was also
 checked against an S3 server with Object Lock: uploads without Content-MD5
-are refused there, and locked versions can't be deleted."""
+are refused there, and locked versions can't be deleted.
+
+The fake off-site store refuses listing and reading, like the write-only key."""
 
 from __future__ import annotations
 
@@ -13,6 +15,7 @@ import pytest
 from django.utils import timezone
 
 from apps.ops import offsite
+from apps.ops.models import OffsiteCopy
 
 
 class Listing:
@@ -35,14 +38,17 @@ class Body:
 
 
 class Store:
-    def __init__(self, store: dict[str, bytes]) -> None:
+    def __init__(self, store: dict[str, bytes], *, write_only: bool = False) -> None:
+        self.write_only = write_only
         self.store = store
         self.puts: list[dict[str, Any]] = []
 
     def get_paginator(self, name: str) -> Listing:
+        assert not self.write_only, "the off-site key can't list"
         return Listing(self.store)
 
     def get_object(self, Bucket: str, Key: str) -> dict[str, Any]:  # noqa: N803
+        assert not self.write_only, "the off-site key can't read"
         return {"Body": Body(self.store[Key])}
 
     def put_object(self, **kw: Any) -> None:
@@ -53,7 +59,7 @@ class Store:
 
 
 @pytest.fixture
-def stores(settings: Any, monkeypatch: Any) -> dict[str, Store]:
+def stores(settings: Any, monkeypatch: Any, db: Any) -> dict[str, Store]:
     settings.OFFSITE_BUCKET = "mmh-offsite"
     settings.OFFSITE_ENDPOINT_URL = "https://s3.us-east-005.backblazeb2.com"
     settings.OFFSITE_ACCESS_KEY_ID = "key"
@@ -69,8 +75,9 @@ def stores(settings: Any, monkeypatch: Any) -> dict[str, Store]:
             }
         ),
         "media": Store({"units/a.jpg": b"a", "units/b.jpg": b"b"}),
-        "offsite": Store({"test/media/units/a.jpg": b"a (copied before)"}),
+        "offsite": Store({"test/media/units/a.jpg": b"a (copied before)"}, write_only=True),
     }
+    OffsiteCopy.objects.create(key="test/media/units/a.jpg", size_bytes=1, md5="x")
     monkeypatch.setattr(offsite, "backup_client", lambda: s["backup"])
     monkeypatch.setattr(offsite, "media_client", lambda: s["media"])
     monkeypatch.setattr(offsite, "offsite_client", lambda: s["offsite"])
@@ -90,6 +97,9 @@ def test_copies_recent_dumps_and_new_media_only(stores: dict[str, Store]) -> Non
     ]
     # A file already copied is never sent again (the locked first copy stays).
     assert stores["offsite"].store["test/media/units/a.jpg"] == b"a (copied before)"
+    # Each copy is recorded, with its size and checksum.
+    copy = OffsiteCopy.objects.get(key="test/media/units/b.jpg")
+    assert (copy.size_bytes, copy.md5) == (1, hashlib.md5(b"b").hexdigest())  # noqa: S324
 
 
 @pytest.mark.django_db
@@ -114,6 +124,17 @@ def test_region_comes_from_the_b2_endpoint(settings: Any) -> None:
     assert offsite.offsite_client().meta.region_name == "us-west-004"
 
 
+@pytest.mark.django_db
+def test_copy_records_cannot_be_changed_or_deleted(stores: Any) -> None:
+    from django.db import DatabaseError, transaction
+
+    with pytest.raises(DatabaseError), transaction.atomic():
+        OffsiteCopy.objects.all().delete()
+    with pytest.raises(DatabaseError), transaction.atomic():
+        OffsiteCopy.objects.update(md5="changed")
+
+
+@pytest.mark.django_db
 def test_md5_is_sent_for_a_large_spooled_body(stores: Any) -> None:
     offsite._put(stores["offsite"], "test/big", io.BytesIO(b"x" * 3_000_000))
     assert stores["offsite"].store["test/big"] == b"x" * 3_000_000

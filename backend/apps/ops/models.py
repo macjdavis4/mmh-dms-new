@@ -52,3 +52,22 @@ class BackupRun(TimeStampedModel):
 
     def __str__(self) -> str:
         return f"{self.kind} {self.run_date} {self.status}"
+
+
+class OffsiteCopy(models.Model):
+    """One file sent to the locked off-site bucket (Backblaze B2).
+
+    The server's key there can add files but not list or read them, so this
+    is how the nightly job knows what is already there. Append-only (a
+    database trigger refuses changes and deletes)."""
+
+    key = models.CharField(max_length=500, unique=True)
+    size_bytes = models.BigIntegerField()
+    md5 = models.CharField(max_length=32)
+    copied_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["-copied_at"]
+
+    def __str__(self) -> str:
+        return self.key

@@ -6,18 +6,21 @@ it all. This copy can't be deleted that way:
 
 * The B2 bucket has Object Lock on (compliance mode, 30 days): nobody can
   delete or overwrite a file for 30 days, not even with the account password.
-* The key the server holds can add and list files, but not delete them.
+* The key the server holds can only add files: it can't list, read or
+  delete them. What has been sent is recorded here instead (OffsiteCopy).
 
 Each night (after the database backup and the media copy) this job copies:
 
 * every encrypted database dump (and its row-count manifest) from the last
   few days that isn't there yet: `<env>/db/YYYY/MM/DD/...`
-* every photo or scan whose name isn't there yet: `<env>/media/<name>`.
+* every photo or scan not sent before: `<env>/media/<name>`.
   Files already copied are never sent again: uploads always get new names,
   so a "changed" file is more likely ransomware than a real edit, and the
   locked first copy is the one worth keeping.
 
-Idempotent and safe to retry: it only ever adds what is missing.
+Idempotent and safe to retry: it only ever adds what hasn't been sent. (If
+the database is ever restored to an older copy, some files are sent again;
+the bucket then simply holds another locked version.)
 """
 
 from __future__ import annotations
@@ -38,6 +41,7 @@ from django.conf import settings
 from django.utils import timezone
 
 from .backup import backup_client, media_client
+from .models import OffsiteCopy
 
 logger = logging.getLogger("mmh.backup")
 
@@ -81,6 +85,10 @@ def _prefix() -> str:
     return f"{settings.APP_ENV}/"
 
 
+def _sent() -> set[str]:
+    return set(OffsiteCopy.objects.filter(key__startswith=_prefix()).values_list("key", flat=True))
+
+
 def _keys(client: Any, bucket: str, prefix: str) -> set[str]:
     found: set[str] = set()
     for page in client.get_paginator("list_objects_v2").paginate(Bucket=bucket, Prefix=prefix):
@@ -91,8 +99,10 @@ def _keys(client: Any, bucket: str, prefix: str) -> set[str]:
 
 def _put(client: Any, key: str, body: IO[bytes]) -> None:
     md5 = hashlib.md5(usedforsecurity=False)
+    size = 0
     for chunk in iter(lambda: body.read(1024 * 1024), b""):
         md5.update(chunk)
+        size += len(chunk)
     body.seek(0)
     client.put_object(
         Bucket=settings.OFFSITE_BUCKET,
@@ -100,6 +110,7 @@ def _put(client: Any, key: str, body: IO[bytes]) -> None:
         Body=body,
         ContentMD5=base64.b64encode(md5.digest()).decode(),
     )
+    OffsiteCopy.objects.create(key=key, size_bytes=size, md5=md5.hexdigest())
 
 
 @dataclass
@@ -113,7 +124,7 @@ def run_offsite_copy() -> OffsiteResult:
         logger.info("off-site copy not set up (OFFSITE_* settings empty); skipping")
         return OffsiteResult()
     dest = offsite_client()
-    there = _keys(dest, settings.OFFSITE_BUCKET, _prefix())
+    there = _sent()
     result = OffsiteResult()
     _copy_dumps(dest, there, result)
     _copy_media(dest, there, result)
