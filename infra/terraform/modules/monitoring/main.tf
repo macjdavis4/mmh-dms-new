@@ -16,6 +16,7 @@ resource "digitalocean_uptime_check" "readyz" {
 }
 
 resource "digitalocean_uptime_alert" "down" {
+  count      = length(var.alert_emails) > 0 ? 1 : 0
   name       = "mmh-${var.environment}-down"
   check_id   = digitalocean_uptime_check.readyz.id
   type       = "down"
@@ -28,6 +29,7 @@ resource "digitalocean_uptime_alert" "down" {
 }
 
 resource "digitalocean_uptime_alert" "ssl" {
+  count      = length(var.alert_emails) > 0 ? 1 : 0
   name       = "mmh-${var.environment}-ssl-expiry"
   check_id   = digitalocean_uptime_check.readyz.id
   type       = "ssl_expiry"
@@ -48,7 +50,9 @@ locals {
 }
 
 resource "digitalocean_monitor_alert" "droplet" {
-  for_each = local.droplet_alerts
+  # DigitalOcean only accepts verified emails; with none given (ALERT_EMAILS=[])
+  # these alerts are skipped and can be added later.
+  for_each = length(var.alert_emails) > 0 ? local.droplet_alerts : {}
   alerts {
     email = var.alert_emails
   }

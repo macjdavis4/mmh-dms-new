@@ -35,6 +35,11 @@ resource "digitalocean_database_db" "app" {
 resource "digitalocean_database_user" "app" {
   cluster_id = digitalocean_database_cluster.pg.id
   name       = "mmh_app"
+
+  # An empty block avoids a phantom "- settings {}" diff on the second apply
+  # that DigitalOcean rejects with "missing user_settings"
+  # (terraform-provider-digitalocean issue 1610, PostgreSQL users).
+  settings {}
 }
 
 # PgBouncer in transaction mode for the web app.
