@@ -1,6 +1,14 @@
 # Plan or apply infrastructure changes. Run by hand from the Actions tab:
 # Actions -> Terraform -> Run workflow -> pick environment and action.
-# Applying to production waits for approval (production environment rules).
+#
+# Every run waits for approval: it uses the "terraform" GitHub environment,
+# which alone holds the full-access DigitalOcean token, the full-access Spaces
+# key and the Cloudflare Terraform token. Deploys use limited keys instead
+# (docs/MANUAL_STEPS.md, "Security audit"), so a bad workflow change merged to
+# main can't delete the database or the backups without someone approving it.
+# Its settings (CLOUDFLARE_ZONE_ID, SSH keys, ADMIN_SSH_CIDRS, ALERT_EMAILS) are
+# repository variables; STAGING_/PRODUCTION_DROPLET_SIZE optionally override
+# the Droplet size per environment.
 name: Terraform
 
 on:
@@ -32,7 +40,7 @@ concurrency:
 jobs:
   terraform:
     runs-on: ubuntu-24.04
-    environment: ${{ inputs.environment == 'shared' && 'production' || inputs.environment }}
+    environment: terraform
     defaults:
       run:
         working-directory: infra/terraform/envs/${{ inputs.environment }}
@@ -53,10 +61,17 @@ jobs:
       - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
         with:
           terraform_version: "1.16.5"
-      - name: Optional size overrides (repository or environment variables)
+      - name: Optional size overrides (repository variables)
         env:
-          DROPLET_SIZE: ${{ vars.DROPLET_SIZE }}
+          TARGET: ${{ inputs.environment }}
+          STAGING_DROPLET_SIZE: ${{ vars.STAGING_DROPLET_SIZE }}
+          PRODUCTION_DROPLET_SIZE: ${{ vars.PRODUCTION_DROPLET_SIZE }}
         run: |
+          case "$TARGET" in
+            staging) DROPLET_SIZE=$STAGING_DROPLET_SIZE ;;
+            production) DROPLET_SIZE=$PRODUCTION_DROPLET_SIZE ;;
+            *) DROPLET_SIZE="" ;;
+          esac
           # Only set when the variable exists; otherwise the Terraform default applies.
           if [ -n "$DROPLET_SIZE" ]; then
             [[ "$DROPLET_SIZE" =~ ^[a-z0-9-]{3,40}$ ]] || { echo "invalid DROPLET_SIZE"; exit 1; }
