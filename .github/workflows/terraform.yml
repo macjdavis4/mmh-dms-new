@@ -53,6 +53,15 @@ jobs:
       - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: "1.16.5"
+      - name: Optional size overrides (repository or environment variables)
+        env:
+          DROPLET_SIZE: ${{ vars.DROPLET_SIZE }}
+        run: |
+          # Only set when the variable exists; otherwise the Terraform default applies.
+          if [ -n "$DROPLET_SIZE" ]; then
+            [[ "$DROPLET_SIZE" =~ ^[a-z0-9-]{3,40}$ ]] || { echo "invalid DROPLET_SIZE"; exit 1; }
+            echo "TF_VAR_droplet_size=$DROPLET_SIZE" >> "$GITHUB_ENV"
+          fi
       - run: terraform init -input=false
       - name: Plan
         if: inputs.environment != 'shared'
