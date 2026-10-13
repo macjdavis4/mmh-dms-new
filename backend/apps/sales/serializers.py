@@ -5,6 +5,7 @@ from typing import Any
 
 from rest_framework import serializers
 
+from apps.accounts.roles import PRICE_ROLES, has_any_role
 from apps.customers.models import Customer
 from apps.units.models import Unit
 
@@ -188,6 +189,21 @@ class QuoteSerializer(serializers.ModelSerializer[Quote]):
 
     def get_salesperson_name(self, obj: Quote) -> str:
         return _name(obj.salesperson)
+
+    def validate_salesperson(self, value: Any) -> Any:
+        """Sales can only put their own name on a quote; an admin can credit
+        any active admin or salesperson."""
+        if value is None:
+            return value
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if user is not None and value.pk == user.pk:
+            return value
+        if user is None or not has_any_role(user, ("admin",)):
+            raise serializers.ValidationError("You can only put your own name on a quote.")
+        if not value.is_active or not has_any_role(value, PRICE_ROLES):
+            raise serializers.ValidationError("Choose an active admin or salesperson.")
+        return value
 
     def get_totals(self, obj: Quote) -> dict[str, str]:
         return quote_totals(obj).as_dict()

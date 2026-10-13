@@ -14,15 +14,21 @@ x-app: &app
   volumes:
     - "${MMH_HOME:-/opt/mmh}/certs:/certs:ro"
   networks: [app]
+  # To the server's journal, which the logship service copies off-site.
+  # (`docker logs` still works.)
   logging:
-    driver: json-file
-    options: { max-size: "20m", max-file: "5" }
+    driver: journald
+    options: { tag: "{{.Name}}" }
 
 services:
   caddy:
     image: ${CADDY_IMAGE}
-    env_file:
-    - "${MMH_HOME:-/opt/mmh}/.env"
+    # Only what the Caddyfile reads. The internet-facing proxy never gets the
+    # database, storage or Django secrets (deploy.sh exports these from .env).
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN:-}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+      CLOUDFLARE_API_TOKEN: ${CLOUDFLARE_API_TOKEN:-}
     restart: unless-stopped
     ports: ["80:80", "443:443", "443:443/udp"]
     cap_drop: [ALL]
@@ -34,8 +40,8 @@ services:
       - caddy_config:/config
     networks: [app]
     logging:
-      driver: json-file
-      options: { max-size: "20m", max-file: "5" }
+      driver: journald
+      options: { tag: "{{.Name}}" }
 
   app-blue:
     <<: *app
@@ -73,10 +79,38 @@ services:
       disable: true
     profiles: ["tools"]
 
+  # Copies the server's logs to the locked off-site bucket (vector.yaml).
+  # Started by deploy.sh when OFFSITE_BUCKET is set. It only reads the journal
+  # and has its own network: it can't reach the app or the database.
+  logship:
+    image: ${LOGSHIP_IMAGE:-timberio/vector:0.58.0-debian}
+    command: ["--config", "/etc/vector/vector.yaml"]
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      AWS_ACCESS_KEY_ID: ${OFFSITE_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${OFFSITE_SECRET_ACCESS_KEY:-}
+    volumes:
+      - /var/log/journal:/var/log/journal:ro
+      - /etc/machine-id:/etc/machine-id:ro
+      # Written by deploy.sh from vector.yaml (render_logship_config).
+      - ./vector.rendered.yaml:/etc/vector/vector.yaml:ro
+      - logship_data:/var/lib/vector
+    networks: [logs]
+    logging:
+      driver: journald
+      options: { tag: "{{.Name}}" }
+    profiles: ["logship"]
+
 networks:
   app: {}
+  logs: {}
 
 volumes:
   # Caddy's certificates. Losing them is harmless (re-issued automatically).
   caddy_data:
   caddy_config:
+  # Vector's place in the journal and logs waiting to be sent.
+  logship_data:

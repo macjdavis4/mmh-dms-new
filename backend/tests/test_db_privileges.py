@@ -31,3 +31,20 @@ def test_app_role_gets_row_access_but_not_schema_changes() -> None:
 def test_unknown_role_is_an_error() -> None:
     with pytest.raises(CommandError, match="does not exist"):
         call_command("grant_app_privileges", "no_such_role")
+
+
+@pytest.mark.django_db
+def test_app_role_that_owns_a_table_fails_the_deploy() -> None:
+    """An owner can drop its tables and disable the no-delete triggers."""
+    with connection.cursor() as cur:
+        cur.execute("DROP ROLE IF EXISTS mmh_test_owner")
+        cur.execute("CREATE ROLE mmh_test_owner NOLOGIN")
+        cur.execute("CREATE TABLE mmh_owned_by_app (id int)")
+        cur.execute("ALTER TABLE mmh_owned_by_app OWNER TO mmh_test_owner")
+    try:
+        with pytest.raises(CommandError, match="mmh_owned_by_app"):
+            call_command("grant_app_privileges", "mmh_test_owner")
+    finally:
+        with connection.cursor() as cur:
+            cur.execute("DROP OWNED BY mmh_test_owner")
+            cur.execute("DROP ROLE mmh_test_owner")

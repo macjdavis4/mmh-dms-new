@@ -36,11 +36,12 @@ from rest_framework import serializers, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
-from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from apps.core.models import AuditLog
+from apps.core.throttling import RealClientIpScopedThrottle
 
+from .devices import remove_two_factor_devices
 from .models import User
 from .permissions import is_verified
 
@@ -92,7 +93,7 @@ def serialize_me(request: Request | HttpRequest) -> dict[str, Any]:
     }
 
 
-class LoginThrottle(ScopedRateThrottle):
+class LoginThrottle(RealClientIpScopedThrottle):
     scope_attr = "throttle_scope"
 
 
@@ -286,10 +287,10 @@ class TwoFactorConfirmView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         with transaction.atomic():
-            # Only one active authenticator per person.
-            for old in TOTPDevice.objects.filter(user=user, confirmed=True).exclude(pk=device.pk):
-                old.confirmed = False
-                old.save()
+            # Only one authenticator per person. The old one is deleted, not
+            # just turned off, so its key can never sign anyone in again and
+            # sessions verified with it lose their 2FA status.
+            TOTPDevice.objects.filter(user=user).exclude(pk=device.pk).delete()
             device.confirmed = True
             device.save()
             codes = _new_recovery_codes(user)
@@ -315,6 +316,9 @@ def _check_password(request: Request) -> Response | None:
 
 class TwoFactorDisableView(APIView):
     permission_classes = [IsAuthenticated]
+    # Each attempt checks the password: limit guessing from a hijacked session.
+    throttle_classes = [LoginThrottle]
+    throttle_scope = "login"
 
     def post(self, request: Request) -> Response:
         user = request.user
@@ -327,16 +331,16 @@ class TwoFactorDisableView(APIView):
         if error := _check_password(request):
             return error
         with transaction.atomic():
-            for model in (TOTPDevice, StaticDevice):
-                for device in model.objects.filter(user=user, confirmed=True):
-                    device.confirmed = False
-                    device.save()
+            remove_two_factor_devices(user)
             AuditLog.record(AuditLog.Action.TWO_FACTOR_DISABLED, user, actor=user)
         return Response(serialize_me(request))
 
 
 class RecoveryCodesView(APIView):
     permission_classes = [IsAuthenticated]
+    # Each attempt checks the password: limit guessing from a hijacked session.
+    throttle_classes = [LoginThrottle]
+    throttle_scope = "login"
 
     def post(self, request: Request) -> Response:
         user = request.user
@@ -360,6 +364,9 @@ class PasswordChangeSerializer(serializers.Serializer[Any]):
 
 
 class PasswordChangeView(APIView):
+    throttle_classes = [LoginThrottle]
+    throttle_scope = "login"
+
     def post(self, request: Request) -> Response:
         data = PasswordChangeSerializer(data=request.data)
         data.is_valid(raise_exception=True)

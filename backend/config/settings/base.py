@@ -83,6 +83,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "apps.accounts.middleware.SessionLifetimeMiddleware",
     "django_otp.middleware.OTPMiddleware",
     "apps.core.middleware.AuditActorMiddleware",
     "apps.accounts.middleware.RequireAdminTwoFactorMiddleware",
@@ -172,6 +173,10 @@ SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
 SESSION_COOKIE_AGE = 60 * 60 * 12  # one working day
 SESSION_SAVE_EVERY_REQUEST = True  # sliding expiry while people are active
+# ...but one sign-in never lasts longer than this, however busy (see
+# apps.accounts.middleware.SessionLifetimeMiddleware).
+SESSION_MAX_AGE = 60 * 60 * 24 * 7  # a week
+SESSION_MAX_AGE_ADMIN = 60 * 60 * 12  # admins: one working day
 CSRF_COOKIE_NAME = "mmh_csrftoken"
 CSRF_COOKIE_SAMESITE = "Lax"
 CSRF_HEADER_NAME = "HTTP_X_CSRFTOKEN"
@@ -273,6 +278,14 @@ STORAGES["paper"] = {
         "location": f"paper/{APP_ENV}",
     },
 }
+# The locked off-site copy (Backblaze B2, outside DigitalOcean). The bucket
+# has Object Lock on, so nothing can be deleted or changed for 30 days, and
+# the key here can add files but not delete them. Empty = not set up yet.
+OFFSITE_BUCKET = env("OFFSITE_BUCKET", "")
+OFFSITE_ENDPOINT_URL = env("OFFSITE_ENDPOINT_URL", "")
+OFFSITE_ACCESS_KEY_ID = env("OFFSITE_ACCESS_KEY_ID", "")
+OFFSITE_SECRET_ACCESS_KEY = env("OFFSITE_SECRET_ACCESS_KEY", "")
+
 # A dedicated direct (non-pooled) connection string used by pg_dump.
 BACKUP_DATABASE_URL = env(
     "BACKUP_DATABASE_URL", env("DATABASE_URL", "postgres://mmh:mmh@localhost:5432/mmh")

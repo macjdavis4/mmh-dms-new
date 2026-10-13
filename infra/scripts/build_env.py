@@ -39,6 +39,12 @@ OPTIONAL_SECRETS = [
     "COMPANY_PHONE",
     # Default sales tax rate for new quotes, percent (GitHub variable).
     "SALES_TAX_RATE",
+    # The locked off-site copy and log archive (Backblaze B2). The key can
+    # add files but not delete them.
+    "OFFSITE_BUCKET",
+    "OFFSITE_ENDPOINT_URL",
+    "OFFSITE_ACCESS_KEY_ID",
+    "OFFSITE_SECRET_ACCESS_KEY",
 ]
 
 

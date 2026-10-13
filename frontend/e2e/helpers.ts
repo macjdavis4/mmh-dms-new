@@ -25,7 +25,8 @@ function base32Decode(input: string): Buffer {
     bits += v.toString(2).padStart(5, "0");
   }
   const bytes: number[] = [];
-  for (let i = 0; i + 8 <= bits.length; i += 8) bytes.push(parseInt(bits.slice(i, i + 8), 2));
+  for (let i = 0; i + 8 <= bits.length; i += 8)
+    bytes.push(parseInt(bits.slice(i, i + 8), 2));
   return Buffer.from(bytes);
 }
 
@@ -36,19 +37,33 @@ export function totp(secret: string, stepOffset = 0, now = Date.now()): string {
   buf.writeBigUInt64BE(BigInt(counter));
   const hmac = createHmac("sha1", base32Decode(secret)).update(buf).digest();
   const offset = (hmac[hmac.length - 1] ?? 0) & 0xf;
-  const code = ((hmac.readUInt32BE(offset) & 0x7fffffff) % 1_000_000).toString();
+  const code = (
+    (hmac.readUInt32BE(offset) & 0x7fffffff) %
+    1_000_000
+  ).toString();
   return code.padStart(6, "0");
 }
 
-async function csrf(request: APIRequestContext, baseURL: string): Promise<string> {
+async function csrf(
+  request: APIRequestContext,
+  baseURL: string,
+): Promise<string> {
   await request.get("/api/v1/auth/csrf");
   const state = await request.storageState();
   const host = new URL(baseURL).hostname;
-  return state.cookies.find((c) => c.name === "mmh_csrftoken" && c.domain.includes(host))?.value ?? "";
+  return (
+    state.cookies.find(
+      (c) => c.name === "mmh_csrftoken" && c.domain.includes(host),
+    )?.value ?? ""
+  );
 }
 
 /** Sign in through the API (fast). Handles the 2FA step for the demo admins. */
-export async function apiLogin(request: APIRequestContext, baseURL: string, email: string): Promise<void> {
+export async function apiLogin(
+  request: APIRequestContext,
+  baseURL: string,
+  email: string,
+): Promise<void> {
   const token = await csrf(request, baseURL);
   const res = await request.post("/api/v1/auth/login", {
     data: { email, password: PASSWORD },
@@ -62,7 +77,10 @@ export async function apiLogin(request: APIRequestContext, baseURL: string, emai
   for (const offset of [0, 1]) {
     const verify = await request.post("/api/v1/auth/login/verify", {
       data: { code: totp(DEMO_TOTP_SECRET, offset) },
-      headers: { "X-CSRFToken": await csrf(request, baseURL), Referer: baseURL },
+      headers: {
+        "X-CSRFToken": await csrf(request, baseURL),
+        Referer: baseURL,
+      },
     });
     if (verify.ok()) return;
     await new Promise((r) => setTimeout(r, 1200)); // django-otp backs off briefly after a miss
@@ -79,7 +97,11 @@ export function watchConsole(page: Page): string[] {
   const problems: string[] = [];
   page.on("console", (msg) => {
     const text = msg.text();
-    if (msg.type() === "error" && /Content Security Policy|Refused to/i.test(text)) problems.push(text);
+    if (
+      msg.type() === "error" &&
+      /Content Security Policy|Refused to/i.test(text)
+    )
+      problems.push(text);
   });
   page.on("pageerror", (err) => problems.push(err.message));
   return problems;
@@ -92,7 +114,11 @@ export async function savedCopyReady(page: Page): Promise<number> {
   });
   // The first visit installs the service worker; a reload puts the page under its control.
   await page.reload();
-  await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
+  await expect
+    .poll(() =>
+      page.evaluate(() => Boolean(navigator.serviceWorker.controller)),
+    )
+    .toBe(true);
   const count = async () =>
     page.evaluate(
       () =>
@@ -102,7 +128,11 @@ export async function savedCopyReady(page: Page): Promise<number> {
           req.onsuccess = () => {
             const tx = req.result.transaction("packs", "readonly");
             const get = tx.objectStore("packs").get("units");
-            get.onsuccess = () => resolve((get.result as { units?: unknown[] } | undefined)?.units?.length ?? 0);
+            get.onsuccess = () =>
+              resolve(
+                (get.result as { units?: unknown[] } | undefined)?.units
+                  ?.length ?? 0,
+              );
             get.onerror = () => resolve(0);
           };
           req.onerror = () => resolve(0);
@@ -112,3 +142,40 @@ export async function savedCopyReady(page: Page): Promise<number> {
   return count();
 }
 
+/** A new sales user with two-factor turned on (for the reset-2FA screens).
+ * `admin` is a signed-in admin's request context. */
+export async function salesUserWithTwoFactor(
+  admin: APIRequestContext,
+  fresh: APIRequestContext,
+  baseURL: string,
+  name: { first: string; last: string },
+): Promise<string> {
+  const email = `${name.first.toLowerCase()}.${Date.now()}@mmh.test`;
+  const created = await admin.post("/api/v1/admin/users", {
+    data: {
+      email,
+      first_name: name.first,
+      last_name: name.last,
+      roles: ["sales"],
+      password: PASSWORD,
+    },
+    headers: { "X-CSRFToken": await csrf(admin, baseURL), Referer: baseURL },
+  });
+  expect(created.ok(), await created.text()).toBeTruthy();
+  const token = await csrf(fresh, baseURL);
+  const login = await fresh.post("/api/v1/auth/login", {
+    data: { email, password: PASSWORD },
+    headers: { "X-CSRFToken": token, Referer: baseURL },
+  });
+  expect(login.ok(), await login.text()).toBeTruthy();
+  const setup = await fresh.post("/api/v1/auth/2fa/setup", {
+    headers: { "X-CSRFToken": await csrf(fresh, baseURL), Referer: baseURL },
+  });
+  const { secret } = (await setup.json()) as { secret: string };
+  const confirm = await fresh.post("/api/v1/auth/2fa/confirm", {
+    data: { code: totp(secret) },
+    headers: { "X-CSRFToken": await csrf(fresh, baseURL), Referer: baseURL },
+  });
+  expect(confirm.ok(), await confirm.text()).toBeTruthy();
+  return email;
+}

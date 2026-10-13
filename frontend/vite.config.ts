@@ -38,7 +38,8 @@ export default defineConfig(({ command }) => ({
   build: {
     outDir: "../backend/frontend_dist",
     emptyOutDir: true,
-    sourcemap: true,
+    // No source maps in the shipped files: they would publish the full source.
+    sourcemap: false,
     target: "es2022",
   },
   server: {
