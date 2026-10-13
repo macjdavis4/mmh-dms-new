@@ -63,6 +63,10 @@ If step 3 or 5 fails, traffic stays on (or returns to) the old version and the w
 
 *Actions → **Rollback** → Run workflow → pick the environment*. This brings the previous version back in about a minute. The database is not rolled back, which is safe because migrations are expand/contract.
 
+### Nobody can reach the site (and it should be reachable)
+
+The DMS only accepts visitors from the office address (the VPN exits there). If the office's internet address changed, everyone, including you, sees a Cloudflare "blocked" page. Fix: update `ADMIN_SSH_CIDRS` in the `production` environment, then run *Actions → Terraform* for `shared`, `staging` and `production` with `apply`. In an emergency, turn off the rule **DMS office-only access** in Cloudflare (*Security → WAF → Custom rules*).
+
 ### Run a management command on a server
 
 From the office (only the office IP may SSH in):
