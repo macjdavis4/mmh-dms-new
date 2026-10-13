@@ -26,6 +26,7 @@ if [ "$NEW" = blue ]; then export BLUE_IMAGE=$IMAGE; else export GREEN_IMAGE=$IM
 export WORKER_IMAGE=${WORKER_IMAGE:-$IMAGE}
 
 log "running migrations"
+require_owner_for_migrations
 MIGRATE_IMAGE=$IMAGE compose --profile tools run --rm migrate
 
 log "starting app-$NEW"

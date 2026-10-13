@@ -28,6 +28,7 @@ import psycopg
 from django.conf import settings
 from django.utils import timezone
 from psycopg import sql
+from psycopg.conninfo import make_conninfo
 
 from .models import BackupRun
 
@@ -79,16 +80,15 @@ def _pg_params() -> PgParams:
     if root := os.environ.get("DATABASE_SSLROOTCERT"):
         env["PGSSLMODE"] = os.environ.get("DATABASE_SSLMODE", "require")
         env["PGSSLROOTCERT"] = root
-    conninfo = " ".join(
-        f"{k}={v!r}"
-        for k, v in {
-            "host": env["PGHOST"],
-            "port": env["PGPORT"],
-            "user": env["PGUSER"],
-            "password": env["PGPASSWORD"],
-            "dbname": env["PGDATABASE"],
-            **({"sslmode": env["PGSSLMODE"], "sslrootcert": env["PGSSLROOTCERT"]} if root else {}),
-        }.items()
+    # libpq quoting (Python's repr() switches to double quotes when a
+    # password contains an apostrophe, which libpq can't read).
+    conninfo = make_conninfo(
+        host=env["PGHOST"],
+        port=env["PGPORT"],
+        user=env["PGUSER"],
+        password=env["PGPASSWORD"],
+        dbname=env["PGDATABASE"],
+        **({"sslmode": env["PGSSLMODE"], "sslrootcert": env["PGSSLROOTCERT"]} if root else {}),
     )
     return PgParams(conninfo=conninfo, env=env)
 
@@ -210,7 +210,15 @@ def run_database_backup(force: bool = False) -> BackupRun:
     return run
 
 
-def run_media_replication() -> BackupRun:
+MEDIA_CHANGED_LIMIT = 20
+MEDIA_CHANGED_FRACTION = 0.05
+
+
+class MediaChangedTooMuchError(Exception):
+    """Too many already-copied files changed at once (see run_media_replication)."""
+
+
+def run_media_replication(*, allow_mass_change: bool = False) -> BackupRun:
     """Copy new or changed media objects to the second-region backup bucket."""
     today = timezone.localdate()
     run = BackupRun.objects.create(kind=BackupRun.Kind.MEDIA, run_date=today)
@@ -227,6 +235,8 @@ def run_media_replication() -> BackupRun:
         ):
             for obj in page.get("Contents", []):
                 existing[obj["Key"][len(dest_prefix) :]] = obj
+        to_copy: list[str] = []
+        changed = 0
         for page in src.get_paginator("list_objects_v2").paginate(Bucket=src_bucket):
             for obj in page.get("Contents", []):
                 total += 1
@@ -238,9 +248,23 @@ def run_media_replication() -> BackupRun:
                     and have["LastModified"] >= obj["LastModified"]
                 ):
                     continue
-                body = src.get_object(Bucket=src_bucket, Key=key)["Body"]
-                dest.upload_fileobj(body, settings.BACKUP_BUCKET, dest_prefix + key)
-                copied += 1
+                to_copy.append(key)
+                changed += have is not None
+        # Uploads always get new names, so files that already have a backup
+        # copy almost never change. Many changing at once looks like
+        # ransomware encrypting them: don't overwrite the good copies.
+        limit = max(MEDIA_CHANGED_LIMIT, int(len(existing) * MEDIA_CHANGED_FRACTION))
+        if changed > limit and not allow_mass_change:
+            raise MediaChangedTooMuchError(
+                f"{changed} of {len(existing)} files that already had a backup copy changed "
+                f"since the last copy (the limit is {limit}). Nothing was copied, so the "
+                "backup copies are untouched. Check the photos in the app; if the change "
+                "was deliberate, see docs/RUNBOOK.md (media copy refused)."
+            )
+        for key in to_copy:
+            body = src.get_object(Bucket=src_bucket, Key=key)["Body"]
+            dest.upload_fileobj(body, settings.BACKUP_BUCKET, dest_prefix + key)
+            copied += 1
     except Exception as exc:
         run.status = BackupRun.Status.FAILED
         run.error = str(exc)[:2000]

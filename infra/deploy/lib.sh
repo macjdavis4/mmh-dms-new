@@ -23,7 +23,7 @@ load_env() {
     set +a
   fi
   export DATABASE_DIRECT_URL_FOR_WORKER="${DATABASE_DIRECT_URL:-$DATABASE_URL}"
-  # Migrations run as the database owner when its URL is available.
+  # Migrations run as the database owner (see require_owner_for_migrations).
   export DATABASE_MIGRATE_URL="${ADMIN_DATABASE_URL:-$DATABASE_DIRECT_URL_FOR_WORKER}"
   touch "$STATE_FILE"
   set -a
@@ -31,6 +31,20 @@ load_env() {
   . "$STATE_FILE"
   set +a
   export CADDY_IMAGE="${CADDY_IMAGE:?CADDY_IMAGE missing from .env}"
+}
+
+# On staging and production, migrations must run as the database owner: run
+# as the app's user, new tables would belong to it, and an owner can drop
+# them and switch off the no-delete triggers, defeating its row-only access.
+require_owner_for_migrations() {
+  case "${APP_ENV:-}" in
+    staging | production)
+      if [ -z "${ADMIN_DATABASE_URL:-}" ]; then
+        log "ADMIN_DATABASE_URL is missing from $MMH_HOME/admin.env; refusing to migrate as the app user"
+        return 1
+      fi
+      ;;
+  esac
 }
 
 compose() {

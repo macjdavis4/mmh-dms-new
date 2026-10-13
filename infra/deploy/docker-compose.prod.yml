@@ -21,8 +21,12 @@ x-app: &app
 services:
   caddy:
     image: ${CADDY_IMAGE}
-    env_file:
-    - "${MMH_HOME:-/opt/mmh}/.env"
+    # Only what the Caddyfile reads. The internet-facing proxy never gets the
+    # database, storage or Django secrets (deploy.sh exports these from .env).
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN:-}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+      CLOUDFLARE_API_TOKEN: ${CLOUDFLARE_API_TOKEN:-}
     restart: unless-stopped
     ports: ["80:80", "443:443", "443:443/udp"]
     cap_drop: [ALL]

@@ -54,7 +54,24 @@ class Command(BaseCommand):
                 sql.SQL(
                     "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO {}"
                 ).format(r),
+                # It must never be able to create tables of its own.
+                sql.SQL("REVOKE CREATE ON SCHEMA public FROM {}").format(r),
             ]
             for statement in statements:
                 cur.execute(statement)
+            # An owner can drop its tables and switch off the no-delete
+            # triggers, so the app's user must own nothing (that would mean a
+            # migration once ran as it). Fail the deploy loudly if it does.
+            cur.execute(
+                "SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
+                "WHERE n.nspname = 'public' AND pg_get_userbyid(c.relowner) = %s "
+                "ORDER BY c.relname LIMIT 20",
+                [role],
+            )
+            owned = [name for (name,) in cur.fetchall()]
+            if owned:
+                raise CommandError(
+                    f"{role} owns {', '.join(owned)}. Give them to the database owner with "
+                    f"REASSIGN OWNED BY {role} TO <owner>; (see docs/RUNBOOK.md)."
+                )
         self.stdout.write(self.style.SUCCESS(f"Granted row access on all tables to {role}."))

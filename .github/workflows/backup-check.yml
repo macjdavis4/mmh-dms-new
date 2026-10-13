@@ -1,0 +1,67 @@
+# Daily check, from outside our servers, that the nightly database backups
+# are still arriving in the second-region bucket. If someone with access to a
+# server stops or deletes the backups (the usual first step of a ransomware
+# attack), this notices within a day: an urgent issue is opened, and GitHub
+# emails the repository admins. Uses the read-only restore-test key; it never
+# downloads or decrypts a backup (the monthly restore test does that).
+name: Backup check
+
+on:
+  schedule:
+    - cron: "41 12 * * *" # every day, ~8 AM in Bangor
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    if: vars.DEPLOY_ENABLED == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [staging, production]
+    runs-on: ubuntu-24.04
+    environment: restore-test-${{ matrix.target }}
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.RESTORE_SPACES_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.RESTORE_SPACES_SECRET }}
+      AWS_DEFAULT_REGION: us-east-1
+      ENDPOINT: ${{ vars.BACKUP_ENDPOINT }}
+      BUCKET: ${{ vars.BACKUP_BUCKET }}
+      TARGET: ${{ matrix.target }}
+    steps:
+      - name: Backups are recent and none are missing
+        run: |
+          aws s3api list-objects-v2 --endpoint-url "$ENDPOINT" --bucket "$BUCKET" \
+            --prefix "db/$TARGET/" --output json > listing.json
+          jq '[.Contents // [] | .[] | select(.Key | endswith(".dump.age"))]' listing.json > dumps.json
+          count=$(jq length dumps.json)
+          [ "$count" -gt 0 ] || { echo "::error::no encrypted backups found for $TARGET"; exit 1; }
+          now=$(date +%s)
+          newest=$(jq -r 'max_by(.LastModified).LastModified' dumps.json)
+          oldest=$(jq -r 'min_by(.LastModified).LastModified' dumps.json)
+          newest_h=$(( (now - $(date -d "$newest" +%s)) / 3600 ))
+          span_days=$(( (now - $(date -d "$oldest" +%s)) / 86400 ))
+          echo "$count backups; newest $newest ($newest_h hours ago); oldest $oldest"
+          [ "$newest_h" -le 30 ] || { echo "::error::newest $TARGET backup is $newest_h hours old"; exit 1; }
+          # One backup a night is kept for 30 days. Allow a few missed nights.
+          expected=$(( span_days < 30 ? span_days : 30 ))
+          minimum=$(( expected - 4 ))
+          if [ "$count" -lt "$minimum" ]; then
+            echo "::error::only $count backups for $TARGET over $expected days (expected at least $minimum): some may have been deleted"
+            exit 1
+          fi
+      - name: Open an issue on failure
+        if: failure()
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Backups missing or late (${{ matrix.target }})`,
+              body: `The daily backup check failed for **${{ matrix.target }}**.\n\nRun: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}\n\nSee docs/RUNBOOK.md, "Backup check failed". Treat this as urgent: deleted backups can be the first sign of an attack.`,
+              labels: ["backup", "urgent"],
+            });
