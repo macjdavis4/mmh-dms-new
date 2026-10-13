@@ -14,7 +14,7 @@ Five areas were reviewed separately, by reading the code and, where it mattered,
 
 - **The app itself is in good shape.** No way was found to run code on the server, read files off it, inject SQL, or get past sign-in from the internet. The office-only Cloudflare rule means an outsider can't even reach the sign-in page.
 - **One serious app bug was found and fixed:** an old or reset 2FA authenticator could still sign in to the admin back office (details below).
-- **The biggest remaining risk is the backups, not the app.** Every copy of the data (database, its backups, photos and their backups) lives in one DigitalOcean account. Keys that sit on the servers and in GitHub can delete all of it. Anyone who steals one of those keys could wipe everything except DigitalOcean's own 7-day database recovery. Code changes in this audit add alarms and a brake, but **the real fix needs your decision (A below)**.
+- **The biggest risk was the backups, not the app.** Every copy of the data (database, its backups, photos and their backups) lived in one DigitalOcean account, and keys on the servers and in GitHub could delete all of it. Now there is a **locked copy in Backblaze B2** that nobody can delete for 30 days, the all-powerful keys are only used by Terraform runs you approve, and the server's logs are archived where an intruder can't erase them. These take effect once you complete Parts 2 and 3 of the [manual steps](MANUAL_STEPS.md#security-audit-october-2026).
 
 ## Fixed in this pull request
 
@@ -41,6 +41,8 @@ Five areas were reviewed separately, by reading the code and, where it mattered,
 | 19 | Low | Paper-backup spreadsheets missed two ways a cell can be turned into a formula. | Same rule as report exports. |
 | 20 | Low | The backup could fail if the database password ever contained an apostrophe. | Proper quoting. |
 | 21 | Low | Small items: a downloaded file's name could break the download header; sign-in redirect accepted `/\\other-site`; an unused package; a stray decorator. | Fixed. |
+| 22 | Medium | One sign-in could last for ever while in use, and a copied session cookie gets past 2FA (Mandiant M-Trends 2026). | Admins sign in again after 12 hours, everyone else after a week. |
+| 23 | Medium | *Reset two-factor* worked straight from a menu, with no check, and nobody else saw it. Phone scams asking for exactly this are now the second most common way in (M-Trends 2026). | The admin must say how they confirmed it was really the person (in person, or a call back on a known number), and every admin sees recent resets on the dashboard. The command-line reset now deletes devices and signs the person out too. |
 
 ### Ransomware safeguards added
 
@@ -52,33 +54,33 @@ Five areas were reviewed separately, by reading the code and, where it mattered,
 | **The web proxy gets only its own 3 settings** | Before, Caddy (the internet-facing part) was handed every secret: database, storage keys, Django key. Now it only gets the site name, email and its certificate token. |
 | **GitHub Actions pinned to exact versions** | A hijacked third-party action (this happened to a popular one in 2025) can no longer slip new code into a run that holds our keys. Dependabot keeps the pins current. The Caddy plugins are pinned too. |
 | **A failed SSH clean-up fails the deploy** | Each deploy opens SSH to the GitHub runner for a few minutes. If closing it failed, that used to be ignored. Now the run turns red and the runbook says how to close it. |
+| **Locked off-site copy (Backblaze B2)** | Every night: the encrypted database backup and every new photo and scan go to a B2 bucket with Object Lock (compliance mode, 30 days), outside DigitalOcean. Nobody can delete or change them for 30 days, us included. The server's key can only add files; what was sent is recorded in an append-only table. Files already copied are never overwritten, so encrypted files can't replace good ones. Tested against an S3 server with Object Lock. |
+| **Log archive** | The app, Caddy, SSH sign-ins and `sudo` are sent to the same locked bucket every 5 minutes, so an intruder can't erase the record. The daily check alerts if logs stop. |
+| **Keys split** | Only the new `terraform` GitHub environment (always needs your approval) holds the full-access DigitalOcean, Spaces and Cloudflare Terraform keys. Deploys use a token that can only change the firewall and a key that can only read the Terraform state. |
+| **Daily check covers B2** | The daily Backup check also confirms the B2 copy is current and logs are still arriving. |
 
-## Decisions for you
+## Decisions (made October 13, 2026)
 
-**A. An undeletable backup copy outside DigitalOcean (strongly recommended).** Today a single stolen key can delete the photos, their backups, and every off-site database backup. Options:
-
-1. **Backblaze B2 or AWS S3 with "Object Lock"** (about $1–3 a month at our size). The nightly job adds one more encrypted copy there, with a key that can write but not delete, and the bucket refuses deletion for 30 days, even by us. This is the standard ransomware defence. *Recommended.*
-2. **A second DigitalOcean account** (different email, its own 2FA, nobody uses it day to day) that pulls a copy every night with a read-only key. No new vendor, but weaker: that account's password becomes the single point of failure.
-
-**B. Split the keys GitHub holds.** Today the same all-powerful DigitalOcean token and storage key sit in both the `staging` and `production` environments, and staging deploys run with no approval. I would change the workflows so deploys use a token that can only open the firewall for a few minutes, and the all-powerful keys live in a new `infrastructure` environment that always needs your approval. You'd create two new limited keys (about 15 minutes; I'll write the steps). Until then, step 1 in [MANUAL_STEPS](MANUAL_STEPS.md) "Security audit" (approval on staging) covers most of the risk.
-
-**C. Should the `parts` role see what we pay for parts?** CLAUDE.md says cost is for admin and sales only, but the parts screens deliberately show part cost to parts staff (they receive invoices). Either is reasonable. Tell me which and I'll make the code and CLAUDE.md agree.
-
-**D. Remove the Cloudflare DNS token from the servers (optional).** The web server holds a token that can change any DNS record for `maine-material.com` (including email). Switching to a free 15-year Cloudflare origin certificate removes it entirely. Step 3 of the manual steps limits the damage in the meantime.
+- **A. Locked off-site copy: Backblaze B2.** DigitalOcean Spaces has no Object Lock (its S3 compatibility list doesn't include it, and it's an open feature request), so it couldn't provide an undeletable copy. Built; turn it on with Part 2 of the manual steps.
+- **B. Split the GitHub keys: yes.** Built; Part 3 of the manual steps.
+- **C. Parts staff see part costs: yes.** CLAUDE.md now says so; unit cost and prices stay admin and sales only.
+- **D. Cloudflare origin certificate: later.** Step 3 of Part 1 (limit the token to our servers' addresses) covers it for now.
+- **From the Mandiant M-Trends 2026 report:** hard session limits and 2FA-reset safeguards (built, items 22 and 23); the UniFi network updated and locked down (Part 1, step 4); branch protection on `main` (Part 1, step 1: it is **not** on today); server logs off the server (built).
 
 ## Known limits (accepted or for later)
 
-- **Deploy by image fingerprint, a hard-coded image name on the server, and one deploy key per server.** These change the server's start-up script, which means rebuilding the servers. Best done together with decision B.
+- **Deploy by image fingerprint, a hard-coded image name on the server, and one deploy key per server.** These change the server's start-up script, which means rebuilding the servers. Until then staging and production share a deploy key, so keep approval on staging (Part 1, step 1).
 - **The offline copy opens with no connection and no sign-in.** That's what it's for (field work with no signal). It holds no prices and expires after 14 days. A short PIN for the offline pages is possible if you want it.
 - **Recovery codes are stored unencrypted in the database.** Someone who can read the database already has everything else; they are single-use and rate-limited.
-- **Sessions last as long as they're used** (12 hours of inactivity ends them). A hard daily limit is easy to add if you'd like one.
 - **Anyone in the office can lock an account for 15 minutes** with five wrong passwords. Deliberate: it protects against password guessing.
 - **Original photos keep their location data (EXIF).** Thumbnails don't. Removing it would alter the files as uploaded.
 - **Paper-backup files (customer phone list) are not encrypted**, so they can be opened when the DMS is down. They are in a private bucket and kept 30 days.
-- **Base images (Python, Node, Caddy) are pinned by version, not fingerprint.** Dependabot and the Trivy scan cover them.
+- **Base images (Python, Node, Caddy, Vector) are pinned by version, not fingerprint.** Dependabot and the Trivy scan cover them.
+- **The locked copy protects 30 days.** After that, files stay unless someone with the B2 master password deletes them: keep that password out of everything but the password manager.
 
 ## How this was checked
 
-- 16 new automated tests reproduce each fixed attack and prove it now fails, alongside the existing suite. See `backend/tests/test_security_audit.py`, plus new cases in `test_backup.py` and `test_db_privileges.py`.
+- New automated tests reproduce each fixed attack and prove it now fails, alongside the existing suite: `backend/tests/test_security_audit.py` and `test_offsite.py`, new cases in `test_backup.py` and `test_db_privileges.py`, and a browser test for the 2FA reset. Screenshots of the changed screens are in `docs/screenshots/security-audit/`.
+- The off-site copy and the log archive were run against a local S3 server with Object Lock in compliance mode: uploads succeeded, and deleting a locked file was refused.
 - Dependency scans: `pip-audit` and `npm audit` found no known vulnerabilities (Django 5.2.17 LTS, Pillow 12.3, pypdf 6.19, React and the rest current).
 - The 2FA bypass and the rate-limit bypass were each reproduced against a local copy before being fixed.

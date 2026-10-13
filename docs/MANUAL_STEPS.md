@@ -133,6 +133,8 @@ Now open each environment and add the values below. **Secrets** are hidden after
 
 The **restore-test** environments are filled in step 11.
 
+> Since the October 2026 security audit, the full-access keys (`DIGITALOCEAN_TOKEN`, `SPACES_*`, `TERRAFORM_CLOUDFLARE_API_TOKEN`) live in a separate `terraform` environment and `staging` / `production` hold limited ones. See "Security audit, Part 3" below.
+
 ### 9. Build the infrastructure (Terraform)
 
 *Actions tab → **Terraform** → Run workflow*. Run these one after another and wait for each to finish (green tick):
@@ -332,19 +334,37 @@ If you lock yourself out, sign in to Cloudflare, go to *Security → WAF → Cus
 
 ## Security audit (October 2026)
 
-These close gaps that code can't (see [SECURITY_AUDIT](SECURITY_AUDIT.md)). Steps 1 to 6 take about an hour in total and need no decisions. Do them in order.
+These close the gaps code can't close by itself (see [SECURITY_AUDIT](SECURITY_AUDIT.md)). Three parts:
 
-1. [ ] **Lock down GitHub.** Today, anything merged to `main` deploys to staging with no approval, and the staging environment holds keys that can delete every backup.
-   - Make sure two-step sign-in is on for your GitHub account (*Settings → Password and authentication*).
-   - *Repository → Settings → Branches → Add branch ruleset* (or *Add rule*) for `main`: tick **Require a pull request before merging**, **Require status checks to pass**, and **Block force pushes**.
-   - *Settings → Actions → General → Workflow permissions*: choose **Read repository contents and packages permissions**, and untick **Allow GitHub Actions to create and approve pull requests**.
-   - *Settings → Environments → staging → Required reviewers*: add yourself. Each merge then waits for one click before it reaches staging. Keep this until the keys are split (decision B in the audit).
+- **Part 1** (about an hour, no decisions): do it now. Do step 6 **before merging** the security pull request.
+- **Part 2** (about 30 minutes): the locked Backblaze B2 copy. It stays off until you do it.
+- **Part 3** (about 20 minutes): split the GitHub keys. Do it **right after merging**: Terraform runs wait for it.
+
+### Part 1: quick fixes
+
+1. [ ] **Protect `main` in GitHub.** Today anyone (or anything) with push access can change `main` directly, and every change to `main` deploys.
+   - *Repository → Settings → Rules → Rulesets → New ruleset → New branch ruleset*.
+   - Name `Protect main`, Enforcement status **Active**. Under *Target branches → Add target → Include default branch*.
+   - Tick **Restrict deletions** and **Block force pushes**.
+   - Tick **Require a pull request before merging**. Leave *Required approvals* at **0**: pull requests are opened under your own account, and GitHub doesn't let you approve your own.
+   - Tick **Require status checks to pass**, then *Add checks* and add all five: `Backend (lint, types, migrations, tests)`, `Frontend (lint, types, unit tests, build)`, `End-to-end (Playwright)`, `Infrastructure (Terraform, shell, secrets)`, `Container images (build + Trivy scan)`.
+   - Leave the bypass list empty. *Create*.
+   - *Settings → Actions → General → Workflow permissions*: choose **Read repository contents and packages permissions**, and untick **Allow GitHub Actions to create and approve pull requests**. *Save*.
+   - *Settings → Environments → staging → Required reviewers*: add yourself. Each merge then waits for one click before it reaches staging (staging and production share a deploy key, so staging needs the same care).
 2. [ ] **Keep old versions of the Terraform state.** *DigitalOcean → Spaces → mmh-terraform-state → Settings → Versioning → Enable*.
-3. [ ] **Limit the Cloudflare certificate token to our servers.** Cloudflare → *My Profile → API Tokens → mmh-caddy-dns → Edit → Client IP Address Filtering → Is in*: add the reserved IP of staging and of production (shown in DigitalOcean under *Networking → Reserved IPs*). A stolen copy of that token then can't change DNS from anywhere else.
-4. [ ] **Turn on alerts for account changes.**
+3. [ ] **Limit the Cloudflare certificate token to our servers.** Cloudflare → *My Profile → API Tokens → mmh-caddy-dns → Edit → Client IP Address Filtering → Is in*: add the reserved IP of staging and of production (DigitalOcean → *Networking → Reserved IPs*). A stolen copy of the token then can't change DNS from anywhere else.
+4. [ ] **Update and lock down the UniFi network.** The office network is the only way into the DMS, and Ubiquiti published several critical security fixes this year (bulletins 064, 066 and 067). Menu names vary a little by version.
+   - Sign in to the UniFi console (unifi.ui.com or the local address). Update **UniFi OS**, the **Network** application and every device to the newest versions now.
+   - Turn on automatic updates for UniFi OS, the applications and devices (*UniFi OS Settings → Updates* or *Control Plane → Updates*).
+   - Your **ui.com account**: make sure two-factor sign-in is on (*account.ui.com → Security*). Remove any admin accounts you don't recognise (*Admins & Users*).
+   - If you don't manage the network from home, turn off **Remote Management** / remote access. If you do, keep it, but only with two-factor on.
+   - *Settings → Security* (or *CyberSecure*): turn on **Intrusion Prevention** if your gateway has it.
+   - *Settings → Firewall & Security / Port forwarding*: there should be **no port forwards** unless you know what each one is for. Turn off **UPnP**.
+   - The VPN: use the built-in WireGuard or Teleport VPN, one profile per person, and delete profiles for people who leave.
+5. [ ] **Turn on alerts for account changes.**
    - DigitalOcean → *Settings → Security*: check that two-factor sign-in is on for every team member, and look through *Security history*. Add a monthly calendar reminder to look again.
    - Cloudflare → *Notifications → Add*: if your plan offers it, add an alert for DNS record changes. Check two-factor sign-in is on for every Cloudflare member.
-5. [ ] **Check who owns the database tables** (from the office, takes 5 minutes):
+6. [ ] **Check who owns the database tables** (from the office, takes 5 minutes, **before merging**):
 
    ```bash
    ssh mmhadmin@<production IP>
@@ -360,9 +380,61 @@ These close gaps that code can't (see [SECURITY_AUDIT](SECURITY_AUDIT.md)). Step
    SELECT has_schema_privilege('mmh_app', 'public', 'CREATE');
    ```
 
-   The first should list no tables, the second should show no attributes, and the third should say `f`. Type `\q` to leave. (The next deploy also checks the first one and stops if it's wrong.)
-6. [ ] **Ask DigitalOcean one question** (*Support → New ticket*): "If our Managed PostgreSQL cluster is deleted, are its daily backups and point-in-time recovery deleted too, and for how long can they be recovered?" Send me the answer; it decides how urgent decision A is.
-7. [ ] **Decide A and B in the audit** (an outside, undeletable backup copy, and splitting the GitHub keys). Tell me your choice and I'll build it with the steps for you.
+   The first should list no tables, the second should show no attributes, and the third should say `f`. Type `\q` to leave. (The next deploy also checks the first one and stops safely if it's wrong.)
+
+### Part 2: the locked off-site copy (Backblaze B2)
+
+Every night the DMS copies the encrypted database backup and every new photo and scan to Backblaze B2, outside DigitalOcean. The bucket is **locked**: for 30 days nothing in it can be deleted or changed by anyone, you included. The key on our servers can only add files. The server's logs go there too. Expect about $1–3 a month (the first 10 GB are free; then about $6 per TB per month).
+
+1. [ ] **Account.** Sign up at backblaze.com for **B2 Cloud Storage**. Pick the **US East** region when asked. Use an email and password that you use nowhere else and keep in the password manager. Then *My Settings* (or *Account*) → turn on **two-factor verification**. Add a payment card so the account never pauses.
+2. [ ] **Bucket.** *B2 Cloud Storage → Buckets → Create a Bucket*:
+   - Name: `mmh-offsite-` plus four random digits, like `mmh-offsite-4821` (names are unique worldwide).
+   - Files in Bucket: **Private**. Default Encryption: **Enable**. Object Lock: **Enable**.
+   - After creating it, on the bucket's card click **Object Lock: Enabled → Default retention**: turn it on, mode **Compliance**, **30 days**. *Update Bucket*.
+   - On the bucket's card, note the **Endpoint**, like `s3.us-east-005.backblazeb2.com`. **Save as:** `OFFSITE_ENDPOINT_URL` with `https://` in front: `https://s3.us-east-005.backblazeb2.com`. The bucket name: **Save as:** `OFFSITE_BUCKET`.
+   - Leave *Lifecycle Settings* at **Keep all versions**.
+3. [ ] **Keys.** *Application Keys → Add a New Application Key*, four times. Each shows its `applicationKey` **once**: copy both values straight into GitHub (step 4).
+
+   | Name | Allow access to bucket | Type of access | File name prefix |
+   |---|---|---|---|
+   | `mmh-production-writer` | the offsite bucket | **Write Only** | `production/` |
+   | `mmh-staging-writer` | the offsite bucket | **Write Only** | `staging/` |
+   | `mmh-production-check` | the offsite bucket | **Read Only** | `production/` |
+   | `mmh-staging-check` | the offsite bucket | **Read Only** | `staging/` |
+
+   Never put the account's master key anywhere: it stays in your head and the password manager.
+4. [ ] **GitHub** (*Settings → Environments*):
+
+   | Environment | Type | Name | Value |
+   |---|---|---|---|
+   | `production` | Secret | `OFFSITE_ACCESS_KEY_ID` | keyID of `mmh-production-writer` |
+   | `production` | Secret | `OFFSITE_SECRET_ACCESS_KEY` | applicationKey of `mmh-production-writer` |
+   | `staging` | Secret | `OFFSITE_ACCESS_KEY_ID` | keyID of `mmh-staging-writer` |
+   | `staging` | Secret | `OFFSITE_SECRET_ACCESS_KEY` | applicationKey of `mmh-staging-writer` |
+   | `restore-test-production` | Secret | `OFFSITE_CHECK_KEY_ID` | keyID of `mmh-production-check` |
+   | `restore-test-production` | Secret | `OFFSITE_CHECK_KEY_SECRET` | applicationKey of `mmh-production-check` |
+   | `restore-test-staging` | Secret | `OFFSITE_CHECK_KEY_ID` | keyID of `mmh-staging-check` |
+   | `restore-test-staging` | Secret | `OFFSITE_CHECK_KEY_SECRET` | applicationKey of `mmh-staging-check` |
+   | all four above | Variable | `OFFSITE_BUCKET` | from step 2 |
+   | all four above | Variable | `OFFSITE_ENDPOINT_URL` | from step 2, with `https://` |
+
+5. [ ] **Turn it on.** *Actions → Deploy → Run workflow* (or wait for the next merge). The next night's copy sends everything so far; after that, only what's new.
+6. [ ] **Check it the next morning.** The admin dashboard's *System health* shows **Locked off-site copy: Last file sent …** in green. In B2, *Browse Files* shows `production/db/`, `production/media/` and `production/logs/`. Then *Actions → Backup check → Run workflow*: it should pass.
+
+### Part 3: split the GitHub keys
+
+Today the all-powerful DigitalOcean token, Spaces key and Cloudflare Terraform token sit in the `staging` and `production` environments, so any deploy run holds keys that can delete the database and every backup. After this, only Terraform runs (which always need your approval) hold them; deploys get keys that can only open the firewall and read the Terraform state.
+
+You'll need the **full-access** values again. GitHub can't show saved secrets, so use the copies in the password manager. If you don't have them, create new ones (step 3 below shows where) and delete the old ones afterwards.
+
+1. [ ] **A Terraform-only environment.** *Settings → Environments → New environment* `terraform`. **Required reviewers**: you. **Deployment branches**: *Selected branches* → `main`. Add these **secrets** (the full-access values): `DIGITALOCEAN_TOKEN`, `SPACES_ACCESS_KEY_ID`, `SPACES_SECRET_ACCESS_KEY`, `TERRAFORM_CLOUDFLARE_API_TOKEN`.
+2. [ ] **Repository variables.** *Settings → Secrets and variables → Actions → Variables → New repository variable*. Copy these from the `production` environment (same names, same values): `CLOUDFLARE_ZONE_ID`, `ADMIN_SSH_PUBLIC_KEY`, `DEPLOY_SSH_PUBLIC_KEY`, `ADMIN_SSH_CIDRS`, `ALERT_EMAILS`. If an environment has a `DROPLET_SIZE` variable, add it as `STAGING_DROPLET_SIZE` or `PRODUCTION_DROPLET_SIZE`.
+3. [ ] **Check nothing changed.** *Actions → Terraform → Run workflow*: `staging`, `plan`. Approve it. The summary at the bottom must say **No changes**. Repeat for `production` and `shared`. If any plan wants to change something, stop and send me the summary.
+4. [ ] **Limited keys for deploys.**
+   - DigitalOcean → *API → Tokens → Generate New Token*: name `mmh-deploy`, expiration **1 year**, **Custom Scopes**: tick only **firewall: read** and **firewall: update**. Copy it.
+   - DigitalOcean → *Spaces Object Storage → Access Keys → Create Access Key → Limited Access*: name `mmh-deploy-state`, bucket `mmh-terraform-state`, permission **Read**. Copy both values.
+5. [ ] **Swap them in.** In **both** `staging` and `production`: replace `DIGITALOCEAN_TOKEN` with the `mmh-deploy` token, and `SPACES_ACCESS_KEY_ID` / `SPACES_SECRET_ACCESS_KEY` with the `mmh-deploy-state` key. **Delete** `TERRAFORM_CLOUDFLARE_API_TOKEN` from both.
+6. [ ] **Test.** *Actions → Deploy → Run workflow*. Staging (after your approval) should finish green, including *Remove the temporary SSH rule*. If anything fails, put the old values back and send me the error.
 
 ---
 
@@ -373,6 +445,7 @@ These close gaps that code can't (see [SECURITY_AUDIT](SECURITY_AUDIT.md)). Step
 | Each merged pull request | Approve the production deploy in *Actions* when you're ready. |
 | Daily (automatic) | Backup check confirms last night's backup arrived and none are missing. A failure opens a GitHub issue labelled `urgent` and emails you: treat it as a possible attack (see RUNBOOK). |
 | Monthly (automatic) | Restore test runs on the 3rd. A failure opens a GitHub issue labelled `urgent` and emails you. |
-| Yearly | Renew `DIGITALOCEAN_TOKEN` and `GHCR_READ_TOKEN` (calendar reminders). |
+| Yearly | Renew `DIGITALOCEAN_TOKEN` (in `terraform`), the `mmh-deploy` token (in `staging` and `production`) and `GHCR_READ_TOKEN` (calendar reminders). |
+| Monthly | Check for UniFi updates if automatic updates are off. Look through DigitalOcean *Security history*. |
 | Staff changes | Remove leavers under *Admin → Users* the same day. |
 | Office IP changes | Update `ADMIN_SSH_CIDRS` in both environments, then run Terraform `apply` for staging, production **and `shared`**. Until `shared` is applied, the new address is blocked from the DMS. |
