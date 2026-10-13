@@ -91,6 +91,9 @@ resource "digitalocean_project" "mmh" {
   environment = "Staging"
   resources = [
     module.app.droplet_urn,
+    # DigitalOcean puts a Droplet's reserved IP into the project with it; listing
+    # it here stops Terraform trying to move it back out (a 412 error).
+    module.app.reserved_ip_urn,
     module.database.cluster_urn,
     module.storage.media_bucket_urn,
     module.storage.backup_bucket_urn,
