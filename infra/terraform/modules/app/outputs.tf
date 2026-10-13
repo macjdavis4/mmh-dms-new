@@ -10,3 +10,6 @@ output "public_ip" {
 output "firewall_id" {
   value = digitalocean_firewall.app.id
 }
+output "reserved_ip_urn" {
+  value = digitalocean_reserved_ip.app.urn
+}
