@@ -14,9 +14,11 @@ case "${CMD:-}" in
     # New environment (secrets) arrives on stdin; keep the old one for rollback.
     cat >"$MMH_HOME/.env.incoming"
     grep -q '^APP_IMAGE_REPO=' "$MMH_HOME/.env.incoming" || { echo "env missing APP_IMAGE_REPO" >&2; exit 2; }
-    REPO=$(grep '^APP_IMAGE_REPO=' "$MMH_HOME/.env.incoming" | cut -d= -f2-)
-    GHCR_USER=$(grep '^GHCR_USER=' "$MMH_HOME/.env.incoming" | cut -d= -f2-)
-    grep '^GHCR_TOKEN=' "$MMH_HOME/.env.incoming" | cut -d= -f2- \
+    # Values may arrive wrapped in single quotes; strip them.
+    unquote() { local v=$1; v=${v#\'}; printf '%s' "${v%\'}"; }
+    REPO=$(unquote "$(grep '^APP_IMAGE_REPO=' "$MMH_HOME/.env.incoming" | cut -d= -f2-)")
+    GHCR_USER=$(unquote "$(grep '^GHCR_USER=' "$MMH_HOME/.env.incoming" | cut -d= -f2-)")
+    unquote "$(grep '^GHCR_TOKEN=' "$MMH_HOME/.env.incoming" | cut -d= -f2-)" \
       | docker login ghcr.io --username "$GHCR_USER" --password-stdin >/dev/null
     docker pull --quiet "$REPO:$TAG" >/dev/null
     # Unpack this version's deploy scripts from the image itself.
