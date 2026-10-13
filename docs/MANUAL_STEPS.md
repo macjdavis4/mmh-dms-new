@@ -330,6 +330,40 @@ Do this once, in order:
 
 If you lock yourself out, sign in to Cloudflare, go to *Security → WAF → Custom rules*, and turn off **DMS office-only access**. Then fix `ADMIN_SSH_CIDRS` and run `shared` again.
 
+## Security audit (October 2026)
+
+These close gaps that code can't (see [SECURITY_AUDIT](SECURITY_AUDIT.md)). Steps 1 to 6 take about an hour in total and need no decisions. Do them in order.
+
+1. [ ] **Lock down GitHub.** Today, anything merged to `main` deploys to staging with no approval, and the staging environment holds keys that can delete every backup.
+   - Make sure two-step sign-in is on for your GitHub account (*Settings → Password and authentication*).
+   - *Repository → Settings → Branches → Add branch ruleset* (or *Add rule*) for `main`: tick **Require a pull request before merging**, **Require status checks to pass**, and **Block force pushes**.
+   - *Settings → Actions → General → Workflow permissions*: choose **Read repository contents and packages permissions**, and untick **Allow GitHub Actions to create and approve pull requests**.
+   - *Settings → Environments → staging → Required reviewers*: add yourself. Each merge then waits for one click before it reaches staging. Keep this until the keys are split (decision B in the audit).
+2. [ ] **Keep old versions of the Terraform state.** *DigitalOcean → Spaces → mmh-terraform-state → Settings → Versioning → Enable*.
+3. [ ] **Limit the Cloudflare certificate token to our servers.** Cloudflare → *My Profile → API Tokens → mmh-caddy-dns → Edit → Client IP Address Filtering → Is in*: add the reserved IP of staging and of production (shown in DigitalOcean under *Networking → Reserved IPs*). A stolen copy of that token then can't change DNS from anywhere else.
+4. [ ] **Turn on alerts for account changes.**
+   - DigitalOcean → *Settings → Security*: check that two-factor sign-in is on for every team member, and look through *Security history*. Add a monthly calendar reminder to look again.
+   - Cloudflare → *Notifications → Add*: if your plan offers it, add an alert for DNS record changes. Check two-factor sign-in is on for every Cloudflare member.
+5. [ ] **Check who owns the database tables** (from the office, takes 5 minutes):
+
+   ```bash
+   ssh mmhadmin@<production IP>
+   sudo grep ADMIN_DATABASE_URL /opt/mmh/admin.env     # copy the URL after the =
+   docker run --rm -it postgres:16-alpine psql "<that URL>"
+   ```
+
+   Then type these three lines and send me the output:
+
+   ```sql
+   SELECT tablename FROM pg_tables WHERE tableowner = 'mmh_app';
+   \du mmh_app
+   SELECT has_schema_privilege('mmh_app', 'public', 'CREATE');
+   ```
+
+   The first should list no tables, the second should show no attributes, and the third should say `f`. Type `\q` to leave. (The next deploy also checks the first one and stops if it's wrong.)
+6. [ ] **Ask DigitalOcean one question** (*Support → New ticket*): "If our Managed PostgreSQL cluster is deleted, are its daily backups and point-in-time recovery deleted too, and for how long can they be recovered?" Send me the answer; it decides how urgent decision A is.
+7. [ ] **Decide A and B in the audit** (an outside, undeletable backup copy, and splitting the GitHub keys). Tell me your choice and I'll build it with the steps for you.
+
 ---
 
 ## Ongoing
@@ -337,6 +371,7 @@ If you lock yourself out, sign in to Cloudflare, go to *Security → WAF → Cus
 | When | What |
 |---|---|
 | Each merged pull request | Approve the production deploy in *Actions* when you're ready. |
+| Daily (automatic) | Backup check confirms last night's backup arrived and none are missing. A failure opens a GitHub issue labelled `urgent` and emails you: treat it as a possible attack (see RUNBOOK). |
 | Monthly (automatic) | Restore test runs on the 3rd. A failure opens a GitHub issue labelled `urgent` and emails you. |
 | Yearly | Renew `DIGITALOCEAN_TOKEN` and `GHCR_READ_TOKEN` (calendar reminders). |
 | Staff changes | Remove leavers under *Admin → Users* the same day. |

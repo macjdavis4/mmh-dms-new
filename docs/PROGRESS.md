@@ -284,3 +284,7 @@ A unit can be sold, come back and be sold again any number of times. It stays on
 
 - **Office-only access**: Cloudflare blocks everyone except the office/VPN address (except `/readyz` and `/healthz`). See *Network-only access* in `docs/MANUAL_STEPS.md`.
 - **Several roles per person**: any mix of sales, service and parts; admin and read-only stand alone. The database and the admin Users API enforce it. Follow-up release: make `roles` NOT EMPTY and drop the old `role` column.
+
+## Security audit (October 2026)
+
+Not a phase: a full security review with a ransomware focus. Report, fixes and open decisions in [SECURITY_AUDIT](SECURITY_AUDIT.md); owner steps under "Security audit" in [MANUAL_STEPS](MANUAL_STEPS.md).
