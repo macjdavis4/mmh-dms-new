@@ -649,7 +649,7 @@ def test_api_auth_and_limits(api_key: tuple[APIClient, str], client_for: Any) ->
 def test_api_key_stops_working_when_creator_loses_access(api_key: tuple[APIClient, str]) -> None:
     client, _ = api_key
     creator = ApiKey.objects.get().created_by
-    creator.role = "parts"
+    creator.roles = ["parts"]
     creator.save()
     assert (
         client.post(

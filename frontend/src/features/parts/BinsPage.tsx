@@ -72,7 +72,7 @@ export function BinsPage() {
   const bins = useBins();
   const remove = useBinAction();
   const [editing, setEditing] = useState<PartBin | "new" | null>(null);
-  const canEdit = canEditParts(user.role);
+  const canEdit = canEditParts(user.roles);
 
   return (
     <>

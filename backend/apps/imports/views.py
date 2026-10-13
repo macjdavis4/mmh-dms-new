@@ -13,6 +13,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.accounts.roles import has_any_role
 from apps.core.api import RequiresFlag
 from apps.core.context import acting_as
 
@@ -128,7 +129,7 @@ class ImportBatchViewSet(
     @action(detail=True, methods=["post"])
     def undo(self, request: Request, pk: str | None = None) -> Response:
         batch = self.get_object()
-        if request.user.role != "admin" and batch.created_by_id != request.user.pk:  # type: ignore[attr-defined, union-attr]
+        if not has_any_role(request.user, ("admin",)) and batch.created_by_id != request.user.pk:  # type: ignore[attr-defined, union-attr]
             raise PermissionDenied("Only an admin or the person who ran this import can undo it.")
         batch = services.start_undo(batch, request.user)
         return Response(self._detail(batch))

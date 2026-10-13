@@ -14,6 +14,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.permissions import IsAuthenticatedAndVerified
+from apps.accounts.roles import user_roles
 from apps.core.api import flag_enabled
 
 from . import definitions  # noqa: F401  (registers the reports)
@@ -51,9 +52,11 @@ class ReportListView(APIView):
     def get(self, request: Request) -> Response:
         if not flag_enabled("reports", request.user):
             raise NotFound("This feature is turned off.")
-        role = getattr(request.user, "role", "")
+        mine = set(user_roles(request.user))
         reports = [
-            _summary(r) for r in REPORTS.values() if role in r.roles and _available(r, request.user)
+            _summary(r)
+            for r in REPORTS.values()
+            if not mine.isdisjoint(r.roles) and _available(r, request.user)
         ]
         return Response(
             {"reports": reports, "periods": [{"value": k, "label": v} for k, v in PRESETS.items()]}
@@ -74,12 +77,12 @@ class ReportView(APIView):
             or not _available(report, request.user)
         ):
             raise NotFound("No such report.")
-        role = getattr(request.user, "role", "")
-        if role not in report.roles:
+        mine = user_roles(request.user)
+        if set(mine).isdisjoint(report.roles):
             raise PermissionDenied("You don't have access to this report.")
         period = from_params(request.query_params)
-        result = report.run(period, role)
-        columns = report.columns_for(role)
+        result = report.run(period, getattr(request.user, "role", ""))
+        columns = report.columns_for(mine)
         keys = {c.key for c in columns}
         if request.query_params.get("download") == "csv":
             return _csv(report, period, columns, result)

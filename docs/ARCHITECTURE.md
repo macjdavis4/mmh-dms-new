@@ -60,6 +60,10 @@
 
 `admin`, `sales`, `service`, `parts`, `read_only`. Admins must use TOTP two-factor; for everyone else it is optional. Cost and prices are visible to `admin` and `sales` only (`PRICE_ROLES`, enforced in serializers).
 
+**A person can hold several roles.** `admin` and `read_only` always stand alone. `sales`, `service` and `parts` can be held in any non-empty combination (sales + parts, service + parts, all three, and so on). Where an action is allowed to "sales or parts", someone with either role may do it, so a combined user gets the union of what their roles allow, and nothing more (they are never an admin by combining). The database enforces this with two check constraints on `accounts_user.roles` (only real roles; admin and read-only only when alone), and the admin Users API refuses bad combinations with a plain message. Code asks `has_any_role(user, {...})` (`apps/accounts/roles.py`) rather than comparing a single role.
+
+Transition: the old single `role` column is still written (the first role by priority) so the version running during a deploy keeps working. A later release adds `NOT EMPTY` on `roles` and drops `role` (expand and contract).
+
 | | admin | sales | service | parts | read_only |
 |---|---|---|---|---|---|
 | Customers: view | ✓ | ✓ | ✓ | ✓ | ✓ |

@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 
+import type { Role } from "@/lib/types";
+
 import { activeNavPath, findNavItem, navFor } from "./nav";
 
-const labels = (role: Parameters<typeof navFor>[0]) =>
-  navFor(role).flatMap((s) => s.items.map((i) => i.label));
+const labels = (role: Role | Role[]) =>
+  navFor(Array.isArray(role) ? role : [role]).flatMap((s) => s.items.map((i) => i.label));
 
 describe("navFor", () => {
   it("shows admin pages only to admins", () => {
@@ -23,13 +25,13 @@ describe("navFor", () => {
   it("shows Bought and sold to admin, sales and read only, when its flag is on", () => {
     for (const role of ["admin", "sales", "read_only"] as const) expect(labels(role)).toContain("Bought and sold");
     for (const role of ["service", "parts"] as const) expect(labels(role)).not.toContain("Bought and sold");
-    const off = navFor("sales", { "units-changing-hands": false }).flatMap((s) => s.items.map((i) => i.label));
+    const off = navFor(["sales"], { "units-changing-hands": false }).flatMap((s) => s.items.map((i) => i.label));
     expect(off).not.toContain("Bought and sold");
   });
 
   it("shows Low stock to everyone unless parts stock is off", () => {
     for (const role of ["admin", "sales", "service", "parts", "read_only"] as const) expect(labels(role)).toContain("Low stock");
-    const off = navFor("parts", { "parts-stock": false }).flatMap((s) => s.items.map((i) => i.label));
+    const off = navFor(["parts"], { "parts-stock": false }).flatMap((s) => s.items.map((i) => i.label));
     expect(off).toEqual(expect.arrayContaining(["Parts"]));
     expect(off).not.toContain("Low stock");
   });
@@ -42,11 +44,20 @@ describe("navFor", () => {
 
   it("shows Reports to everyone unless switched off", () => {
     for (const role of ["admin", "sales", "service", "parts", "read_only"] as const) expect(labels(role)).toContain("Reports");
-    expect(navFor("admin", { reports: false }).flatMap((s) => s.items.map((i) => i.label))).not.toContain("Reports");
+    expect(navFor(["admin"], { reports: false }).flatMap((s) => s.items.map((i) => i.label))).not.toContain("Reports");
+  });
+
+  it("gives a user with several roles the union of their nav items", () => {
+    const combined = labels(["sales", "service"]);
+    expect(combined).toEqual(expect.arrayContaining([...labels("sales"), ...labels("service")]));
+    expect(combined).toContain("Sales");
+    expect(combined).not.toContain("Users");
+    expect(labels(["service", "parts"])).toContain("Parts invoices");
+    expect(labels(["service", "parts"])).not.toContain("Sales");
   });
 
   it("drops empty sections", () => {
-    expect(navFor("parts").map((s) => s.title)).toEqual(["Work", "You"]);
+    expect(navFor(["parts"]).map((s) => s.title)).toEqual(["Work", "You"]);
   });
 
   it("finds items by path", () => {
@@ -60,10 +71,10 @@ describe("navFor", () => {
 
 describe("feature flags", () => {
   it("hides items whose flag is off", () => {
-    const off = navFor("admin", { "customers-units": false }).flatMap((s) => s.items.map((i) => i.label));
+    const off = navFor(["admin"], { "customers-units": false }).flatMap((s) => s.items.map((i) => i.label));
     expect(off).not.toContain("Units");
     expect(off).not.toContain("Customers");
-    const on = navFor("admin", { "customers-units": true }).flatMap((s) => s.items.map((i) => i.label));
+    const on = navFor(["admin"], { "customers-units": true }).flatMap((s) => s.items.map((i) => i.label));
     expect(on).toEqual(expect.arrayContaining(["Units", "Customers"]));
   });
 });

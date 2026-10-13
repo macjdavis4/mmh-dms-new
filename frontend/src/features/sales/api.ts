@@ -2,6 +2,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 
 import { useDebounced } from "@/hooks/useDebounced";
 import { api, type Paginated } from "@/lib/api";
+import { hasAnyRole } from "@/lib/roles";
 import type { Quote, QuoteRow, Role } from "@/lib/types";
 
 const BASE = "/api/v1/quotes";
@@ -13,8 +14,8 @@ export const quoteKeys = {
 };
 
 // Mirrors apps/sales/views.py (the server enforces it).
-export const canSell = (role: Role) => role === "admin" || role === "sales";
-export const canVoidSales = (role: Role) => role === "admin";
+export const canSell = (roles: readonly Role[]) => hasAnyRole(roles, ["admin", "sales"]);
+export const canVoidSales = (roles: readonly Role[]) => hasAnyRole(roles, ["admin"]);
 
 export interface QuoteFilters {
   scope: "open" | "sold" | "closed" | "all";

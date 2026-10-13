@@ -22,6 +22,9 @@ export interface CurrentUser {
   first_name: string;
   last_name: string;
   full_name: string;
+  /** All roles the user holds (non-empty, canonical order). */
+  roles: Role[];
+  /** Primary role, kept for compatibility. Do not use for permissions. */
   role: Role;
   role_label: string;
   can_see_pricing: boolean;
@@ -54,6 +57,9 @@ export interface AdminUser {
   last_name: string;
   full_name: string;
   phone: string;
+  /** All roles the user holds (non-empty, canonical order). */
+  roles: Role[];
+  /** Primary role, kept for compatibility. Do not use for permissions. */
   role: Role;
   role_label: string;
   is_active: boolean;
@@ -582,6 +588,7 @@ export interface Mechanic {
   id: string;
   name: string;
   role: string;
+  roles?: Role[];
 }
 
 // --- Planned maintenance (Phase 5) -------------------------------------------------------------

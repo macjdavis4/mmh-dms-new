@@ -72,7 +72,7 @@ function InvoiceCard({ i }: { i: InvoiceRow }) {
 export function InvoicesPage() {
   const user = useCurrentUser();
   const navigate = useNavigate();
-  const canReceive = canReceiveInvoices(user.role);
+  const canReceive = canReceiveInvoices(user.roles);
   const [params, setParams] = useSearchParams();
   const tab = (TABS.find((t) => t.value === params.get("tab"))?.value ?? "open");
   const [q, setQ] = useState("");

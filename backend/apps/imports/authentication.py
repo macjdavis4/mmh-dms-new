@@ -12,6 +12,8 @@ from rest_framework.permissions import BasePermission
 from rest_framework.request import Request
 from rest_framework.throttling import SimpleRateThrottle
 
+from apps.accounts.roles import has_any_role
+
 from .models import ApiKey, hash_key
 from .permissions import IMPORT_ROLES
 
@@ -35,7 +37,7 @@ class ApiKeyAuthentication(BaseAuthentication):
         if key is None or not key.is_active:
             raise AuthenticationFailed("Unknown or revoked API key.")
         user = key.created_by  # type: ignore[attr-defined]
-        if user is None or not user.is_active or getattr(user, "role", "") not in IMPORT_ROLES:
+        if user is None or not user.is_active or not has_any_role(user, IMPORT_ROLES):
             raise AuthenticationFailed("The person who created this key can no longer import.")
         now = timezone.now()
         if key.last_used_at is None or now - key.last_used_at > timedelta(minutes=5):

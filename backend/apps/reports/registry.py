@@ -6,7 +6,7 @@ columns marked `sensitive` are left out for roles that may not see them."""
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal
@@ -49,8 +49,10 @@ class Report:
     # False: a snapshot of today (no date range).
     uses_period: bool = True
 
-    def columns_for(self, role: str) -> list[Column]:
-        return [c for c in self.columns if c.roles is None or role in c.roles]
+    def columns_for(self, roles: Iterable[str]) -> list[Column]:
+        """Columns visible to someone holding ANY of `roles`."""
+        mine = set(roles)
+        return [c for c in self.columns if c.roles is None or not mine.isdisjoint(c.roles)]
 
 
 REPORTS: dict[str, Report] = {}

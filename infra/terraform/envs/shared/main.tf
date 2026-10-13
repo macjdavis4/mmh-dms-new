@@ -30,8 +30,22 @@ variable "hostnames" {
   default = ["dms.maine-material.com", "staging-dms.maine-material.com"]
 }
 
+# The only public addresses allowed to reach the DMS: the office, which is also
+# where the VPN comes out. Same value as the SSH allow list (ADMIN_SSH_CIDRS).
+variable "admin_ssh_cidrs" {
+  type        = list(string)
+  description = "Office public IP address(es), like [\"203.0.113.10/32\"]."
+
+  validation {
+    condition     = length(var.admin_ssh_cidrs) > 0
+    error_message = "At least one office address is required, or everyone (including you) would be blocked."
+  }
+}
+
 locals {
   host_expr = join(" or ", [for h in var.hostnames : "http.host eq \"${h}\""])
+  # Cloudflare's rule language takes a bare address for a single host.
+  office_expr = join(" ", [for c in var.admin_ssh_cidrs : replace(replace(c, "/32", ""), "/128", "")])
 }
 
 # Full (strict) TLS to the origin, always HTTPS, modern TLS only.
@@ -68,5 +82,22 @@ resource "cloudflare_ruleset" "dms_cache" {
       cache = false
     }
     enabled = true
+  }]
+}
+
+# Network-only access: block every visitor whose address is not the office
+# (or the VPN, which exits at the office). Only the health pages stay open so
+# the deploy check and uptime monitors can see that the site is alive.
+resource "cloudflare_ruleset" "dms_office_only" {
+  zone_id     = var.cloudflare_zone_id
+  name        = "DMS office-only access"
+  description = "Only the office/VPN address may use the DMS (managed by Terraform)"
+  kind        = "zone"
+  phase       = "http_request_firewall_custom"
+  rules = [{
+    description = "Block everyone except the office, allowing /readyz and /healthz"
+    expression  = "(${local.host_expr}) and not (ip.src in {${local.office_expr}}) and not (http.request.uri.path in {\"/readyz\" \"/healthz\"})"
+    action      = "block"
+    enabled     = true
   }]
 }

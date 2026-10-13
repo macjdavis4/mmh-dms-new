@@ -48,7 +48,7 @@ export function MaintenancePage() {
   const user = useCurrentUser();
   const [all, setAll] = useState(false);
   const due = useDuePlans(all);
-  const canEdit = canEditWorkOrders(user.role);
+  const canEdit = canEditWorkOrders(user.roles);
   const counts = due.data?.counts;
 
   return (

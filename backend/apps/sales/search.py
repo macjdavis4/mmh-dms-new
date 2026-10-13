@@ -5,7 +5,7 @@ from typing import Any
 
 from django.db.models import Q
 
-from apps.accounts.roles import PRICE_ROLES
+from apps.accounts.roles import PRICE_ROLES, has_any_role
 from apps.core.api import flag_enabled
 from apps.search.registry import SearchResult
 
@@ -15,7 +15,7 @@ from .models import Quote
 def search_quotes(user: Any, query: str, limit: int) -> list[SearchResult]:
     """Quotes by number ("Q-30001", "30001") or their sale's number or invoice #.
     Admin and sales only: quotes carry prices."""
-    if getattr(user, "role", None) not in PRICE_ROLES or not flag_enabled("sales", user):
+    if not has_any_role(user, PRICE_ROLES) or not flag_enabled("sales", user):
         return []
     q = query.strip()
     digits = re.sub(r"\D", "", q)

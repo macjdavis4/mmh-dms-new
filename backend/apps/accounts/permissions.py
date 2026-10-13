@@ -5,7 +5,7 @@ from typing import Any
 from rest_framework.permissions import SAFE_METHODS, BasePermission
 from rest_framework.request import Request
 
-from .roles import Role
+from .roles import Role, user_roles
 
 
 def is_verified(user: Any) -> bool:
@@ -18,11 +18,11 @@ def is_verified(user: Any) -> bool:
     return getattr(user, "otp_device", None) is not None
 
 
-def _role(request: Request) -> str | None:
+def _roles(request: Request) -> frozenset[str]:
     user = request.user
     if not user or not user.is_authenticated:
-        return None
-    return getattr(user, "role", None)
+        return frozenset()
+    return frozenset(user_roles(user))
 
 
 class IsAuthenticatedAndVerified(BasePermission):
@@ -48,10 +48,10 @@ def HasRole(*roles: str, read_roles: tuple[str, ...] = ()) -> type[BasePermissio
         def has_permission(self, request: Request, view: Any) -> bool:
             if not super().has_permission(request, view):
                 return False
-            role = _role(request)
+            roles = _roles(request)  # any one of a person's roles is enough
             if request.method in SAFE_METHODS:
-                return role in readers
-            return role in allowed
+                return not roles.isdisjoint(readers)
+            return not roles.isdisjoint(allowed)
 
     _HasRole.__name__ = f"HasRole({','.join(sorted(allowed))})"
     return _HasRole

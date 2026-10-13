@@ -49,7 +49,7 @@ The domain stays registered at GoDaddy, and you keep paying GoDaddy for it. Only
    - **Save as:** `CADDY_CLOUDFLARE_API_TOKEN`
 2. [ ] **Token for Terraform (infrastructure)**
    - Name: `mmh-terraform`
-   - Permissions: `Zone` · `DNS` · `Edit`; `Zone` · `Config Rules` · `Edit`; `Zone` · `Cache Rules` · `Edit`; `Zone` · `Zone` · `Read`
+   - Permissions: `Zone` · `DNS` · `Edit`; `Zone` · `Config Rules` · `Edit`; `Zone` · `Cache Rules` · `Edit`; `Zone` · `Zone WAF` · `Edit`; `Zone` · `Zone` · `Read`
    - Zone Resources: `Include` · `Specific zone` · `maine-material.com`
    - **Save as:** `TERRAFORM_CLOUDFLARE_API_TOKEN`
 
@@ -316,6 +316,22 @@ No new bucket or service is needed: the paper backups go into the backup bucket 
 
 ---
 
+## Network-only access (office and VPN only)
+
+The DMS is reachable **only from the office address** (the VPN comes out there too). Everyone else is blocked by Cloudflare before they reach the server. Only the two health pages, `/readyz` and `/healthz`, stay open so the deploy check and uptime monitors can tell the site is alive. They show only whether the site is up and which version is running.
+
+Do this once, in order:
+
+1. [ ] In Cloudflare, open the `mmh-terraform` token (*My Profile → API Tokens*) and add the permission `Zone` · `Zone WAF` · `Edit` for the `maine-material.com` zone. Without it, the next step fails with a permissions error.
+2. [ ] If you created a WAF custom rule by hand (*Security → WAF → Custom rules*) to block outside visitors, **delete it first**. Terraform manages this rule now, and two rules would conflict.
+3. [ ] Make sure `ADMIN_SSH_CIDRS` in the `production` environment holds your office address(es), like `["203.0.113.10/32"]`. The rule uses the same list.
+4. [ ] *Actions → **Terraform** → Run workflow*: environment `shared`, action `plan`, read the summary (it should add one ruleset), then run `apply`.
+5. [ ] Test from outside: open https://dms.maine-material.com on your phone with Wi-Fi **off** (mobile data). You should see a Cloudflare "blocked" page. Then connect to the VPN and try again: you should see the sign-in page. https://dms.maine-material.com/readyz should show a short status from anywhere.
+
+If you lock yourself out, sign in to Cloudflare, go to *Security → WAF → Custom rules*, and turn off **DMS office-only access**. Then fix `ADMIN_SSH_CIDRS` and run `shared` again.
+
+---
+
 ## Ongoing
 
 | When | What |
@@ -324,4 +340,4 @@ No new bucket or service is needed: the paper backups go into the backup bucket 
 | Monthly (automatic) | Restore test runs on the 3rd. A failure opens a GitHub issue labelled `urgent` and emails you. |
 | Yearly | Renew `DIGITALOCEAN_TOKEN` and `GHCR_READ_TOKEN` (calendar reminders). |
 | Staff changes | Remove leavers under *Admin → Users* the same day. |
-| Office IP changes | Update `ADMIN_SSH_CIDRS` in both environments, then run Terraform `apply` for staging and production. |
+| Office IP changes | Update `ADMIN_SSH_CIDRS` in both environments, then run Terraform `apply` for staging, production **and `shared`**. Until `shared` is applied, the new address is blocked from the DMS. |

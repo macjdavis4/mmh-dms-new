@@ -68,7 +68,7 @@ export function CustomersPage() {
         title="Customers"
         description="Businesses and people we sell to and service."
         actions={
-          canEditCustomers(user.role) && (
+          canEditCustomers(user.roles) && (
             <Button variant="cta" onClick={() => setAdding(true)}>
               <Plus className="size-5" /> Add customer
             </Button>
@@ -134,7 +134,7 @@ export function CustomersPage() {
             title: q ? "No customers match" : "No customers yet",
             message: q ? "Try a different name, phone number or town." : "Add your first customer.",
             action:
-              !q && canEditCustomers(user.role) ? (
+              !q && canEditCustomers(user.roles) ? (
                 <Button variant="cta" onClick={() => setAdding(true)}>
                   <Plus className="size-5" /> Add customer
                 </Button>

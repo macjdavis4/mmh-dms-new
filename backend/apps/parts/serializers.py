@@ -5,7 +5,7 @@ from typing import Any
 
 from rest_framework import serializers
 
-from apps.accounts.roles import Role
+from apps.accounts.roles import Role, has_any_role
 from apps.service.models import WorkOrder
 
 from .models import Bin, CrossReference, Part, StockCheck, StockMovement
@@ -16,7 +16,7 @@ COST_ROLES = frozenset({Role.ADMIN, Role.SALES, Role.PARTS})
 
 def can_see_cost(context: dict[str, Any]) -> bool:
     request = context.get("request")
-    return bool(request and getattr(request.user, "role", None) in COST_ROLES)
+    return bool(request and has_any_role(request.user, COST_ROLES))
 
 
 class CostVisibilityMixin:

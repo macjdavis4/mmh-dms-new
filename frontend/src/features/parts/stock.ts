@@ -2,6 +2,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 
 import { woKeys } from "@/features/service/api";
 import { api, type Paginated } from "@/lib/api";
+import { hasAnyRole } from "@/lib/roles";
 import type { PartRow, Role, StockCheck, StockMovement } from "@/lib/types";
 
 import { partKeys } from "./api";
@@ -10,11 +11,11 @@ const BASE = "/api/v1/stock-movements";
 
 // Mirrors apps/parts/views.py (the server enforces it).
 /** Receive, count and reverse. */
-export const canKeepStock = (role: Role) => role === "admin" || role === "parts";
+export const canKeepStock = (roles: readonly Role[]) => hasAnyRole(roles, ["admin", "parts"]);
 /** Put parts on a work order and take them back off. */
-export const canUseParts = (role: Role) => role === "admin" || role === "parts" || role === "service";
+export const canUseParts = (roles: readonly Role[]) => hasAnyRole(roles, ["admin", "parts", "service"]);
 /** Run the ledger check on demand. */
-export const canRunStockCheck = (role: Role) => role === "admin";
+export const canRunStockCheck = (roles: readonly Role[]) => hasAnyRole(roles, ["admin"]);
 
 export const stockKeys = {
   all: ["stock"] as const,

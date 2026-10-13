@@ -104,7 +104,7 @@ for (const viewport of Object.keys(VIEWPORTS) as Viewport[]) {
             json: {
               recovery_codes: ["3f9a-0c71", "b2e4-91d0", "7c1e-a5f2", "e08b-4d3c", "51aa-c9e7", "d4f0-2b68", "9e37-f1a4", "06cd-83b5", "a7b2-5e19", "c3d8-7fa0"],
               authenticated: true,
-              user: { id: "x", email: USERS.newadmin, first_name: "Jordan", last_name: "Manager", full_name: "Jordan Manager", role: "admin", role_label: "Admin", can_see_pricing: true },
+              user: { id: "x", email: USERS.newadmin, first_name: "Jordan", last_name: "Manager", full_name: "Jordan Manager", roles: ["admin"], role: "admin", role_label: "Admin", can_see_pricing: true },
               two_factor: { enabled: true, verified: true, required: true, setup_needed: false, recovery_codes_left: 10 },
             },
           }),

@@ -19,8 +19,7 @@ test("add, edit, remove and restore a user", async ({ page }) => {
   await dialog.getByLabel("First name").fill("Taylor");
   await dialog.getByLabel("Last name").fill("Temp");
   await dialog.getByLabel("Email").fill(email);
-  await dialog.getByRole("combobox", { name: "Role" }).click();
-  await page.getByRole("option", { name: "Parts" }).click();
+  await dialog.getByRole("group", { name: "Roles" }).getByLabel("Parts").check();
   await dialog.getByLabel("Starting password").fill("Pallet-Jack-Strong-1");
   await dialog.getByRole("button", { name: "Add user" }).click();
   await expect(page.getByText("Taylor Temp was added")).toBeVisible();

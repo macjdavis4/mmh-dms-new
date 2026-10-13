@@ -10,7 +10,7 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 
-from apps.accounts.roles import Role
+from apps.accounts.roles import Role, has_any_role
 from apps.parts import stock as parts_stock
 from apps.units import services as unit_services
 from apps.units.models import HourMeterReading, OwnershipRecord, Unit
@@ -120,7 +120,7 @@ def change_status(work_order: WorkOrder, new_status: str, *, reason: str = "") -
 
 
 def check_mechanic(user: Any) -> None:
-    if user is None or not user.is_active or getattr(user, "role", "") not in MECHANIC_ROLES:
+    if user is None or not user.is_active or not has_any_role(user, MECHANIC_ROLES):
         raise ValidationError({"mechanic": "Pick an active service or admin user."})
 
 

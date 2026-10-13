@@ -6,6 +6,7 @@ from typing import Any
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
+from apps.accounts.roles import has_any_role
 from apps.core.api import flag_enabled
 from apps.customers.models import Customer
 from apps.parts.serializers import used_parts_data
@@ -195,7 +196,7 @@ class WorkOrderSerializer(WorkOrderListSerializer):
         return unit
 
     def validate_assigned_to(self, user: Any) -> Any:
-        if user is not None and getattr(user, "role", "") not in ("admin", "service"):
+        if user is not None and not has_any_role(user, ("admin", "service")):
             raise serializers.ValidationError("Assign it to someone in service (or an admin).")
         return user
 

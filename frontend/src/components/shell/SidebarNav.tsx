@@ -5,10 +5,10 @@ import { useFlags } from "@/lib/flags";
 import type { Role } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-export function SidebarNav({ role, onNavigate }: { role: Role; onNavigate?: () => void }) {
+export function SidebarNav({ roles, onNavigate }: { roles: readonly Role[]; onNavigate?: () => void }) {
   const { data } = useFlags();
   const { pathname } = useLocation();
-  const sections = navFor(role, data?.flags);
+  const sections = navFor(roles, data?.flags);
   const active = activeNavPath(pathname, sections.flatMap((s) => s.items.map((i) => i.to)));
   return (
     <nav aria-label="Main" className="flex flex-col gap-6">

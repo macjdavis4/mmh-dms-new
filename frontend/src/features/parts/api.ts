@@ -2,6 +2,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 
 import { useDebounced } from "@/hooks/useDebounced";
 import { api, type Paginated } from "@/lib/api";
+import { hasAnyRole } from "@/lib/roles";
 import type { Part, PartBin, PartFacets, PartRow, Role } from "@/lib/types";
 
 const BASE = "/api/v1/parts";
@@ -14,8 +15,8 @@ export const partKeys = {
 };
 
 // Mirrors apps/parts/views.py and serializers.py (the server enforces it).
-export const canEditParts = (role: Role) => role === "admin" || role === "parts";
-export const canSeePartCost = (role: Role) => role === "admin" || role === "sales" || role === "parts";
+export const canEditParts = (roles: readonly Role[]) => hasAnyRole(roles, ["admin", "parts"]);
+export const canSeePartCost = (roles: readonly Role[]) => hasAnyRole(roles, ["admin", "sales", "parts"]);
 
 export interface PartFilters {
   q: string;

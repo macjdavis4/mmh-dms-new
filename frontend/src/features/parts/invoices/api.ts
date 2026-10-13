@@ -4,6 +4,7 @@ import { partKeys } from "@/features/parts/api";
 import { stockKeys } from "@/features/parts/stock";
 import { useDebounced } from "@/hooks/useDebounced";
 import { api, type Paginated } from "@/lib/api";
+import { hasAnyRole } from "@/lib/roles";
 import type { BackorderLine, Invoice, InvoiceRow, Role } from "@/lib/types";
 import { uploadForm } from "@/lib/upload";
 
@@ -11,8 +12,8 @@ const BASE = "/api/v1/parts-invoices";
 
 // Mirrors apps/parts/invoice_api.py (the server enforces it). Invoices show
 // our cost, so only cost roles see them.
-export const canSeeInvoices = (role: Role) => role === "admin" || role === "parts" || role === "sales";
-export const canReceiveInvoices = (role: Role) => role === "admin" || role === "parts";
+export const canSeeInvoices = (roles: readonly Role[]) => hasAnyRole(roles, ["admin", "parts", "sales"]);
+export const canReceiveInvoices = (roles: readonly Role[]) => hasAnyRole(roles, ["admin", "parts"]);
 
 export const invoiceKeys = {
   all: ["parts-invoices"] as const,

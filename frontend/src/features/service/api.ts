@@ -2,6 +2,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 
 import { useDebounced } from "@/hooks/useDebounced";
 import { api, type Paginated } from "@/lib/api";
+import { hasAnyRole } from "@/lib/roles";
 import type { LaborLine, Mechanic, Role, WorkOrder, WorkOrderRow } from "@/lib/types";
 
 const BASE = "/api/v1/work-orders";
@@ -13,7 +14,7 @@ export const woKeys = {
 };
 
 // Mirrors apps/service/views.py (the server enforces it).
-export const canEditWorkOrders = (role: Role) => role === "admin" || role === "service";
+export const canEditWorkOrders = (roles: readonly Role[]) => hasAnyRole(roles, ["admin", "service"]);
 
 export interface WorkOrderFilters {
   scope: "open" | "completed" | "cancelled" | "all";

@@ -14,7 +14,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from apps.accounts.permissions import HasRole
-from apps.accounts.roles import Role
+from apps.accounts.roles import Role, has_any_role
 from apps.core.api import RequiresFlag, SoftDeleteViewSetMixin
 from apps.core.pdf import pdf_response
 from apps.units.models import OwnershipRecord
@@ -174,7 +174,15 @@ class WorkOrderViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet[WorkOrder])
             .order_by("first_name", "last_name")
         )
         return Response(
-            [{"id": str(u.pk), "name": u.full_name or u.email, "role": u.role} for u in users]
+            [
+                {
+                    "id": str(u.pk),
+                    "name": u.full_name or u.email,
+                    "role": u.role,
+                    "roles": u.effective_roles,
+                }
+                for u in users
+            ]
         )
 
     @action(detail=False, methods=["get"])
@@ -290,7 +298,7 @@ class MaintenancePlanViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet[Maint
     @action(detail=True, methods=["post"], url_path="work-order")
     def work_order(self, request: Request, pk: str | None = None) -> Response:
         plan = self.get_object()
-        if request.user.role not in ("admin", "service"):  # type: ignore[union-attr]
+        if not has_any_role(request.user, ("admin", "service")):  # type: ignore[union-attr]
             raise PermissionDenied()
         work_order = maintenance.work_order_for(plan)
         return Response(

@@ -88,7 +88,7 @@ function PartCard({ p, cost, stock }: { p: PartRow; cost: boolean; stock: boolea
 
 export function PartsPage() {
   const user = useCurrentUser();
-  const cost = canSeePartCost(user.role);
+  const cost = canSeePartCost(user.roles);
   const [params, setParams] = useSearchParams();
   const filters = readFilters(params);
   const [page, setPage] = useState(1);
@@ -158,7 +158,7 @@ export function PartsPage() {
         description="Find a part by its number, another brand's number, or what it is."
         actions={
           <>
-            {canSeeInvoices(user.role) && (
+            {canSeeInvoices(user.roles) && (
               <Button asChild variant="outline">
                 <Link to="/parts/invoices">
                   <ReceiptText className="size-4" /> Invoices
@@ -177,7 +177,7 @@ export function PartsPage() {
                 <MapPin className="size-4" /> Bins
               </Link>
             </Button>
-            {canEditParts(user.role) && (
+            {canEditParts(user.roles) && (
               <Button asChild variant="cta">
                 <Link to="/parts/new">
                   <Plus className="size-5" /> Add part
@@ -246,7 +246,7 @@ export function PartsPage() {
           empty={{
             title: filtered ? "No parts match" : "No parts in the catalog yet",
             message: filtered ? "Try another number or fewer words. Replaced parts are hidden unless you tick Show replaced parts." : "Add the parts you stock.",
-            action: canEditParts(user.role) ? (
+            action: canEditParts(user.roles) ? (
               <Button asChild variant="cta">
                 <Link to="/parts/new">
                   <Plus className="size-5" /> Add part

@@ -85,7 +85,7 @@ export function UnitDetailPage() {
   }
   const u = unit.data;
   const title = unitTitle(u);
-  const canEdit = canEditUnits(user.role) && !u.is_deleted;
+  const canEdit = canEditUnits(user.roles) && !u.is_deleted;
   const pricing = "cost" in u;
 
   return (
@@ -109,7 +109,7 @@ export function UnitDetailPage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            {canSeePricing(user.role) ? (
+            {canSeePricing(user.roles) ? (
               <PrintMenu
                 label="Spec sheet"
                 items={[
@@ -120,7 +120,7 @@ export function UnitDetailPage() {
             ) : (
               <PrintButton href={`/api/v1/units/${u.id}/spec-sheet`} label="Spec sheet" />
             )}
-            {canSeePricing(user.role) && !u.is_deleted && u.owner_kind === "dealer" && u.stock_status !== "sold" && isOn(flags, "sales") && (
+            {canSeePricing(user.roles) && !u.is_deleted && u.owner_kind === "dealer" && u.stock_status !== "sold" && isOn(flags, "sales") && (
               <Button variant="outline" asChild>
                 <Link to={`/sales/new?unit=${u.id}`}>
                   <FileText className="size-4" /> Quote this unit
@@ -139,12 +139,12 @@ export function UnitDetailPage() {
                 </Button>
               </>
             )}
-            {canTransferOwnership(user.role) && !u.is_deleted && (
+            {canTransferOwnership(user.roles) && !u.is_deleted && (
               <Button variant="outline" onClick={() => setDialog("transfer")}>
                 <ArrowRightLeft className="size-4" /> Change owner
               </Button>
             )}
-            {canRemoveUnits(user.role) &&
+            {canRemoveUnits(user.roles) &&
               (u.is_deleted ? (
                 <Button variant="outline" onClick={() => restore.mutate(undefined, { onSuccess: () => toast.success("Unit restored") })}>
                   <RotateCcw className="size-4" /> Restore
@@ -279,7 +279,7 @@ export function UnitDetailPage() {
           id="ownership"
           title="Ownership history"
           actions={
-            canTransferOwnership(user.role) &&
+            canTransferOwnership(user.roles) &&
             !u.is_deleted && (
               <Button variant="outline" size="sm" onClick={() => setDialog("transfer")}>
                 <ArrowRightLeft className="size-4" /> Change owner
@@ -293,8 +293,8 @@ export function UnitDetailPage() {
             <OwnershipTimeline
               records={ownership.data}
               pricing={pricing}
-              canEdit={canTransferOwnership(user.role) && !u.is_deleted}
-              canUndo={canRemoveUnits(user.role) && !u.is_deleted}
+              canEdit={canTransferOwnership(user.roles) && !u.is_deleted}
+              canUndo={canRemoveUnits(user.roles) && !u.is_deleted}
               onEdit={(record, fromKind) => setEditing({ record, fromKind })}
               onUndo={(record) => setUndoing(record)}
             />

@@ -16,7 +16,7 @@ from apps.core.models import AuditLog
 def on_login(sender: Any, request: Any, user: Any, **kwargs: Any) -> None:
     ctx = get_context()
     ctx.user_id = user.pk
-    ctx.user_role = getattr(user, "role", "")
+    ctx.user_role = getattr(user, "roles_text", "") or getattr(user, "role", "")
     AuditLog.record(AuditLog.Action.LOGIN, user, actor=user)
 
 

@@ -48,7 +48,7 @@ def acting_as(user: Any = None, source: str = "system", request_id: str = "") ->
         RequestContext(
             request_id=request_id,
             user_id=getattr(user, "pk", None),
-            user_role=getattr(user, "role", ""),
+            user_role=getattr(user, "roles_text", "") or getattr(user, "role", ""),
             source=source,
         )
     )

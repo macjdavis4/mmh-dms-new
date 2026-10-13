@@ -10,7 +10,7 @@ from typing import Any
 from django.db.models import DecimalField, F, Sum
 from django.utils import timezone
 
-from apps.accounts.roles import PRICE_ROLES, Role
+from apps.accounts.roles import PRICE_ROLES, Role, has_any_role
 from apps.core.api import flag_enabled
 from apps.parts.serializers import COST_ROLES
 
@@ -36,7 +36,6 @@ def _count(
 
 
 def tiles_for(user: Any) -> list[Tile]:
-    role = getattr(user, "role", "")
 
     def on(key: str) -> bool:
         return flag_enabled(key, user)
@@ -48,7 +47,7 @@ def tiles_for(user: Any) -> list[Tile]:
         from apps.units.models import Unit
 
         n = Unit.objects.filter(stock_status__in=("available", "on_hold", "in_prep")).count()
-        to = "/reports/units-in-stock" if reports and role in PRICE_ROLES else "/units"
+        to = "/reports/units-in-stock" if reports and has_any_role(user, PRICE_ROLES) else "/units"
         tiles.append(_count("units-in-stock", "Units in stock", n, to))
 
     if on("service"):
@@ -57,7 +56,7 @@ def tiles_for(user: Any) -> list[Tile]:
 
         open_wos = WorkOrder.objects.filter(status__in=WorkOrder.OPEN_STATUSES)
         tiles.append(_count("open-work-orders", "Open work orders", open_wos.count(), "/service"))
-        if role in (Role.SERVICE, Role.ADMIN):
+        if has_any_role(user, (Role.SERVICE, Role.ADMIN)):
             mine = open_wos.filter(assigned_to=user).count()
             tiles.append(_count("my-work-orders", "Assigned to me", mine, "/service?mine=1"))
         due = sum(1 for _, st in maintenance.due_list() if st.state in ("overdue", "due_soon"))
@@ -67,13 +66,13 @@ def tiles_for(user: Any) -> list[Tile]:
             )
         )
 
-    if on("sales") and role in (Role.ADMIN, Role.SALES):
+    if on("sales") and has_any_role(user, (Role.ADMIN, Role.SALES)):
         from apps.sales.models import Quote
 
         n = Quote.objects.filter(status__in=Quote.OPEN_STATUSES).count()
         tiles.append(_count("open-quotes", "Open quotes", n, "/sales"))
 
-    if on("customers-units") and on("units-changing-hands") and role in PRICE_ROLES:
+    if on("customers-units") and on("units-changing-hands") and has_any_role(user, PRICE_ROLES):
         from apps.units.views import DIRECTIONS, changes_queryset
 
         today = timezone.localdate()
@@ -104,7 +103,7 @@ def tiles_for(user: Any) -> list[Tile]:
         tiles.append(
             _count("low-stock", "Low-stock parts", low, "/parts/low-stock", attention=True)
         )
-        if role in COST_ROLES:
+        if has_any_role(user, COST_ROLES):
             value = PartStock.objects.filter(
                 on_hand__gt=0, part__deleted_at__isnull=True, part__cost__isnull=False
             ).aggregate(v=Sum(F("on_hand") * F("part__cost"), output_field=MONEY))["v"]
@@ -118,7 +117,7 @@ def tiles_for(user: Any) -> list[Tile]:
                 )
             )
 
-    if on("parts") and on("parts-invoices") and role in COST_ROLES:
+    if on("parts") and on("parts-invoices") and has_any_role(user, COST_ROLES):
         from apps.parts import invoices
         from apps.parts.models import Invoice
 

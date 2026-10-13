@@ -5,6 +5,7 @@ import { AppShell } from "@/components/shell/AppShell";
 import { FullPageError, FullPageLoading } from "@/components/states";
 import { useMe } from "@/lib/auth";
 import { clearPack } from "@/lib/offline/store";
+import { hasAnyRole } from "@/lib/roles";
 import type { Role } from "@/lib/types";
 
 /** Signed-in area. Sends visitors to sign in, and admins without 2FA to setup. */
@@ -29,7 +30,7 @@ export function RequireAuth() {
 export function RequireRole({ roles }: { roles: Role[] }) {
   const { data } = useMe();
   if (!data?.authenticated) return null;
-  if (!roles.includes(data.user.role)) return <Navigate to="/" replace />;
+  if (!hasAnyRole(data.user.roles, roles)) return <Navigate to="/" replace />;
   return <Outlet />;
 }
 

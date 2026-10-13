@@ -69,7 +69,7 @@ class Command(BaseCommand):
                 user = User.all_objects.filter(email__iexact=email).first()
                 if user is None:
                     user = User(email=email)
-                user.first_name, user.last_name, user.role = first, last, role
+                user.first_name, user.last_name, user.roles = first, last, [role]
                 user.is_active = True
                 user.deleted_at = None
                 user.set_password(DEMO_PASSWORD)

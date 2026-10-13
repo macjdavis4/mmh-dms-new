@@ -131,7 +131,7 @@ function Totals({ totals, pricing }: { totals: UnitChangeTotals | undefined; pri
 
 export function ChangesPage() {
   const user = useCurrentUser();
-  const pricing = canSeePricing(user.role);
+  const pricing = canSeePricing(user.roles);
   const [params, setParams] = useSearchParams();
   const filters = readFilters(params);
   const [page, setPage] = useState(1);

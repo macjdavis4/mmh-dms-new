@@ -106,7 +106,7 @@ function UnitForm({ unit }: { unit: Unit | undefined }) {
   const navigate = useNavigate();
   const save = useSaveUnit(unit?.id);
   const facets = useFacets();
-  const pricing = canSeePricing(user.role);
+  const pricing = canSeePricing(user.roles);
   const [form, setForm] = useState<FormState>(() => (unit ? fromUnit(unit) : BLANK));
   const [components, setComponents] = useState<UnitComponent[]>(() =>
     COMPONENT_KINDS.map(({ kind }) => unit?.components.find((c) => c.kind === kind) ?? emptyComponent(kind)),
