@@ -2,8 +2,13 @@
 # are still arriving in the second-region bucket. If someone with access to a
 # server stops or deletes the backups (the usual first step of a ransomware
 # attack), this notices within a day: an urgent issue is opened, and GitHub
-# emails the repository admins. Uses the read-only restore-test key; it never
-# downloads or decrypts a backup (the monthly restore test does that).
+# emails the repository admins. Uses read-only keys; it never downloads or
+# decrypts a backup (the monthly restore test does that).
+#
+# Once the locked off-site copy is set up (Backblaze B2, docs/MANUAL_STEPS.md),
+# it also checks that last night's database copy reached B2 and that the
+# server's logs are still arriving there: logs that stop can mean someone
+# switched off the record of what they're doing.
 name: Backup check
 
 on:
@@ -53,6 +58,34 @@ jobs:
             echo "::error::only $count backups for $TARGET over $expected days (expected at least $minimum): some may have been deleted"
             exit 1
           fi
+      - name: Locked off-site copy and logs are arriving (Backblaze B2)
+        if: vars.OFFSITE_BUCKET != ''
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.OFFSITE_CHECK_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.OFFSITE_CHECK_KEY_SECRET }}
+          OFFSITE_BUCKET: ${{ vars.OFFSITE_BUCKET }}
+          OFFSITE_ENDPOINT_URL: ${{ vars.OFFSITE_ENDPOINT_URL }}
+        run: |
+          AWS_DEFAULT_REGION=$(sed -nE 's|^https://s3\.([a-z0-9-]+)\..*|\1|p' <<<"$OFFSITE_ENDPOINT_URL")
+          export AWS_DEFAULT_REGION
+          now=$(date +%s)
+          newest() {
+            aws s3api list-objects-v2 --endpoint-url "$OFFSITE_ENDPOINT_URL" --bucket "$OFFSITE_BUCKET" \
+              --prefix "$1" --output json |
+              jq -r '[.Contents // [] | .[] | select(.Key | test("'"$2"'"))] | max_by(.LastModified).LastModified // empty'
+          }
+          db=$(newest "$TARGET/db/" '\\.dump(\\.age)?$')
+          [ -n "$db" ] || { echo "::error::no database copy in B2 for $TARGET"; exit 1; }
+          db_h=$(( (now - $(date -d "$db" +%s)) / 3600 ))
+          echo "Newest database copy in B2: $db ($db_h hours ago)"
+          [ "$db_h" -le 30 ] || { echo "::error::newest $TARGET database copy in B2 is $db_h hours old"; exit 1; }
+          # Logs are sent every 5 minutes.
+          logs=$(newest "$TARGET/logs/$(date -u +%Y/%m/%d)/" '.')
+          [ -n "$logs" ] || logs=$(newest "$TARGET/logs/$(date -u -d yesterday +%Y/%m/%d)/" '.')
+          [ -n "$logs" ] || { echo "::error::no server logs in B2 for $TARGET since yesterday"; exit 1; }
+          logs_h=$(( (now - $(date -d "$logs" +%s)) / 3600 ))
+          echo "Newest logs in B2: $logs ($logs_h hours ago)"
+          [ "$logs_h" -le 3 ] || { echo "::error::$TARGET server logs stopped arriving in B2 $logs_h hours ago"; exit 1; }
       - name: Open an issue on failure
         if: failure()
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0

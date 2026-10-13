@@ -47,6 +47,23 @@ require_owner_for_migrations() {
   esac
 }
 
+# vector.yaml -> vector.rendered.yaml with the bucket, endpoint, region and
+# environment filled in. Each value is checked first, so nothing unexpected
+# can end up in the config. (The key pair is passed as environment variables.)
+render_logship_config() {
+  local region
+  region=$(sed -nE 's|^https://s3\.([a-z0-9-]+)\..*|\1|p' <<<"${OFFSITE_ENDPOINT_URL:-}")
+  [[ "${OFFSITE_BUCKET:-}" =~ ^[A-Za-z0-9-]{6,63}$ ]] || { log "OFFSITE_BUCKET looks wrong"; return 1; }
+  [[ "${OFFSITE_ENDPOINT_URL:-}" =~ ^https://[a-z0-9.-]+$ ]] || { log "OFFSITE_ENDPOINT_URL looks wrong"; return 1; }
+  [[ "$region" =~ ^[a-z0-9-]+$ ]] || { log "can't read the region from OFFSITE_ENDPOINT_URL"; return 1; }
+  [[ "${APP_ENV:-}" =~ ^[a-z0-9-]+$ ]] || { log "APP_ENV looks wrong"; return 1; }
+  sed -e "s|@OFFSITE_BUCKET@|$OFFSITE_BUCKET|" \
+    -e "s|@OFFSITE_ENDPOINT_URL@|$OFFSITE_ENDPOINT_URL|" \
+    -e "s|@OFFSITE_REGION@|$region|" \
+    -e "s|@APP_ENV@|$APP_ENV|" \
+    "$RELEASE_DIR/vector.yaml" >"$RELEASE_DIR/vector.rendered.yaml"
+}
+
 compose() {
   local files=(-f "$COMPOSE_FILE")
   # Local deploy test only: join the throwaway database's network.

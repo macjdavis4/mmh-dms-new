@@ -1,10 +1,12 @@
-# Used only by infra/scripts/test-deploy-local.sh.
+# Used only by infra/scripts/test-deploy-local.sh. Containers log to files
+# here: a local test machine may not run systemd's journal.
+x-files: &files { driver: json-file }
 services:
-  caddy: { networks: [app, extra] }
-  app-blue: { networks: [app, extra] }
-  app-green: { networks: [app, extra] }
-  worker: { networks: [app, extra] }
-  migrate: { networks: [app, extra] }
+  caddy: { networks: [app, extra], logging: *files }
+  app-blue: { networks: [app, extra], logging: *files }
+  app-green: { networks: [app, extra], logging: *files }
+  worker: { networks: [app, extra], logging: *files }
+  migrate: { networks: [app, extra], logging: *files }
 networks:
   extra:
     name: ${EXTRA_NETWORK}

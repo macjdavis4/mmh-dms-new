@@ -49,6 +49,17 @@ log "rolling the worker to the new image"
 export WORKER_IMAGE=$IMAGE
 compose up -d --no-deps --force-recreate worker
 
+# Copy the server's logs off-site (vector.yaml), once the B2 bucket is set up.
+# A problem here doesn't stop the deploy: the daily Backup check reports
+# missing logs.
+if [ -n "${OFFSITE_BUCKET:-}" ]; then
+  log "starting the log archive"
+  { render_logship_config &&
+    pull "${LOGSHIP_IMAGE:-timberio/vector:0.58.0-debian}" &&
+    compose --profile logship up -d --no-deps --force-recreate logship; } ||
+    log "WARNING: the log archive (logship) did not start; see docs/RUNBOOK.md"
+fi
+
 if [ -n "$ACTIVE" ]; then
   log "stopping app-$ACTIVE (kept for fast rollback)"
   compose stop "app-$ACTIVE"
