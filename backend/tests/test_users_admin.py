@@ -112,7 +112,9 @@ def test_soft_delete_and_restore(admin_client: APIClient, make_user: Any) -> Non
 def test_reset_two_factor(admin_client: APIClient, make_user: Any) -> None:
     user = make_user(Role.SALES)
     add_totp(user)
-    res = admin_client.post(f"{URL}/{user.pk}/reset-2fa")
+    res = admin_client.post(
+        f"{URL}/{user.pk}/reset-2fa", {"confirmed": "called_back"}, format="json"
+    )
     assert res.status_code == 200
     assert res.json()["two_factor_enabled"] is False
     assert not TOTPDevice.objects.filter(user=user, confirmed=True).exists()

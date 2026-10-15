@@ -13,7 +13,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.accounts.roles import has_any_role
+from apps.accounts.roles import PRICE_ROLES, has_any_role
 from apps.core.api import RequiresFlag
 from apps.core.context import acting_as
 
@@ -74,6 +74,16 @@ class ImportBatchViewSet(
     def get_serializer_class(self) -> type[serializers.Serializer]:  # type: ignore[type-arg]
         return ImportBatchListSerializer if self.action == "list" else ImportBatchSerializer
 
+    def _own_batch(self, verb: str) -> ImportBatch:
+        """Changing an import is for an admin or the person who started it."""
+        batch = self.get_object()
+        user = self.request.user
+        if not has_any_role(user, ("admin",)) and batch.created_by_id != user.pk:  # type: ignore[attr-defined, union-attr]
+            raise PermissionDenied(
+                f"Only an admin or the person who started this import can {verb} it."
+            )
+        return batch
+
     def create(self, request: Request, *args: Any, **kwargs: Any) -> Response:
         upload = request.FILES.get("file")
         if upload is None:
@@ -101,9 +111,10 @@ class ImportBatchViewSet(
 
     @action(detail=True, methods=["get", "post"], parser_classes=[MultiPartParser, FormParser])
     def files(self, request: Request, pk: str | None = None) -> Response:
-        batch = self.get_object()
         if request.method == "GET":
+            batch = self.get_object()
             return Response(ImportFileSerializer(batch.files.all(), many=True).data)
+        batch = self._own_batch("add scans to")
         upload = request.FILES.get("file")
         if upload is None:
             raise serializers.ValidationError({"file": ["Choose a scanned card to upload."]})
@@ -112,7 +123,7 @@ class ImportBatchViewSet(
 
     @action(detail=True, methods=["post"])
     def validate(self, request: Request, pk: str | None = None) -> Response:
-        batch = self.get_object()
+        batch = self._own_batch("check")
         if batch.status != ImportBatch.Status.DRAFT:
             raise serializers.ValidationError({"status": ["This import has already run."]})
         services.validate_batch(batch)
@@ -120,7 +131,7 @@ class ImportBatchViewSet(
 
     @action(detail=True, methods=["post"])
     def apply(self, request: Request, pk: str | None = None) -> Response:
-        batch = self.get_object()
+        batch = self._own_batch("run")
         options = ApplySerializer(data=request.data)
         options.is_valid(raise_exception=True)
         batch = services.start_apply(batch, **options.validated_data)
@@ -128,25 +139,31 @@ class ImportBatchViewSet(
 
     @action(detail=True, methods=["post"])
     def undo(self, request: Request, pk: str | None = None) -> Response:
-        batch = self.get_object()
-        if not has_any_role(request.user, ("admin",)) and batch.created_by_id != request.user.pk:  # type: ignore[attr-defined, union-attr]
-            raise PermissionDenied("Only an admin or the person who ran this import can undo it.")
+        batch = self._own_batch("undo")
         batch = services.start_undo(batch, request.user)
         return Response(self._detail(batch))
 
     @action(detail=True, methods=["post"])
     def discard(self, request: Request, pk: str | None = None) -> Response:
-        batch = services.discard(self.get_object())
+        batch = services.discard(self._own_batch("discard"))
         return Response(self._detail(batch))
 
     @action(detail=True, methods=["get"])
     def original(self, request: Request, pk: str | None = None) -> FileResponse:
         batch = self.get_object()
+        # The original file holds whatever prices the importer typed.
+        if not has_any_role(request.user, PRICE_ROLES) and batch.created_by_id != request.user.pk:  # type: ignore[attr-defined, union-attr]
+            raise PermissionDenied(
+                "Only admin, sales or the person who uploaded it can download this file."
+            )
         if not batch.original:
             raise Http404
-        response = FileResponse(batch.original.open("rb"), content_type="text/csv")
-        response["Content-Disposition"] = f'attachment; filename="{batch.filename or "import.csv"}"'
-        return response
+        return FileResponse(
+            batch.original.open("rb"),
+            content_type="text/csv",
+            as_attachment=True,
+            filename=batch.filename or "import.csv",
+        )
 
     @action(detail=False, methods=["get"], url_path="template.csv")
     def template(self, request: Request) -> HttpResponse:

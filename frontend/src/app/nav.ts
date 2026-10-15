@@ -2,6 +2,7 @@ import {
   ArrowRightLeft,
   BarChart3,
   CalendarClock,
+  CircleHelp,
   FileUp,
   Gauge,
   KeyRound,
@@ -141,7 +142,16 @@ export const NAV: NavSection[] = [
   },
   {
     title: "You",
-    items: [{ label: "My account", to: "/account", icon: UserCog }],
+    items: [
+      { label: "My account", to: "/account", icon: UserCog },
+      {
+        label: "Help",
+        to: "/help",
+        icon: CircleHelp,
+        flag: "help",
+        description: "How to do things in the system. Search for what you're trying to do.",
+      },
+    ],
   },
 ];
 

@@ -99,15 +99,30 @@ export interface AdminHealth {
   database: string;
   migrations: string;
   jobs: Record<string, number>;
-  last_backup: { status: string; started_at: string; finished_at: string | null } | null;
-  last_paper_backup: { status: string; started_at: string; finished_at: string | null } | null;
+  last_backup: {
+    status: string;
+    started_at: string;
+    finished_at: string | null;
+  } | null;
+  last_paper_backup: {
+    status: string;
+    started_at: string;
+    finished_at: string | null;
+  } | null;
   version: string;
   environment: string;
+  /** The locked off-site copy (Backblaze B2). */
+  offsite: { enabled: boolean; last_copied_at: string | null };
+  /** Two-factor resets and removals in the last two weeks. */
+  security_notices: { at: string; text: string }[];
 }
 
 export interface SearchResponse {
   query: string;
-  groups: Record<string, { kind: string; id: string; title: string; subtitle: string; url: string }[]>;
+  groups: Record<
+    string,
+    { kind: string; id: string; title: string; subtitle: string; url: string }[]
+  >;
   searchable: string[];
 }
 
@@ -176,7 +191,14 @@ export interface Customer {
 
 export type Condition = "new" | "used";
 export type StockStatus = "" | "available" | "on_hold" | "in_prep" | "sold";
-export type FuelType = "" | "lpg" | "gasoline" | "diesel" | "dual" | "electric" | "other";
+export type FuelType =
+  | ""
+  | "lpg"
+  | "gasoline"
+  | "diesel"
+  | "dual"
+  | "electric"
+  | "other";
 
 export const STOCK_STATUS_LABELS: Record<Exclude<StockStatus, "">, string> = {
   available: "Available",
@@ -405,7 +427,12 @@ export interface UnitChange {
 }
 
 export interface UnitChangeTotals {
-  sold: { count: number; total?: string | null; margin?: string | null; with_margin?: number };
+  sold: {
+    count: number;
+    total?: string | null;
+    margin?: string | null;
+    with_margin?: number;
+  };
   came_back: { count: number; total?: string | null };
   between_customers: { count: number };
 }
@@ -435,7 +462,15 @@ export interface UnitFacets {
 
 // --- Imports (Phase 3) --------------------------------------------------------------------------
 
-export type ImportStatus = "draft" | "queued" | "importing" | "imported" | "failed" | "undoing" | "undone" | "discarded";
+export type ImportStatus =
+  | "draft"
+  | "queued"
+  | "importing"
+  | "imported"
+  | "failed"
+  | "undoing"
+  | "undone"
+  | "discarded";
 
 export interface ImportMessage {
   column: string;
@@ -511,8 +546,18 @@ export interface ApiKey {
 
 // --- Service (Phase 4) --------------------------------------------------------------------------
 
-export type WorkOrderStatus = "open" | "in_progress" | "on_hold" | "completed" | "cancelled";
-export type WorkOrderKind = "repair" | "maintenance" | "inspection" | "prep" | "warranty";
+export type WorkOrderStatus =
+  | "open"
+  | "in_progress"
+  | "on_hold"
+  | "completed"
+  | "cancelled";
+export type WorkOrderKind =
+  | "repair"
+  | "maintenance"
+  | "inspection"
+  | "prep"
+  | "warranty";
 
 export const WORK_ORDER_KINDS: Record<WorkOrderKind, string> = {
   repair: "Repair",
@@ -602,7 +647,11 @@ export interface PlanStatus {
   current_hours: string | null;
   days_left: number | null;
   hours_left: string | null;
-  open_work_order: { id: string; number: string; status: WorkOrderStatus } | null;
+  open_work_order: {
+    id: string;
+    number: string;
+    status: WorkOrderStatus;
+  } | null;
 }
 
 export interface MaintenancePlan {
@@ -623,8 +672,20 @@ export interface MaintenancePlan {
 
 // --- Sales (Phase 8) -------------------------------------------------------------------------
 
-export type QuoteStatus = "draft" | "sent" | "accepted" | "declined" | "cancelled" | "sold";
-export type QuoteLineKind = "unit" | "attachment" | "delivery" | "service" | "other" | "discount";
+export type QuoteStatus =
+  | "draft"
+  | "sent"
+  | "accepted"
+  | "declined"
+  | "cancelled"
+  | "sold";
+export type QuoteLineKind =
+  | "unit"
+  | "attachment"
+  | "delivery"
+  | "service"
+  | "other"
+  | "discount";
 
 export const QUOTE_LINE_KINDS: Record<QuoteLineKind, string> = {
   unit: "Unit",
@@ -810,7 +871,13 @@ export interface PartFacets {
   can_see_cost: boolean;
 }
 
-export type StockKind = "opening" | "receive" | "issue" | "return" | "adjust" | "reversal";
+export type StockKind =
+  | "opening"
+  | "receive"
+  | "issue"
+  | "return"
+  | "adjust"
+  | "reversal";
 
 /** One line in the append-only stock ledger. */
 export interface StockMovement {
@@ -841,7 +908,12 @@ export interface StockCheck {
   started_at: string;
   finished_at: string | null;
   parts_checked: number;
-  drift: { part: string; part_number: string; ledger: string; stored: string }[];
+  drift: {
+    part: string;
+    part_number: string;
+    ledger: string;
+    stored: string;
+  }[];
   ok: boolean;
 }
 
@@ -853,7 +925,12 @@ export interface UsedPart {
   amount: string | null;
 }
 
-export type InvoiceStatus = "reading" | "review" | "partial" | "received" | "cancelled";
+export type InvoiceStatus =
+  | "reading"
+  | "review"
+  | "partial"
+  | "received"
+  | "cancelled";
 
 export interface InvoiceRow {
   id: string;
@@ -963,7 +1040,12 @@ export interface ReportColumn {
 }
 
 export interface ReportData extends ReportSummary {
-  period: { from: string | null; to: string | null; preset: string; label: string };
+  period: {
+    from: string | null;
+    to: string | null;
+    preset: string;
+    label: string;
+  };
   generated_at: string;
   columns: ReportColumn[];
   rows: (Record<string, string | number | null> & { _to: string })[];

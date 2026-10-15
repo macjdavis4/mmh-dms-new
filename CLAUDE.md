@@ -56,7 +56,7 @@ Mature, widely supported technology with long security support. Do not add new f
 - Background jobs must be idempotent and safe to retry.
 
 ## Roles and permissions
-Roles: `admin`, `sales`, `service`, `parts`, `read_only`. Enforce permissions server side on every endpoint. Cost, asking price, and sale price are visible to `admin` and `sales` only. Every new endpoint gets tests proving each role can do only what it should.
+Roles: `admin`, `sales`, `service`, `parts`, `read_only`. Enforce permissions server side on every endpoint. Unit cost, asking price, and sale price are visible to `admin` and `sales` only. Part costs (catalog, stock ledger, parts invoices, parts reports) are also visible to `parts`, who receive the invoices (owner's decision, October 2026). Every new endpoint gets tests proving each role can do only what it should.
 
 ## Data model: forklift unit (from our paper "Eagle 1-84" cards)
 Every field on the card must exist.
@@ -91,12 +91,22 @@ Example values seen on real cards: units Hyundai 35LN-9A and Doosan G25N-7; engi
 - Light and dark mode. WCAG 2.1 AA.
 - Plain labels, sensible defaults, inline validation, confirmation before destructive actions, undo where possible.
 
+## Help articles (in-app user docs)
+Signed-in users read how-to articles in the app (**Help** in the menu, the **?** button on every page, and the global search). They are the users' manual, so they must always match the app.
+- **Where:** one Markdown file per task in `backend/apps/help/articles/`. Format, style and checklist: `docs/HELP_ARTICLES.md`.
+- **Every change that alters what a user sees or does updates the help in the same pull request.** That covers new screens, buttons, fields, labels, messages, steps, rules, limits, and who can do what. Removed features get their help removed.
+- **Before writing,** read the code for the real behaviour: exact on-screen labels, roles enforced by the server, feature flags, confirmations and undo. Never document a feature that doesn't exist or isn't merged.
+- **Every new page** gets an article listing it under `pages:`. Every new feature flag is named in its articles' `flag:`. Role-only steps go in `::: roles ...` blocks.
+- **Add search words** (`keywords:`) in shop language: what a mechanic, salesperson or parts person would type.
+- **Tests enforce coverage:** `tests/test_help.py` (format, roles, search) and `frontend/src/app/helpCoverage.test.ts` (every page and menu item has an article; links point at real pages). The **Help docs** CI check fails a pull request that changes user-facing code without touching the help, unless its description has `Help: no change needed (reason)`. Use that line only when nothing a user sees or does has changed.
+- **Each phase** ends with a re-read of every article the phase touched, against the running app and screenshots.
+
 ## Phase workflow (follow exactly, every phase)
 1. **Start clean.** Pull the latest `main` and create a branch named `phase-N-short-name` (e.g. `phase-2-customers-units`).
 2. **Build** the phase. Commit in small, logical steps with conventional commit messages (`feat:`, `fix:`, `docs:`, `test:`, `chore:`).
 3. **Verify.** Lint, typecheck, migration lint, and the full test suite must pass locally. Fix anything failing; never skip or disable a test to get green.
 4. **Screenshots.** Run the app with seed data and use Playwright to capture every new or changed screen at desktop (1440px), tablet (1024px), and phone (390px) widths, in light and dark mode, plus key states (empty, error, loading, filled form). Save them to `docs/screenshots/phase-N/` with clear names (e.g. `unit-detail-tablet-dark.png`) and show them to me in the chat.
-5. **Docs.** Update `docs/PROGRESS.md`, `docs/RUNBOOK.md`, `docs/MANUAL_STEPS.md`, and seed data.
-6. **Pull request.** Push and open a PR titled `Phase N: <name>`. The description includes: what was built, screenshots embedded from `docs/screenshots/phase-N/`, test results and coverage, migrations added, any manual steps for me, and known limitations.
+5. **Docs.** Update the in-app help articles (`backend/apps/help/articles/`, see "Help articles" above) for everything users see or do differently. Then update `docs/PROGRESS.md`, `docs/RUNBOOK.md`, `docs/MANUAL_STEPS.md`, and seed data.
+6. **Pull request.** Push and open a PR titled `Phase N: <name>`. The description includes: what was built, screenshots embedded from `docs/screenshots/phase-N/`, test results and coverage, migrations added, help articles added or changed, any manual steps for me, and known limitations.
 7. **CI must be green.** Wait for all GitHub Actions checks on the PR. If any fail, fix and push until every check passes.
 8. **Summarize and stop.** Give me a short summary with the PR link. Do not start the next phase until I tell you the PR is merged. If I request changes, make them on the same branch, re-run steps 3 to 7, and stop again.

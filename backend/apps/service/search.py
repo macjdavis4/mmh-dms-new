@@ -5,6 +5,7 @@ from typing import Any
 
 from django.db.models import Q
 
+from apps.core.api import flag_enabled
 from apps.search.registry import SearchResult
 
 from .models import WorkOrder
@@ -12,6 +13,8 @@ from .models import WorkOrder
 
 def search_work_orders(user: Any, query: str, limit: int) -> list[SearchResult]:
     """By number ("WO-20001", "20001") or the unit's serial."""
+    if not flag_enabled("service", user):
+        return []
     digits = re.sub(r"\D", "", query)
     match = Q(number__iexact=query.strip())
     if digits:

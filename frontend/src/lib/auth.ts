@@ -31,6 +31,9 @@ export function useLogin() {
     mutationFn: (vars: { email: string; password: string }) =>
       api<LoginResult>("/api/v1/auth/login", { method: "POST", body: vars }),
     onSuccess: (data) => {
+      // A shared shop tablet: drop anything the previous person loaded (it
+      // can include prices this person isn't allowed to see).
+      qc.clear();
       if (data.status === "ok") {
         const { status: _status, ...me } = data;
         qc.setQueryData(meKey, me);
@@ -45,6 +48,7 @@ export function useVerifyCode() {
     mutationFn: (code: string) =>
       api<{ status: "ok" } & Me>("/api/v1/auth/login/verify", { method: "POST", body: { code } }),
     onSuccess: (data) => {
+      qc.clear();
       const { status: _status, ...me } = data;
       qc.setQueryData(meKey, me);
     },

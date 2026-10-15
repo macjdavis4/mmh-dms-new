@@ -38,12 +38,16 @@ export default defineConfig(({ command }) => ({
   build: {
     outDir: "../backend/frontend_dist",
     emptyOutDir: true,
-    sourcemap: true,
+    // No source maps in the shipped files: they would publish the full source.
+    sourcemap: false,
     target: "es2022",
   },
   server: {
     host: true,
     port: 5173,
+    // The help coverage test (src/app/helpCoverage.test.ts) reads the help
+    // articles, which live with the backend that serves them.
+    fs: { allow: [".", path.resolve(__dirname, "../backend/apps/help/articles")] },
     proxy: {
       "/api": { target: backend, changeOrigin: false },
       "/healthz": backend,

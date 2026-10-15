@@ -13,6 +13,7 @@ from rest_framework.request import Request
 from rest_framework.throttling import SimpleRateThrottle
 
 from apps.accounts.roles import has_any_role
+from apps.core.middleware import client_ip
 
 from .models import ApiKey, hash_key
 from .permissions import IMPORT_ROLES
@@ -60,4 +61,4 @@ class ApiKeyThrottle(SimpleRateThrottle):
     def get_cache_key(self, request: Request, view: Any) -> str | None:
         if isinstance(request.auth, ApiKey):
             return f"throttle_import_api_{request.auth.pk}"
-        return self.cache_format % {"scope": self.scope, "ident": self.get_ident(request)}
+        return self.cache_format % {"scope": self.scope, "ident": client_ip(request._request)}

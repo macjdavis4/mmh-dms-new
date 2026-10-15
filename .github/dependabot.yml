@@ -20,8 +20,10 @@ updates:
     schedule: { interval: weekly }
     groups:
       npm-minor: { update-types: [minor, patch] }
+  # Actions are pinned to commit SHAs (a moved tag can't swap in new code);
+  # Dependabot keeps the SHAs and their version comments current.
   - package-ecosystem: github-actions
-    directory: /
+    directories: ["/", "/.github/actions/deploy"]
     schedule: { interval: monthly }
   - package-ecosystem: docker
     directory: /

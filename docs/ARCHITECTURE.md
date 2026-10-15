@@ -12,13 +12,17 @@
  │     │ active.caddy → app-blue or app-green                               │
  │  app-blue / app-green: Gunicorn + Django + built React (WhiteNoise)       │
  │  worker: Procrastinate (backups, media copy, cleanup, invoice reading)    │
+ │  logship: Vector (journal, read-only → locked log archive)               │
  └──────────────┬──────────────────────────────────────────┬──────────────────┘
    private VPC, TLS (sslmode=require + DO CA)               │ S3 API
                 ▼                                           ▼
    DO Managed PostgreSQL 16                     Spaces NYC3: media (versioned)
    web via PgBouncer (transaction mode)         Spaces SFO3: backups (versioned,
    worker/migrations direct                       30-day expiry), media copy
-   daily backups + 7-day PITR
+   daily backups + 7-day PITR                               │ write-only key
+                                                            ▼
+                                  Backblaze B2 (outside DigitalOcean), Object Lock
+                                  30 days: DB dumps, photos and scans, server logs
 ```
 
 ## Decisions
@@ -39,6 +43,8 @@
 | Deploy scripts | Shipped inside the app image | The server always runs the scripts that match the code |
 | Secrets | GitHub environment secrets → `/opt/mmh/.env` (0600), rewritten each deploy | Nothing secret in the repo or the image |
 | Backups | `age`-encrypted to a public key | A stolen server or bucket key can't read old backups |
+| Locked off-site copy | Backblaze B2 with Object Lock (compliance, 30 days); the server's key can only add files | DigitalOcean Spaces has no Object Lock; one stolen DigitalOcean key must not be able to delete every copy |
+| Full-access cloud keys | Only in the `terraform` GitHub environment (required reviewer); deploys use a firewall-only token and a read-only state key | A bad merge or a hijacked workflow can't delete the infrastructure or backups |
 | Database users | Migrations as the owner (`doadmin`); the app as `mmh_app` with row-level rights only | A bug or break-in in the app can't drop or alter tables |
 | Unit serials | Stored as entered, plus a normalized copy (uppercase letters and digits) with a unique constraint over all rows, removed ones included | Catches `HHK-123` vs `hhk123`; a removed unit is restored, not duplicated |
 | Unit components | One row per component kind (engine, pump, ...) instead of 24 columns | Same shape for every component; easy to add a kind later |
