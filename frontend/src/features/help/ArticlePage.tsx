@@ -151,7 +151,7 @@ export function HelpArticlePage() {
             if (query.trim()) void navigate(`/help?q=${encodeURIComponent(query.trim())}`);
           }}
         >
-          <HelpSearchBox value={query} onChange={setQuery} />
+          <HelpSearchBox value={query} onChange={setQuery} placeholder="Search help" />
         </form>
         {contents.length >= 3 && (
           <nav aria-label="On this page (sidebar)" className="hidden lg:block">

@@ -11,7 +11,17 @@ import { type HelpSummary, useHelpIndex, useHelpSearch } from "./api";
 
 const EXAMPLES = ["open a work order", "sell a forklift with a trade-in", "parts came in on a packing slip", "add a customer"];
 
-export function HelpSearchBox({ value, onChange, focusOnOpen = false }: { value: string; onChange: (v: string) => void; focusOnOpen?: boolean }) {
+export function HelpSearchBox({
+  value,
+  onChange,
+  focusOnOpen = false,
+  placeholder = "What are you trying to do?",
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  focusOnOpen?: boolean;
+  placeholder?: string;
+}) {
   const ref = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (focusOnOpen && window.matchMedia("(min-width: 768px)").matches) ref.current?.focus();
@@ -27,7 +37,7 @@ export function HelpSearchBox({ value, onChange, focusOnOpen = false }: { value:
         id="help-search"
         type="search"
         autoComplete="off"
-        placeholder="What are you trying to do?"
+        placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="bg-card border-input focus-visible:ring-ring h-14 w-full rounded-xl border pr-12 pl-12 text-base shadow-sm focus-visible:ring-2 focus-visible:outline-none [&::-webkit-search-cancel-button]:appearance-none"

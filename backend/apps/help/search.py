@@ -428,7 +428,7 @@ def _snippet(raw: str, alts: list[str], length: int = 180) -> str:
     return ("…" if start else "") + text + ("…" if start + length < len(raw) else "")
 
 
-def search_articles(user: Any, query: str, limit: int = 20) -> list[Hit]:
+def search_articles(user: Any, query: str, limit: int = 10) -> list[Hit]:
     terms = _terms(query)
     if not terms:
         return []
@@ -487,7 +487,15 @@ def search_articles(user: Any, query: str, limit: int = 20) -> list[Hit]:
                 snippet=_snippet(best_section.raw, all_alts) if best_section else article.summary,
             )
         )
-    hits.sort(key=lambda h: (-h.matched, -h.score, h.article.title))
+    # Matching every word counts for a lot, but a strong match on most words
+    # (in the title, say) beats a weak mention of all of them somewhere.
+    for hit in hits:
+        hit.score *= (hit.matched / len(terms)) ** 2
+    hits.sort(key=lambda h: (-h.score, h.article.title))
+    # Leave out the long tail of weak matches.
+    if hits:
+        floor = hits[0].score * 0.25
+        hits = [h for h in hits if h.score >= floor]
     return hits[:limit]
 
 
