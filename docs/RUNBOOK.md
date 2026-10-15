@@ -37,6 +37,7 @@ make typecheck        # mypy --strict, tsc --strict
 make migrations-lint  # makemigrations --check, django-migration-linter
 make test             # pytest (coverage gate 85%), vitest
 make e2e              # Playwright against a production-like server
+./infra/scripts/check-help-updated.sh origin/main  # the "Help docs" PR check (PR_BODY=... for the opt-out line)
 make screenshots      # docs/screenshots/phase-N at 3 widths x light/dark (SCREENSHOT_PHASE=N, default: current phase)
 make deploy-test      # run the real blue/green scripts against local Docker
 ```
@@ -105,7 +106,7 @@ The deploy **stops** (and keeps the old version running) in two cases that would
 
 ### Customers and units are switched off by mistake
 
-*Admin → Site settings → Feature flags*: turn `customers-units` back on. While it is off, those pages and their API answer "not found"; no data is touched.
+Back office (`/django-admin/`) → *Feature flags* → `customers-units`: tick *Enabled* and save. (Feature flags aren't on the in-app Site settings page.) While it is off, those pages and their API answer "not found"; no data is touched.
 
 ### Two units have the same serial
 
@@ -194,6 +195,15 @@ The database refuses it, so this can only be a near-miss (for example `O` vs `0`
 ## Read-only mode and the maintenance banner
 
 *Admin → Site settings*. Read-only mode blocks every change for everyone (sign-in still works) and shows a notice on every screen. Use it during database maintenance or a restore. The banner can show any message in information, warning or critical style, including on the sign-in page.
+
+## In-app help
+
+Signed-in users read how-to articles under **Help** (`/help`), from the **?** button at the top of every page, and in the global search. The articles are Markdown files in `backend/apps/help/articles/`, served by `/api/v1/help` with role-only sections removed on the server. They ship with each release, so a fix to an article goes out like any other change: a pull request, then a deploy.
+
+- **An article is wrong or missing**: edit or add the file (format in [HELP_ARTICLES](HELP_ARTICLES.md)), run `pytest tests/test_help.py` and `npx vitest run src/app/helpCoverage.test.ts`, and open a pull request.
+- **Someone can't find an article by searching**: add the words they used to its `keywords:` (or to `SYNONYMS` in `backend/apps/help/search.py`), and pin the search in `test_finds_what_people_type`.
+- **Switch Help off**: back office (`/django-admin/`) → *Feature flags* → `help`. The menu item, the **?** button and the Help results in search disappear.
+- **Keeping it accurate**: CLAUDE.md requires the help to change with every user-facing change. The **Help docs** check on pull requests enforces it (see [HELP_ARTICLES](HELP_ARTICLES.md), "What enforces this").
 
 ## Incidents
 
@@ -315,4 +325,5 @@ Rotating `DJANGO_SECRET_KEY` signs everyone out.
 | Deploy scripts | `infra/deploy/` (shipped inside the image) |
 | Infrastructure | `infra/terraform/` (`envs/staging`, `envs/production`, `envs/shared`) |
 | CI/CD | `.github/workflows/` |
+| In-app help articles | `backend/apps/help/articles/` (guide: `docs/HELP_ARTICLES.md`) |
 | On the server | `/opt/mmh/.env` (secrets, 0600), `/opt/mmh/state.env` (live version), `/opt/mmh/current` (deploy scripts) |

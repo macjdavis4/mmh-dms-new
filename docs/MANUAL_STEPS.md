@@ -438,6 +438,14 @@ You'll need the **full-access** values again. GitHub can't show saved secrets, s
 
 ---
 
+## In-app help
+
+Nothing to set up: Help is on for everyone after the deploy.
+
+1. [ ] **Tell the staff.** Help is in the menu (under *You*), and the **?** button at the top of every page opens the help for that page. They can also type what they're trying to do, for example "open a work order", in the search box at the top.
+2. [ ] **Make the help check required** (optional, recommended). *Repository → Settings → Rules → Rulesets → Protect main → Require status checks to pass → Add checks*: add `Help articles kept up to date`. A pull request that changes what people see then can't be merged until the help is updated, or its description says `Help: no change needed (reason)`. The check only appears in the list after it has run once, on this pull request.
+3. [ ] **If an article is wrong**, tell Claude which one and what's wrong, or open an issue. Articles are fixed with a normal pull request.
+
 ## Ongoing
 
 | When | What |
