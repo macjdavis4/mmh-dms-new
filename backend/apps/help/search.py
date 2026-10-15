@@ -428,7 +428,12 @@ def _snippet(raw: str, alts: list[str], length: int = 180) -> str:
     return ("…" if start else "") + text + ("…" if start + length < len(raw) else "")
 
 
-def search_articles(user: Any, query: str, limit: int = 10) -> list[Hit]:
+def search_articles(
+    user: Any, query: str, limit: int = 10, *, require_all: bool = False
+) -> list[Hit]:
+    """The best articles for `query`. On the Help page most of the words
+    are enough; `require_all` (the global search) needs every word, so a
+    customer name or serial doesn't pull in help that only shares one word."""
     terms = _terms(query)
     if not terms:
         return []
@@ -458,7 +463,8 @@ def search_articles(user: Any, query: str, limit: int = 10) -> list[Hit]:
                 score += best
                 # A word that is also a heading in the article counts a bit more.
                 score += 1.5 * _best(term, index.headings, prefix)
-        if not matched or matched < (len(terms) + 1) // 2:
+        needed = len(terms) if require_all else (len(terms) + 1) // 2
+        if not matched or matched < needed:
             continue
         # What was typed is exactly the title or one of the keywords.
         if whole.strip() and whole in index.phrases:
@@ -504,7 +510,10 @@ def search_help(user: Any, query: str, limit: int) -> list[SearchResult]:
     if not flag_enabled("help", user) or len(query.strip()) < 3:
         return []
     results = []
-    for hit in search_articles(user, query, limit=min(limit, 4)):
+    hits = search_articles(user, query, limit=min(limit, 4), require_all=True)
+    # The header search is for a quick jump: only the strong matches.
+    hits = [h for h in hits if h.score >= hits[0].score * 0.5] if hits else []
+    for hit in hits:
         url = f"/help/{hit.article.slug}" + (f"#{hit.anchor}" if hit.anchor else "")
         subtitle = hit.heading if hit.heading else hit.article.summary
         results.append(

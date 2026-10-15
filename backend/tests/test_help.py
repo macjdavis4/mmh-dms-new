@@ -226,6 +226,12 @@ def test_global_search_includes_help(client_for: Any) -> None:
     assert "help" in res.json()["searchable"]
 
 
+def test_global_search_needs_every_word(client_for: Any) -> None:
+    """A serial or name that shares one word with an article finds no help."""
+    res = client_for(Role.SERVICE).get("/api/v1/search", {"q": "zzqx-nothing"})
+    assert res.json()["groups"]["help"] == []
+
+
 def test_global_search_short_query_skips_help(client_for: Any) -> None:
     res = client_for(Role.SERVICE).get("/api/v1/search", {"q": "wo"})
     assert res.json()["groups"]["help"] == []
