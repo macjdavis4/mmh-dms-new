@@ -70,6 +70,7 @@ INSTALLED_APPS = [
     "apps.sales",
     "apps.parts",
     "apps.reports",
+    "apps.help",
 ]
 
 MIDDLEWARE = [
