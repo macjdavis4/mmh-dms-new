@@ -38,6 +38,14 @@ export const routes = [
         lazy: async () => ({ Component: (await import("@/features/account/AccountPage")).AccountPage }),
       },
       {
+        path: "help",
+        lazy: async () => ({ Component: (await import("@/features/help/HelpPage")).HelpPage }),
+      },
+      {
+        path: "help/:slug",
+        lazy: async () => ({ Component: (await import("@/features/help/ArticlePage")).HelpArticlePage }),
+      },
+      {
         path: "customers",
         lazy: async () => ({ Component: (await import("@/features/customers/CustomersPage")).CustomersPage }),
       },

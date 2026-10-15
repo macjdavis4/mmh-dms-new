@@ -45,6 +45,9 @@ export default defineConfig(({ command }) => ({
   server: {
     host: true,
     port: 5173,
+    // The help coverage test (src/app/helpCoverage.test.ts) reads the help
+    // articles, which live with the backend that serves them.
+    fs: { allow: [".", path.resolve(__dirname, "../backend/apps/help/articles")] },
     proxy: {
       "/api": { target: backend, changeOrigin: false },
       "/healthz": backend,

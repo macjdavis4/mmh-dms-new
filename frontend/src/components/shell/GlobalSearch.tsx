@@ -16,6 +16,7 @@ const KIND_LABELS: Record<string, string> = {
   work_order: "Work orders",
   quote: "Quotes and sales",
   part: "Parts",
+  help: "Help",
 };
 
 function useSearch(query: string) {
@@ -33,7 +34,8 @@ function Results({ query, onPick }: { query: string; onPick: () => void }) {
   if (query.trim().length < 2) {
     return (
       <p className="text-muted-foreground px-4 py-5 text-sm">
-        Search by customer name, unit serial number, work order number or part number.
+        Search by customer name, unit serial number, work order number or part number, or type what you're trying to
+        do to find help.
       </p>
     );
   }
