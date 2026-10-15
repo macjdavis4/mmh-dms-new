@@ -16,7 +16,7 @@ Readings are added for you when you enter the hours on a work order, a sale or a
 1. Open the unit and press **Add hours** (or **Add reading** under **Hour meter**).
 2. Enter the **Hours** and the **Date read** (today to start).
 3. Choose **Where it came from**.
-4. Add a **Note** if it helps.
+4. Add a **Note (optional)** if it helps, for example "hour meter replaced at 9,800 h".
 5. Press **Save reading**.
 :::
 
@@ -24,4 +24,4 @@ Readings are added for you when you enter the hours on a work order, a sale or a
 
 If a reading is lower than an earlier one, it's still saved, and you'll see a warning. If the hour meter was replaced, add a note saying so, for example "hour meter replaced at 9,800 h".
 
-Readings can't be deleted. If one is wrong, add the right one with a note.
+You can't delete a reading from the unit page. If one is wrong, add the right one with a note. If it came from a work order, correct the hours on the work order instead; that replaces its reading.

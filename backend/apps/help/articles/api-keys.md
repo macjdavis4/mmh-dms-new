@@ -14,7 +14,7 @@ API keys are only needed for the card-scanning app or another tool that sends un
 
 1. Open **API keys** under **Admin** in the menu.
 2. Press **New key** and give it a **Name** that says where it's used, for example "Card scanner tablet".
-3. Press **Create key**, then **Copy key** and paste it into the app's settings.
+3. Press **Create key**, then press the copy button next to the key, paste it into the app's settings, and press **Done**.
 
 The key is shown only once. Imports sent with it are recorded as you.
 

@@ -40,8 +40,12 @@ The **Service** page lists work orders, newest first.
 
 - The tabs show **Open** (open, in progress and on hold), **Completed**, **Cancelled** or **All**.
 - The search box finds a work order by number, unit serial, model, customer name or the complaint text.
-- **Mine** shows only the jobs assigned to you. The dashboard tile **Assigned to me** opens this list.
+- **Mine** shows only the jobs assigned to you.
 - Late jobs show **Overdue** in red, and jobs due today show **Due today**.
+
+::: roles admin service
+The dashboard tile **Assigned to me** opens the list of your jobs.
+:::
 
 You can also type a work order number (for example `WO-20001`, or just `20001`) into the search box at the top of every page.
 
@@ -100,7 +104,11 @@ Press the bin icon on the line. It goes straight away, and a message appears wit
 ::: roles sales parts read_only
 ## Looking, not changing
 
-You can open, search and print any work order. Only admin and service can open, change or complete one.
+You can open, search and print any work order. Only admin and service can open a new one, change its details or labor, or complete it.
+:::
+
+::: roles parts
+Parts can add and return parts on an open job. See [Parts on a work order](help:parts-on-work-orders).
 :::
 
 ## Related

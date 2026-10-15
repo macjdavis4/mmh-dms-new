@@ -18,7 +18,7 @@ Every night the system saves printable copies of what the shop needs if it can't
 - Spreadsheets of customers, units (with spec cards), parts and work orders
 - All of the above in one ZIP file
 
-There are no costs or prices on paper.
+The printouts have no costs or prices. The parts spreadsheet includes each part's list price, but never our cost.
 
 ## Print or download
 

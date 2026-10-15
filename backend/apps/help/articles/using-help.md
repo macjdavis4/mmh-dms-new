@@ -23,7 +23,7 @@ The search box at the top of every page finds help too. Its last group of result
 
 ## Help for the page you're on
 
-Press the **?** button at the top of any page to open the help for that page.
+Press the **?** button at the top of any page to open the help for that page, or the Help page if there's no article for it.
 
 ## Browse
 

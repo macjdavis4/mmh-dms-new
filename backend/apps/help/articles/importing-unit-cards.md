@@ -37,8 +37,8 @@ Warnings are shown in amber. Use the tabs (**Errors**, **Warnings**, **New**, **
 ## 3. Import
 
 1. Under **If a unit is already in the DMS**, choose **Update it with the card's values** or **Leave it alone**.
-2. If some rows have errors, fix them in the spreadsheet and upload it again, or tick **Skip the rows with errors and import the rest**.
-3. Press **Import**.
+2. If some rows have errors, fix them in the spreadsheet and upload it again, or tick **Skip the … rows with errors and import the rest**.
+3. Press **Import … units**. The button shows how many will be imported; it reads **Nothing to import** when nothing would change.
 
 Up to 300 rows import straight away. Bigger files run in the background; the page updates by itself and you can leave it.
 

@@ -27,7 +27,7 @@ The form has the same sections as the paper Eagle 1-84 card. Type values exactly
 6. Press **Add unit**.
 
 ::: roles admin sales
-Under **Stock and pricing**, set the **Stock status**, **Cost**, **Asking price** and **Sale price**. Only admin and sales see this section.
+Under **Stock and pricing**, set the **Stock status**, **Cost ($)**, **Asking price ($)** and **Sale price ($)**. Only admin and sales see this section.
 
 > Note: A unit added as **Our stock** shows on the **In stock** tab only once it has a stock status (for example Available or In prep).
 :::
@@ -44,6 +44,14 @@ Serial numbers are unique. As you type a serial, the form warns you if it's alre
 
 Open the unit and press **Edit unit card**. Change what you need and press **Save unit card**. If you leave with unsaved changes, you're asked first.
 
-The owner and hour meter aren't on this form for an existing unit. Use [Change owner](help:change-owner) and [Add reading](help:hour-meter) on the unit page.
+The owner and hour meter aren't on this form for an existing unit. To record new hours, use [Add reading](help:hour-meter) on the unit page.
+
+::: roles admin sales
+To record a new owner, use [Change owner](help:change-owner) on the unit page.
+:::
+
+::: roles service
+A change of owner is recorded by admin or sales.
+:::
 
 > Tip: Tick **Something on this card needs a second look** under **Data quality** if you're not sure about a value, and say what needs checking.

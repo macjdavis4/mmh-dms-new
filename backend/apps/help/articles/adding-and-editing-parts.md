@@ -28,7 +28,7 @@ Under **Other brands' numbers**, press **Add a number** and enter the **Brand** 
 
 ## When a newer part replaces this one
 
-Under **Replaced by a newer part**, pick the new part. The old part is then hidden from the parts list, and anyone who opens it is sent on to the current part. A part can't replace itself, and a chain of replacements can't go round in a circle.
+Under **Replaced by a newer part**, pick the new part. The old part is then hidden from the parts list, and its page shows a **Replaced by** banner that links to the current part. A part can't replace itself, and a chain of replacements can't go round in a circle.
 
 ## Change a part
 

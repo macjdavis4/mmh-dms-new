@@ -7,7 +7,7 @@ flag: batch-import
 keywords: undo import, reverse import, roll back import, wrong file, import failed, try again, discard import, kept on undo, original csv
 order: 20
 ---
-Only an admin, or the person who started the import, can do these.
+Only an admin, or the person who started the import, can undo, retry or discard it.
 
 ## Undo an import
 
@@ -28,4 +28,4 @@ On an import that's still **Ready to import**, press **Discard** and confirm. No
 
 ## Get the file back
 
-On an imported import, **Original CSV** downloads the file as it was uploaded.
+On an imported import, **Original CSV** downloads the file as it was uploaded. Admin, sales and the person who uploaded it can download it, because it can contain prices.

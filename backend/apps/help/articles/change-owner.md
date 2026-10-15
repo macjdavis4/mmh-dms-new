@@ -14,14 +14,13 @@ A unit stays one record, with one serial, however many times it changes hands. *
 ## Change the owner
 
 1. Open the unit and press **Change owner**.
-2. Choose **What happened?**:
-   - **Sold to a customer**: it leaves our stock.
-   - **Came back to our stock**: a trade-in, repossession, buy-back, lease return or a unit we bought used.
-   - **Changed hands between customers**: we weren't part of the deal.
+2. What happened depends on who owns it now:
+   - A unit in our stock can only be **Sold to a customer**, so there's nothing to choose.
+   - For a customer's unit, choose **What happened?**: **Came back to our stock** (a trade-in, repossession, buy-back, lease return or a unit we bought used) or **Changed hands between customers** (we weren't part of the deal).
 3. Choose **Why**, and check the **Date** (today to start; it can't be in the future).
 4. Pick the customer it was **Sold to**, or the **New owner**. The customer must already be under **Customers**.
-5. Enter the **Sale price** or **What we paid** (the trade allowance, buy-back price or payoff).
-6. Add the **Hour meter**, **Invoice or reference #** and a **Note** if you have them.
+5. Enter the **Sale price (optional)** or **What we paid (optional)** (the trade allowance, buy-back price or payoff).
+6. Add the **Hour meter (optional)**, **Invoice or reference # (optional)** and a **Note (optional)** if you have them.
 7. Read **What will change**, then press **Record sale**, **Take into stock** or **Change owner**.
 
 ## What changes

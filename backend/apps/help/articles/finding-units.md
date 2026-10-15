@@ -17,7 +17,7 @@ Open **Units** in the menu. The tabs show:
 
 Type a serial (capitals, spaces and dashes don't matter, and part of it is enough), a stock number, a make or model, or a customer's name. For example `hyundai 35`.
 
-You can also type a serial into the search box at the top of every page. It finds any serial on the unit, such as the engine or mast, not just the unit's own.
+You can also type a serial into the search box at the top of every page. It finds any serial on the unit, such as the engine, battery, charger or an attachment, not just the unit's own.
 
 ## Filters
 

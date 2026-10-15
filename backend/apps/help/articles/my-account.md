@@ -6,7 +6,7 @@ pages: /account
 keywords: my account, profile, change password, new password, my name, my email, my role, account settings, security
 order: 50
 ---
-Open **My account** from the menu, or press your initials at the top right.
+Open **My account** from the menu, or press your initials at the top right and choose **My account**.
 
 It shows your name, email and roles. To change your name, email or role, ask an admin.
 

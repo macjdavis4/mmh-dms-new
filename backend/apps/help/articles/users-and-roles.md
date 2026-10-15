@@ -12,7 +12,7 @@ Open **Users** under **Admin** in the menu.
 ## Add a user
 
 1. Press **Add user**.
-2. Enter their **First name**, **Last name**, work **Email** and, if you like, **Mobile phone**.
+2. Enter their **First name**, **Last name**, work **Email** and **Mobile phone (optional)**.
 3. Tick their **Roles** (see [Roles: who can do what](help:roles)). Sales, service and parts can be combined. Admin and read-only stand alone; ticking either replaces any other role.
 4. Set a **Starting password** of at least 12 characters. Tell them in person, not by email.
 5. Press **Add user**.

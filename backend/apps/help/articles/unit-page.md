@@ -21,7 +21,7 @@ Press any unit to open its page. From top to bottom it shows:
 ::: roles admin sales
 ## Prices
 
-**Pricing this time in stock** shows the cost, asking price and sale price. Only admin and sales see prices; they're hidden from everyone else by the server.
+**Pricing this time in stock (admin and sales only)** shows the cost, asking price and sale price. Only admin and sales see prices; they're hidden from everyone else by the server.
 
 The prices are for this time in stock. When a unit we sold comes back to us, it starts with fresh prices, and the old sale keeps its own numbers in the ownership history.
 :::

@@ -18,7 +18,7 @@ Parts you add to a work order come out of stock straight away. They're priced at
 
 The message tells you how many are left on the shelf.
 
-> Note: You can't take more than the system says is on hand: "Only 2 on hand. If the shelf has more, count it first." Ask parts to count the shelf, then try again.
+> Note: You can't take more than the system says is on hand: "Only 2 of 31N4-01050 on hand. If the shelf has more, count it first." Ask parts to count the shelf, then try again.
 
 ## Return unused parts
 

@@ -19,7 +19,9 @@ Two-factor sign-in means a stolen password alone isn't enough: you also type a c
 
 ## New phone
 
-Set it up again from My account: confirming the new phone replaces the old one and makes new recovery codes. If you no longer have the old phone, sign in with a recovery code first, or ask an admin to reset it.
+Sign in (with a recovery code if the old phone is gone), press **Turn off** on My account, then press **Set up two-factor** and scan the code with the new phone. You get new recovery codes too.
+
+Admins can't turn two-factor off: ask another admin to reset your two-factor sign-in, then set it up again with the new phone when you next sign in.
 
 ## Make new recovery codes
 

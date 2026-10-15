@@ -16,7 +16,7 @@ The list shows up to 100 customers at a time; search to find the rest.
 
 1. Press **Add customer**.
 2. Enter the **Name** and choose **Business** or **Individual**.
-3. Add the **Account number**, **Phone**, **Email**, **Website** and **Notes** if you have them.
+3. Add the **Account number (optional)**, **Phone**, **Email**, **Website** and **Notes** if you have them.
 4. Press **Add customer**.
 
 The customer's page opens. Add their contacts and addresses there. Account numbers must be different for every customer.
@@ -29,7 +29,7 @@ To change or remove a contact, use the **…** menu next to it. A removed contac
 
 ## Addresses
 
-Press **Add address**. Choose the **Type** (billing, shipping, job site or other), add a **Label** like "Main plant", and the street, town, state and ZIP. Tick **Main address for this customer** for the main one.
+Press **Add address**. Choose the **Type** (billing, shipping, job site or other), add a **Label (optional)** like "Main plant", and the street, town, state and ZIP. Tick **Main address for this customer** for the main one.
 
 ## Change a customer
 
