@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import type { CurrentUser } from "@/lib/types";
 
+import { HelpButton } from "@/features/help/HelpButton";
+
 import { GlobalSearch, MobileSearchButton } from "./GlobalSearch";
 import { SidebarNav } from "./SidebarNav";
 import { useOfflineSync } from "@/lib/offline/sync";
@@ -90,6 +92,7 @@ export function AppShell({ user }: { user: CurrentUser }) {
               <span className="md:hidden">
                 <MobileSearchButton />
               </span>
+              <HelpButton />
               <ThemeToggle />
               <UserMenu user={user} />
             </div>

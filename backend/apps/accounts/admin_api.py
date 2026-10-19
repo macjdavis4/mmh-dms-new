@@ -9,8 +9,6 @@ from django.contrib.auth.password_validation import validate_password
 from django.db import transaction
 from django.db.models import Q, QuerySet
 from django_otp import user_has_device
-from django_otp.plugins.otp_static.models import StaticDevice
-from django_otp.plugins.otp_totp.models import TOTPDevice
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.request import Request
@@ -18,6 +16,7 @@ from rest_framework.response import Response
 
 from apps.core.models import AuditLog
 
+from .devices import end_sessions, remove_two_factor_devices
 from .models import User
 from .permissions import IsAdmin
 from .roles import Role, normalize_roles, roles_problem
@@ -132,6 +131,22 @@ def _other_active_admins(user: User) -> bool:
     return User.objects.filter(role=Role.ADMIN, is_active=True).exclude(pk=user.pk).exists()
 
 
+RESET_CONFIRMATIONS = {
+    "in_person": "In person",
+    "called_back": "Called them back on a number we already had",
+}
+
+
+class ResetTwoFactorSerializer(serializers.Serializer[Any]):
+    confirmed = serializers.ChoiceField(
+        choices=list(RESET_CONFIRMATIONS.items()),
+        error_messages={
+            "required": "Say how you made sure it's really them.",
+            "invalid_choice": "Say how you made sure it's really them.",
+        },
+    )
+
+
 class UserAdminViewSet(viewsets.ModelViewSet[User]):
     permission_classes = [IsAdmin]
     serializer_class = UserSerializer
@@ -187,14 +202,22 @@ class UserAdminViewSet(viewsets.ModelViewSet[User]):
 
     @action(detail=True, methods=["post"], url_path="reset-2fa")
     def reset_two_factor(self, request: Request, pk: str | None = None) -> Response:
-        """For a lost phone. The person sets 2FA up again at next sign-in."""
+        """For a lost phone. The person sets 2FA up again at next sign-in.
+
+        "My phone is lost, please reset my code" is the classic opening of a
+        phone scam, so the admin must say how they made sure it really was
+        that person. Every reset is shown to all admins on the dashboard."""
         user = self.get_object()
+        check = ResetTwoFactorSerializer(data=request.data)
+        check.is_valid(raise_exception=True)
         with transaction.atomic():
-            for model in (TOTPDevice, StaticDevice):
-                for device in model.objects.filter(user=user, confirmed=True):
-                    device.confirmed = False
-                    device.save()
-            AuditLog.record(AuditLog.Action.TWO_FACTOR_DISABLED, user, after={"by_admin": True})
+            remove_two_factor_devices(user)
+            end_sessions(user, keep=request.session.session_key)
+            AuditLog.record(
+                AuditLog.Action.TWO_FACTOR_DISABLED,
+                user,
+                after={"by_admin": True, "confirmed": check.validated_data["confirmed"]},
+            )
         return Response(self.get_serializer(user).data)
 
     @action(detail=True, methods=["post"])

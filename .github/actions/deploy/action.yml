@@ -17,7 +17,7 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: hashicorp/setup-terraform@v3
+    - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
       with:
         terraform_version: ${{ inputs.terraform-version }}
         terraform_wrapper: false
@@ -32,7 +32,7 @@ runs:
         echo "FIREWALL_ID=$(jq -r .firewall_id.value "$RUNNER_TEMP/tf.json")" >> "$GITHUB_ENV"
         echo "SITE_HOST=$(jq -r .hostname.value "$RUNNER_TEMP/tf.json")" >> "$GITHUB_ENV"
 
-    - uses: digitalocean/action-doctl@v2
+    - uses: digitalocean/action-doctl@3cb3953159719656269e044e0e24ca16dd2a690f # v2.5.2
       with:
         token: ${{ env.DIGITALOCEAN_ACCESS_TOKEN }}
 
@@ -78,10 +78,24 @@ runs:
       if: always()
       shell: bash
       run: |
-        for ip in ${RUNNER_IPS:-}; do
-          doctl compute firewall remove-rules "$FIREWALL_ID" --inbound-rules "protocol:tcp,ports:22,address:$ip/32" || true
-        done
         rm -f ~/.ssh/deploy_key "$RUNNER_TEMP/tf.json"
+        # A rule left behind leaves SSH open to a shared cloud address, so a
+        # failed removal fails the run (and shows up red) instead of passing quietly.
+        left=""
+        for ip in ${RUNNER_IPS:-}; do
+          removed=0
+          for _ in 1 2 3; do
+            if doctl compute firewall remove-rules "$FIREWALL_ID" --inbound-rules "protocol:tcp,ports:22,address:$ip/32"; then
+              removed=1; break
+            fi
+            sleep 5
+          done
+          [ "$removed" = 1 ] || left="$left $ip"
+        done
+        if [ -n "$left" ]; then
+          echo "::error::Could not remove the temporary SSH rule for:$left. Remove it by hand: DigitalOcean > Networking > Firewalls (see docs/RUNBOOK.md)."
+          exit 1
+        fi
 
     - name: Check the live site from outside
       shell: bash

@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { authFile, watchConsole } from "./helpers";
+import { authFile, salesUserWithTwoFactor, watchConsole } from "./helpers";
 
 test.use({ storageState: authFile("admin") });
 
@@ -19,7 +19,10 @@ test("add, edit, remove and restore a user", async ({ page }) => {
   await dialog.getByLabel("First name").fill("Taylor");
   await dialog.getByLabel("Last name").fill("Temp");
   await dialog.getByLabel("Email").fill(email);
-  await dialog.getByRole("group", { name: "Roles" }).getByLabel("Parts").check();
+  await dialog
+    .getByRole("group", { name: "Roles" })
+    .getByLabel("Parts")
+    .check();
   await dialog.getByLabel("Starting password").fill("Pallet-Jack-Strong-1");
   await dialog.getByRole("button", { name: "Add user" }).click();
   await expect(page.getByText("Taylor Temp was added")).toBeVisible();
@@ -30,7 +33,10 @@ test("add, edit, remove and restore a user", async ({ page }) => {
   // Remove, with confirmation, then undo.
   await row.getByRole("button", { name: /Actions for/ }).click();
   await page.getByRole("menuitem", { name: "Remove user" }).click();
-  await page.getByRole("alertdialog").getByRole("button", { name: "Remove user" }).click();
+  await page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: "Remove user" })
+    .click();
   await expect(page.getByText("Taylor Temp was removed")).toBeVisible();
   await expect(page.getByRole("row").filter({ hasText: email })).toHaveCount(0);
   await page.getByRole("button", { name: "Undo" }).click();
@@ -38,17 +44,79 @@ test("add, edit, remove and restore a user", async ({ page }) => {
   expect(problems).toEqual([]);
 });
 
+test("resetting two-factor asks how the person was confirmed, and every admin sees it", async ({
+  page,
+  playwright,
+  baseURL,
+}) => {
+  const problems = watchConsole(page);
+  await page.goto("/admin/users");
+  // Quinn's own cookie jar: signing in on the admin's cookies would end the admin's session.
+  const fresh = await playwright.request.newContext({
+    baseURL,
+    storageState: { cookies: [], origins: [] },
+  });
+  const email = await salesUserWithTwoFactor(
+    page.request,
+    fresh,
+    baseURL ?? "",
+    { first: "Quinn", last: "Phoned" },
+  );
+  await page.reload();
+
+  const row = page.getByRole("row").filter({ hasText: email });
+  await row.getByRole("button", { name: /Actions for/ }).click();
+  await page.getByRole("menuitem", { name: "Reset two-factor" }).click();
+  const dialog = page.getByRole("alertdialog");
+  await expect(dialog.getByText(/Never reset because of a call/)).toBeVisible();
+  const confirm = dialog.getByRole("button", { name: "Reset two-factor" });
+  await expect(confirm).toBeDisabled();
+  await dialog
+    .getByLabel("I called them back on a number we already had")
+    .check();
+  await confirm.click();
+  await expect(
+    page.getByText("Two-factor reset for Quinn Phoned"),
+  ).toBeVisible();
+
+  // The reset signed Quinn out everywhere.
+  const me = (await (await fresh.get("/api/v1/auth/me")).json()) as {
+    authenticated: boolean;
+  };
+  expect(me.authenticated).toBe(false);
+
+  await page.goto("/");
+  await expect(
+    page.getByText(
+      /Two-factor reset for Quinn Phoned by .* \(confirmed by calling back\)/,
+    ),
+  ).toBeVisible();
+  await fresh.dispose();
+  expect(problems).toEqual([]);
+});
+
 test("maintenance banner and read-only mode", async ({ page }) => {
   await page.goto("/admin/settings");
-  await page.getByLabel("Message").fill("Updates tonight 7–8 PM. Save your work.");
+  await page
+    .getByLabel("Message")
+    .fill("Updates tonight 7–8 PM. Save your work.");
   await page.getByRole("combobox", { name: "Style" }).click();
   await page.getByRole("option", { name: /Warning/ }).click();
   await page.getByRole("button", { name: "Save banner" }).click();
-  await expect(page.getByRole("status").getByText("Updates tonight 7–8 PM. Save your work.")).toBeVisible();
+  await expect(
+    page
+      .getByRole("status")
+      .getByText("Updates tonight 7–8 PM. Save your work."),
+  ).toBeVisible();
 
   await page.getByRole("switch").click();
-  await page.getByRole("alertdialog").getByRole("button", { name: "Turn on" }).click();
-  await expect(page.getByText(/Read-only mode: you can look things up/)).toBeVisible();
+  await page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: "Turn on" })
+    .click();
+  await expect(
+    page.getByText(/Read-only mode: you can look things up/),
+  ).toBeVisible();
 
   // Writes are refused while read-only.
   await page.goto("/admin/users");
@@ -64,19 +132,30 @@ test("maintenance banner and read-only mode", async ({ page }) => {
   // Turn everything back off.
   await page.goto("/admin/settings");
   await page.getByRole("switch").click();
-  await page.getByRole("alertdialog").getByRole("button", { name: "Turn off" }).click();
+  await page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: "Turn off" })
+    .click();
   await page.getByRole("button", { name: "Remove banner" }).click();
-  await expect(page.getByText(/Read-only mode: you can look things up/)).toHaveCount(0);
+  await expect(
+    page.getByText(/Read-only mode: you can look things up/),
+  ).toHaveCount(0);
 });
 
 test("audit log lists recent changes", async ({ page }) => {
   await page.goto("/admin/audit");
-  await expect(page.getByRole("heading", { name: "Audit log", level: 1 })).toBeVisible();
-  await expect(page.getByText("Signed in").filter({ visible: true }).first()).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Audit log", level: 1 }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Signed in").filter({ visible: true }).first(),
+  ).toBeVisible();
 });
 
 test("dashboard shows system health to admins", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "System health" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "System health" }),
+  ).toBeVisible();
   await expect(page.getByText("Connected")).toBeVisible();
 });

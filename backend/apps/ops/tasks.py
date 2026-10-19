@@ -11,7 +11,7 @@ from procrastinate.contrib.django import app
 
 from apps.core.context import acting_as
 
-from . import backup, failures, paper
+from . import backup, failures, offsite, paper
 
 _RETRY = RetryStrategy(max_attempts=3, wait=600)
 
@@ -44,6 +44,15 @@ def nightly_paper_backup(timestamp: int) -> None:
 def nightly_media_replication(timestamp: int) -> None:
     with acting_as(source="job"):
         backup.run_media_replication()
+
+
+@app.periodic(cron="45 7 * * *", periodic_id="nightly-offsite-copy")
+@app.task(queue="maintenance", queueing_lock="offsite-copy", lock="offsite-copy", retry=_RETRY)
+def nightly_offsite_copy(timestamp: int) -> None:
+    """The locked copy outside DigitalOcean (apps/ops/offsite.py), after the
+    database backup (06:30) and the media copy (07:15)."""
+    with acting_as(source="job"):
+        offsite.run_offsite_copy()
 
 
 @app.periodic(cron="*/5 * * * *", periodic_id="record-failures")

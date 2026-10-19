@@ -5,6 +5,7 @@ from typing import Any
 from django.contrib.postgres.search import TrigramSimilarity
 from django.db.models import Q
 
+from apps.core.api import flag_enabled
 from apps.search.registry import SearchResult
 
 from .models import Customer
@@ -12,6 +13,8 @@ from .models import Customer
 
 def search_customers(user: Any, query: str, limit: int) -> list[SearchResult]:
     """Name (typo-tolerant), account number, phone, or a contact's name/email."""
+    if not flag_enabled("customers-units", user):
+        return []
     q = query.strip()
     matches = (
         Customer.objects.annotate(similarity=TrigramSimilarity("name", q))

@@ -1,0 +1,32 @@
+name: Help docs
+
+# A pull request that changes what people see in the app must update the
+# in-app help (backend/apps/help/articles/) or say why it doesn't need to.
+# Runs again when the description is edited, so adding the
+# "Help: no change needed (reason)" line clears it.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: help-docs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  help-updated:
+    name: Help articles kept up to date
+    # Dependency bumps don't change what users see.
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Help articles changed with the app
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          BASE_REF: ${{ github.base_ref }}
+        run: ./infra/scripts/check-help-updated.sh "origin/${BASE_REF}"

@@ -14,4 +14,4 @@ SERVER=$!
 trap 'kill $SERVER 2>/dev/null || true' EXIT
 for _ in $(seq 1 30); do curl -sf --noproxy '*' http://localhost:8000/readyz >/dev/null && break; sleep 1; done
 cd "$ROOT/frontend"
-npx playwright test --project="$PROJECT"
+npx playwright test --project="$PROJECT" "${@:2}"

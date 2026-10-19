@@ -23,7 +23,7 @@ load_env() {
     set +a
   fi
   export DATABASE_DIRECT_URL_FOR_WORKER="${DATABASE_DIRECT_URL:-$DATABASE_URL}"
-  # Migrations run as the database owner when its URL is available.
+  # Migrations run as the database owner (see require_owner_for_migrations).
   export DATABASE_MIGRATE_URL="${ADMIN_DATABASE_URL:-$DATABASE_DIRECT_URL_FOR_WORKER}"
   touch "$STATE_FILE"
   set -a
@@ -31,6 +31,37 @@ load_env() {
   . "$STATE_FILE"
   set +a
   export CADDY_IMAGE="${CADDY_IMAGE:?CADDY_IMAGE missing from .env}"
+}
+
+# On staging and production, migrations must run as the database owner: run
+# as the app's user, new tables would belong to it, and an owner can drop
+# them and switch off the no-delete triggers, defeating its row-only access.
+require_owner_for_migrations() {
+  case "${APP_ENV:-}" in
+    staging | production)
+      if [ -z "${ADMIN_DATABASE_URL:-}" ]; then
+        log "ADMIN_DATABASE_URL is missing from $MMH_HOME/admin.env; refusing to migrate as the app user"
+        return 1
+      fi
+      ;;
+  esac
+}
+
+# vector.yaml -> vector.rendered.yaml with the bucket, endpoint, region and
+# environment filled in. Each value is checked first, so nothing unexpected
+# can end up in the config. (The key pair is passed as environment variables.)
+render_logship_config() {
+  local region
+  region=$(sed -nE 's|^https://s3\.([a-z0-9-]+)\..*|\1|p' <<<"${OFFSITE_ENDPOINT_URL:-}")
+  [[ "${OFFSITE_BUCKET:-}" =~ ^[A-Za-z0-9-]{6,63}$ ]] || { log "OFFSITE_BUCKET looks wrong"; return 1; }
+  [[ "${OFFSITE_ENDPOINT_URL:-}" =~ ^https://[a-z0-9.-]+$ ]] || { log "OFFSITE_ENDPOINT_URL looks wrong"; return 1; }
+  [[ "$region" =~ ^[a-z0-9-]+$ ]] || { log "can't read the region from OFFSITE_ENDPOINT_URL"; return 1; }
+  [[ "${APP_ENV:-}" =~ ^[a-z0-9-]+$ ]] || { log "APP_ENV looks wrong"; return 1; }
+  sed -e "s|@OFFSITE_BUCKET@|$OFFSITE_BUCKET|" \
+    -e "s|@OFFSITE_ENDPOINT_URL@|$OFFSITE_ENDPOINT_URL|" \
+    -e "s|@OFFSITE_REGION@|$region|" \
+    -e "s|@APP_ENV@|$APP_ENV|" \
+    "$RELEASE_DIR/vector.yaml" >"$RELEASE_DIR/vector.rendered.yaml"
 }
 
 compose() {

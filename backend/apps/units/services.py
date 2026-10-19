@@ -344,13 +344,20 @@ def _sniff(head: bytes) -> str | None:
     return None
 
 
-@transaction.atomic
 @dataclass
 class Inspected:
     content_type: str
     width: int | None
     height: int | None
     thumbnail: bytes | None
+
+
+def _refuse_huge(img: Image.Image) -> None:
+    width, height = img.size
+    if width * height > MAX_PIXELS:
+        raise ValidationError(
+            {"file": "That picture is too large. Use a photo under 60 megapixels."}
+        )
 
 
 def inspect_upload(data: bytes) -> Inspected:
@@ -360,10 +367,15 @@ def inspect_upload(data: bytes) -> Inspected:
     if content_type is not None:
         return Inspected(content_type, None, None, None)
     try:
-        Image.MAX_IMAGE_PIXELS = MAX_PIXELS
         with Image.open(io.BytesIO(data)) as probe:
+            # Opening reads only the header. Pillow merely warns between
+            # MAX_IMAGE_PIXELS and twice that, so check the size ourselves
+            # before anything decodes the pixels (a tiny file can claim to be
+            # 10000 x 10000 and exhaust memory).
+            _refuse_huge(probe)
             probe.verify()
         with Image.open(io.BytesIO(data)) as img:
+            _refuse_huge(img)
             fmt = img.format or ""
             if fmt not in IMAGE_TYPES:
                 raise ValidationError({"file": "Use a JPEG, PNG or WebP photo, or a PDF."})

@@ -1,0 +1,62 @@
+# Log archive: everything in the server's journal (the app, worker and Caddy
+# containers log there, plus SSH sign-ins, sudo and fail2ban) is sent every
+# few minutes to the locked off-site bucket (Backblaze B2), under
+# <environment>/logs/YYYY/MM/DD/. The bucket keeps every file for at least
+# 30 days and this key can't delete anything, so someone who gets onto the
+# server can't erase the record of what they did. The daily Backup check
+# workflow alerts if logs stop arriving.
+#
+# Run by the "logship" service in docker-compose.prod.yml (Vector). deploy.sh
+# fills in the @...@ values (checked to be plain names and addresses); the
+# key pair comes from the container's AWS_* environment variables.
+data_dir: /var/lib/vector
+
+sources:
+  journal:
+    type: journald
+    journal_directory: /var/log/journal
+    # Start from now on the first run; afterwards Vector's checkpoint picks
+    # up where it left off (including anything logged while it was down).
+    since_now: true
+
+transforms:
+  shaped:
+    type: remap
+    inputs: [journal]
+    source: |
+      . = {
+        "at": .timestamp,
+        "host": .host,
+        "unit": ._SYSTEMD_UNIT,
+        "container": .CONTAINER_NAME,
+        "program": .SYSLOG_IDENTIFIER,
+        "priority": .PRIORITY,
+        "message": .message,
+      }
+
+sinks:
+  offsite:
+    type: aws_s3
+    inputs: [shaped]
+    bucket: "@OFFSITE_BUCKET@"
+    endpoint: "@OFFSITE_ENDPOINT_URL@"
+    region: "@OFFSITE_REGION@"
+    force_path_style: true
+    key_prefix: "@APP_ENV@/logs/%Y/%m/%d/"
+    filename_extension: ndjson.gz
+    compression: gzip
+    encoding:
+      codec: json
+    framing:
+      method: newline_delimited
+    batch:
+      timeout_secs: 300
+      max_bytes: 20000000
+    # The key can't list buckets, so skip the start-up check.
+    healthcheck:
+      enabled: false
+    # Kept on disk while B2 can't be reached, and sent when it can.
+    buffer:
+      type: disk
+      max_size: 536870912
+      when_full: drop_newest

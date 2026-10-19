@@ -15,7 +15,9 @@ import { OTP_INPUT_PROPS } from "./otpInputProps";
 
 function safeNext(raw: string | null): string {
   // Only allow in-app paths, never another site.
-  return raw?.startsWith("/") && !raw.startsWith("//") ? raw : "/";
+  // Backslashes and control characters are refused too: browsers treat "/\\evil.com" like "//evil.com".
+  // eslint-disable-next-line no-control-regex
+  return raw?.startsWith("/") && !raw.startsWith("//") && !/[\\\u0000-\u001f]/.test(raw) ? raw : "/";
 }
 
 export function LoginPage() {

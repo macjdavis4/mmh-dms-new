@@ -284,3 +284,30 @@ A unit can be sold, come back and be sold again any number of times. It stays on
 
 - **Office-only access**: Cloudflare blocks everyone except the office/VPN address (except `/readyz` and `/healthz`). See *Network-only access* in `docs/MANUAL_STEPS.md`.
 - **Several roles per person**: any mix of sales, service and parts; admin and read-only stand alone. The database and the admin Users API enforce it. Follow-up release: make `roles` NOT EMPTY and drop the old `role` column.
+
+## Security audit (October 2026)
+
+Not a phase: a full security review with a ransomware focus. Report, fixes and decisions in [SECURITY_AUDIT](SECURITY_AUDIT.md); owner steps under "Security audit" in [MANUAL_STEPS](MANUAL_STEPS.md).
+
+- [x] 23 app fixes (2FA bypass through the admin back office, price leaks, rate-limit bypass, upload bombs, shared-tablet caching, hard session limits, 2FA-reset scam safeguards, and more), each with a test
+- [x] Locked off-site copy in Backblaze B2 (Object Lock) for database dumps, photos and scans; server log archive there too
+- [x] Full-access cloud keys only in an approval-gated `terraform` environment; deploys on limited keys
+- [x] Daily backup check from GitHub (DigitalOcean and B2 copies, logs still arriving); ransomware brake on the media copy; database owner checks on deploy; actions and plugins pinned
+- [ ] Owner: Parts 1–3 of the manual steps
+
+## In-app help (October 2026)
+
+Not a phase: user documentation inside the app, kept accurate on every change.
+
+- [x] **Help** in the menu (`/help`): 40 how-to articles in 10 sections (getting started, customers, units, service, sales, parts, reports, importing unit cards, admin, troubleshooting), written from the code: exact button labels, the roles the server enforces, confirmations, undo and limits
+- [x] **Search for what you're trying to do**, in your own words: ignores small words, folds word endings, knows shop words ("job" → work order, "forklift" → unit, "packing slip" → invoice), fixes small typos, and jumps to the best-matching heading with a snippet
+- [x] **Help in the global search** (a *Help* group under the records) and a **?** button on every page that opens the article for that page
+- [x] **Only what your role can do**: articles and paragraphs for other roles are removed on the server (prices for admin and sales only); articles of a switched-off feature are hidden; signed-in only
+- [x] Safe by design: articles are a small Markdown subset turned into blocks on the server and rendered as React elements (no HTML); links can only go to app pages or other articles
+- [x] **Kept accurate**: CLAUDE.md rule and phase step; `tests/test_help.py` (format, roles, flags, links, 21 real searches); `helpCoverage.test.ts` (every page and menu item has an article, every article link points at a real page); **Help docs** pull request check (user-facing change without a help change fails, unless the description says `Help: no change needed (reason)`); pull request template; authoring guide `docs/HELP_ARTICLES.md`
+- [x] Behind the `help` feature flag (on)
+- [x] Fixed: the runbook said feature flags are under *Site settings*; they're in the back office
+
+**Migrations**: `help/0001_help_flag` (the feature flag only).
+
+**Known limitations**: Help needs a connection (it isn't in the offline saved copy). No pictures in articles yet. English only. Search is word-based, not AI: very unusual phrasing may need a second try.
