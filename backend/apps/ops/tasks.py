@@ -11,7 +11,7 @@ from procrastinate.contrib.django import app
 
 from apps.core.context import acting_as
 
-from . import backup, offsite, paper
+from . import backup, failures, offsite, paper
 
 _RETRY = RetryStrategy(max_attempts=3, wait=600)
 
@@ -53,6 +53,14 @@ def nightly_offsite_copy(timestamp: int) -> None:
     database backup (06:30) and the media copy (07:15)."""
     with acting_as(source="job"):
         offsite.run_offsite_copy()
+
+
+@app.periodic(cron="*/5 * * * *", periodic_id="record-failures")
+@app.task(queue="maintenance", queueing_lock="record-failures", lock="record-failures")
+def record_failures(timestamp: int) -> None:
+    """Failed jobs and backups into the audit log (apps/ops/failures.py)."""
+    with acting_as(source="job"):
+        failures.record_failures()
 
 
 @app.periodic(cron="0 8 * * 0", periodic_id="weekly-job-cleanup")
