@@ -169,7 +169,7 @@ The database refuses it, so this can only be a near-miss (for example `O` vs `0`
 ### Parts invoices
 
 - Admin and parts staff upload invoices under *Parts invoices*; sales can look. Switch it off with the `parts-invoices` flag (receiving by hand on the part page keeps working).
-- **Stuck on "Reading the invoice…"**: the worker isn't running or is behind. Check the `worker` container and its log. The job is safe to retry; reading only happens while the invoice is still marked as reading. In development, set `INVOICE_READ_INLINE=true` to read during the upload instead.
+- **Stuck on "Reading the invoice…"**: after a minute the page offers *Stop and type the lines in*, and after 15 minutes the server moves the invoice to "To check" by itself (a reader crash does so straight away). If it happens to every upload, the worker isn't running or is behind: check the `worker` container and its log, and look for *Background job failed* in the audit log. The job is safe to retry; reading only happens while the invoice is still marked as reading. In development, set `INVOICE_READ_INLINE=true` to read during the upload instead.
 - **"The invoice reader isn't installed on the server"**: Tesseract is missing from the image. It is installed by the `Dockerfile`; rebuild and redeploy. PDFs with text still read without it.
 - **Read badly**: check against the paper and fix the lines, or *Read again* after uploading a clearer photo (flat, well lit, the whole page). Lines can always be typed in.
 - **"Already entered"**: the same supplier invoice number exists. Open the other one; cancel whichever is the mistake (only possible before anything is received from it).
@@ -269,6 +269,11 @@ The app, worker and Caddy containers log to the server's journal, and the `logsh
 
 - **Reading them:** in B2, *Browse Files → production/logs/<date>/*, download a file, and open it with any tool that reads `.gz` (each line is one log entry). On the server, `docker logs <container>` and `journalctl` still work as usual.
 - **"WARNING: the log archive (logship) did not start"** in a deploy log, or the daily Backup check saying logs stopped: on the server, `docker compose -p mmh -f /opt/mmh/current/docker-compose.prod.yml --profile logship logs --tail 50 logship`. If it says the journal is missing, run `sudo mkdir -p /var/log/journal && sudo systemd-tmpfiles --create --prefix /var/log/journal && sudo systemctl restart systemd-journald`, then redeploy. If it's an access error, check the `OFFSITE_*` values in GitHub (*Settings → Environments*).
+
+### Background jobs show "failed" on the dashboard
+
+- Every failed background job and failed backup is written to the **audit log** within 5 minutes (*Audit log → Background job failed* or *Backup failed*), with the job name, how many tries it had, its inputs, and when it failed (or the backup's error).
+- The full error is in Sentry and the worker log (`docker compose ... logs worker`). Failed jobs are not retried by themselves after their last try; the nightly ones run again the next night.
 
 ### Backup or restore test failed
 

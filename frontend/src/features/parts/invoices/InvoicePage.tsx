@@ -1,5 +1,5 @@
 import { AlertTriangle, ArrowLeft, Ban, ExternalLink, FileText, Loader2, PackageCheck, PackageX, Plus, RefreshCw, RotateCcw, ScanText, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
 import { toast } from "sonner";
 
@@ -624,21 +624,58 @@ export function InvoicePage() {
       <ErrorState message="We couldn't load this invoice." onRetry={() => void invoice.refetch()} />
     );
   }
-  if (invoice.data.status === "reading") {
-    return (
-      <div className="flex flex-col gap-6">
-        <Link to="/parts/invoices" className="text-muted-foreground hover:text-foreground inline-flex min-h-11 items-center gap-1 text-sm font-medium">
-          <ArrowLeft className="size-4" /> Parts invoices
-        </Link>
-        <div role="status" className="bg-card flex flex-col items-center gap-3 rounded-xl border px-6 py-16 text-center">
-          <Loader2 className="text-primary size-10 animate-spin" aria-hidden="true" />
-          <h1 className="text-xl font-bold">Reading the invoice…</h1>
-          <p className="text-muted-foreground max-w-md text-sm">
-            {invoice.data.original_name} · Photos and scans can take up to a minute. This page updates by itself.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  if (invoice.data.status === "reading") return <Reading invoice={invoice.data} />;
   return <InvoiceView key={invoice.data.id} invoice={invoice.data} />;
+}
+
+// Reading normally takes seconds (a minute for big scans). Past this, offer a
+// way out so nobody is left watching a spinner; the server also gives up on
+// its own after 15 minutes.
+const SLOW_AFTER_MS = 60_000;
+
+function Reading({ invoice }: { invoice: Invoice }) {
+  const user = useCurrentUser();
+  const action = useInvoiceAction(invoice.id);
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    const waited = Date.now() - Date.parse(invoice.updated_at);
+    const timer = window.setTimeout(() => setSlow(true), Math.max(0, SLOW_AFTER_MS - waited));
+    return () => window.clearTimeout(timer);
+  }, [invoice.updated_at]);
+  return (
+    <div className="flex flex-col gap-6">
+      <Link to="/parts/invoices" className="text-muted-foreground hover:text-foreground inline-flex min-h-11 items-center gap-1 text-sm font-medium">
+        <ArrowLeft className="size-4" /> Parts invoices
+      </Link>
+      <div role="status" className="bg-card flex flex-col items-center gap-3 rounded-xl border px-6 py-16 text-center">
+        <Loader2 className="text-primary size-10 animate-spin" aria-hidden="true" />
+        <h1 className="text-xl font-bold">Reading the invoice…</h1>
+        <p className="text-muted-foreground max-w-md text-sm">
+          {invoice.original_name} · Photos and scans can take up to a minute. This page updates by itself.
+        </p>
+        {slow && (
+          <div className="mt-2 flex flex-col items-center gap-3">
+            <p className="max-w-md text-sm font-medium">
+              This is taking longer than it should. You can stop waiting and type the lines in from the file.
+            </p>
+            {canReceiveInvoices(user.roles) && (
+              <Button
+                variant="outline"
+                size="lg"
+                disabled={action.isPending}
+                onClick={() =>
+                  action.mutate(
+                    { kind: "stop-reading" },
+                    { onError: () => toast.error("Couldn't stop it. Try again.") },
+                  )
+                }
+              >
+                {action.isPending && <Loader2 className="size-4 animate-spin" />} Stop and type the lines in
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }

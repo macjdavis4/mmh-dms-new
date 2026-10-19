@@ -167,6 +167,57 @@ def test_reading_job_is_safe_to_run_twice(client_for: Any, catalog: None, settin
 
 
 @pytest.mark.django_db
+def test_reader_crash_hands_the_invoice_to_a_person(
+    client_for: Any, settings: Any, monkeypatch: Any
+) -> None:
+    def crash(data: bytes, content_type: str) -> None:
+        raise NotImplementedError("unsupported image filter")
+
+    settings.INVOICE_READ_INLINE = False
+    inv = uploaded(client_for("parts"))
+    monkeypatch.setattr(invoice_reader, "read_file", crash)
+    invoices.read_invoice(inv["id"])
+    invoice = Invoice.objects.get(pk=inv["id"])
+    assert invoice.status == "review"
+    assert invoice.read_error == invoices.READER_CRASHED
+
+
+@pytest.mark.django_db
+def test_stop_reading(client_for: Any, catalog: None, settings: Any) -> None:
+    settings.INVOICE_READ_INLINE = False
+    parts = client_for("parts")
+    inv = uploaded(parts)
+    assert client_for("sales").post(f"{URL}/{inv['id']}/stop-reading").status_code == 403
+    assert client_for("service").post(f"{URL}/{inv['id']}/stop-reading").status_code == 403
+    res = parts.post(f"{URL}/{inv['id']}/stop-reading")
+    assert res.status_code == 200
+    assert (res.json()["status"], res.json()["read_error"]) == ("review", invoices.STOPPED)
+    # The job turning up late changes nothing, and stopping again is harmless.
+    invoices.read_invoice(inv["id"])
+    assert Invoice.objects.get(pk=inv["id"]).lines.count() == 0
+    again = parts.post(f"{URL}/{inv['id']}/stop-reading")
+    assert again.json()["read_error"] == invoices.STOPPED
+
+
+@pytest.mark.django_db
+def test_stuck_invoices_are_released(client_for: Any, settings: Any, monkeypatch: Any) -> None:
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    settings.INVOICE_READ_INLINE = False
+    old = uploaded(client_for("parts"))
+    later = timezone.now() + invoices.STUCK_AFTER + timedelta(minutes=1)
+    monkeypatch.setattr(timezone, "now", lambda: later)
+    fresh = uploaded(client_for("parts"), sample_invoice.pdf(number="FRESH-1"))
+    assert invoices.release_stuck() == 1
+    assert Invoice.objects.get(pk=old["id"]).status == "review"
+    assert Invoice.objects.get(pk=old["id"]).read_error == invoices.TIMED_OUT
+    assert Invoice.objects.get(pk=fresh["id"]).status == "reading"
+    assert invoices.release_stuck() == 0
+
+
+@pytest.mark.django_db
 def test_same_invoice_twice_is_flagged(client_for: Any, catalog: None) -> None:
     parts = client_for("parts")
     first = uploaded(parts)

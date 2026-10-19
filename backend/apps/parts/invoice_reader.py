@@ -23,9 +23,10 @@ from PIL import Image, ImageOps
 logger = logging.getLogger(__name__)
 
 OCR_TIMEOUT_SECONDS = 120
-# One invoice may not tie up the worker (which also runs the nightly backups)
-# for longer than this, however many pictures a PDF holds.
-OCR_BUDGET_SECONDS = 300
+# All the OCR for one file, however many pictures a PDF holds: well inside the
+# 15 minutes after which a reading invoice is treated as stuck
+# (invoices.STUCK_AFTER), and the worker also runs the nightly backups.
+OCR_TOTAL_SECONDS = 300
 MAX_OCR_IMAGES = 30
 MAX_OCR_PIXELS = 40_000_000  # far beyond any phone photo or 300 dpi scan
 MAX_PAGES = 20
@@ -108,7 +109,7 @@ def read_pdf(data: bytes) -> ReadResult:
         pages = list(reader.pages)[:MAX_PAGES]
         texts: list[str] = []
         used_ocr = False
-        deadline = time.monotonic() + OCR_BUDGET_SECONDS
+        deadline = time.monotonic() + OCR_TOTAL_SECONDS
         ocr_count = 0
         for page in pages:
             text = page.extract_text(extraction_mode="layout") or ""
@@ -116,6 +117,8 @@ def read_pdf(data: bytes) -> ReadResult:
                 texts.append(text)
                 continue
             # A scanned page: OCR the pictures on it.
+            if time.monotonic() > deadline:
+                raise ReadError("The scan has too many pages to read in one go. Type the lines in.")
             for image in page.images:
                 ocr_count += 1
                 remaining = deadline - time.monotonic()

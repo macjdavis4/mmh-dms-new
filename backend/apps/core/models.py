@@ -229,6 +229,8 @@ class AuditAction(models.TextChoices):
     TWO_FACTOR_ENABLED = "2fa_enabled", "Two-factor enabled"
     TWO_FACTOR_DISABLED = "2fa_disabled", "Two-factor removed"
     RECOVERY_CODE_USED = "recovery_code_used", "Recovery code used"
+    JOB_FAILED = "job_failed", "Background job failed"
+    BACKUP_FAILED = "backup_failed", "Backup failed"
 
 
 class AuditLog(models.Model):

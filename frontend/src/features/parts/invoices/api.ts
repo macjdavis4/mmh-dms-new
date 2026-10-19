@@ -95,6 +95,7 @@ export function useSaveInvoice(id: string) {
 export type InvoiceAction =
   | { kind: "receive"; lines: { line: string; quantity: string }[]; update_costs: boolean }
   | { kind: "read-again" }
+  | { kind: "stop-reading" }
   | { kind: "cancel"; reason: string };
 
 export function useInvoiceAction(id: string) {
