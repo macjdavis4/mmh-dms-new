@@ -10,6 +10,7 @@ from __future__ import annotations
 import logging
 import mimetypes
 from dataclasses import dataclass
+from datetime import timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -216,15 +217,15 @@ def read_invoice(invoice_id: Any) -> None:
     try:
         result = invoice_reader.read_file(data, invoice.content_type)
     except invoice_reader.ReadError as exc:
-        with transaction.atomic():
-            invoice = Invoice.objects.select_for_update().get(pk=invoice_id)
-            if invoice.status != S.READING:
-                return
-            invoice.read_error = str(exc)[:300]
-            invoice.read_at = timezone.now()
-            invoice.status = S.REVIEW
-            invoice.save()
+        _stop_reading(invoice_id, str(exc))
         logger.warning("invoice could not be read", extra={"invoice": str(invoice_id)})
+        return
+    except Exception:
+        # A file the reader chokes on fails the same way every time, so
+        # retrying won't help. Hand it to a person instead of leaving the
+        # invoice stuck on "reading".
+        logger.exception("invoice reader crashed", extra={"invoice": str(invoice_id)})
+        _stop_reading(invoice_id, READER_CRASHED)
         return
     suggestion = invoice_reader.suggest(result.text)
     with transaction.atomic():
@@ -275,6 +276,49 @@ def read_invoice(invoice_id: Any) -> None:
                 not_stocked=s.not_stocked,
                 check_reason=reason[:200],
             ).save()
+
+
+READER_CRASHED = "This file couldn't be read automatically. Type the lines in from the file."
+STOPPED = "Reading was stopped. Type the lines in, or try Read again."
+TIMED_OUT = "Reading took too long and was stopped. Type the lines in, or try Read again."
+# Reading normally takes seconds (a minute for big scans). Past this, the job
+# is lost (worker down, or it crashed), and the invoice is handed to a person.
+STUCK_AFTER = timedelta(minutes=15)
+
+
+def _stop_reading(invoice_id: Any, message: str) -> Invoice | None:
+    """Move an invoice still marked as reading to "to check", with a note."""
+    with transaction.atomic():
+        invoice = Invoice.objects.select_for_update().filter(pk=invoice_id).first()
+        if invoice is None or invoice.status != S.READING:
+            return None
+        invoice.read_error = message[:300]
+        invoice.read_at = timezone.now()
+        invoice.status = S.REVIEW
+        invoice.save()
+        return invoice
+
+
+def stop_reading(invoice: Invoice) -> Invoice:
+    """A person gives up waiting and types the lines in. If the job runs
+    later it does nothing, since the invoice is no longer marked as reading."""
+    _stop_reading(invoice.pk, STOPPED)
+    return Invoice.objects.get(pk=invoice.pk)
+
+
+def release_stuck() -> int:
+    """Hand invoices stuck on "reading" to a person (runs every few minutes).
+    Logged as an error so a dead worker gets noticed."""
+    cutoff = timezone.now() - STUCK_AFTER
+    ids = list(
+        Invoice.objects.filter(status=S.READING, updated_at__lt=cutoff).values_list("pk", flat=True)
+    )
+    released = sum(1 for pk in ids if _stop_reading(pk, TIMED_OUT) is not None)
+    if released:
+        logger.error(
+            "invoices were stuck reading; is the worker running?", extra={"count": released}
+        )
+    return released
 
 
 @transaction.atomic

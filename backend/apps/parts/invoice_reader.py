@@ -13,6 +13,7 @@ import logging
 import re
 import shutil
 import subprocess
+import time
 from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal, InvalidOperation
@@ -22,6 +23,9 @@ from PIL import Image, ImageOps
 logger = logging.getLogger(__name__)
 
 OCR_TIMEOUT_SECONDS = 120
+# All the OCR for one file; well inside the 15 minutes after which a reading
+# invoice is treated as stuck (invoices.STUCK_AFTER).
+OCR_TOTAL_SECONDS = 300
 MAX_PAGES = 20
 # A PDF page with less text than this is treated as a scan and OCR'd.
 MIN_TEXT_CHARS = 40
@@ -100,12 +104,15 @@ def read_pdf(data: bytes) -> ReadResult:
         pages = list(reader.pages)[:MAX_PAGES]
         texts: list[str] = []
         used_ocr = False
+        deadline = time.monotonic() + OCR_TOTAL_SECONDS
         for page in pages:
             text = page.extract_text(extraction_mode="layout") or ""
             if len(re.sub(r"\s", "", text)) >= MIN_TEXT_CHARS:
                 texts.append(text)
                 continue
             # A scanned page: OCR the pictures on it.
+            if time.monotonic() > deadline:
+                raise ReadError("The scan has too many pages to read in one go. Type the lines in.")
             for image in page.images:
                 texts.append(ocr_image(image.data))
                 used_ocr = True

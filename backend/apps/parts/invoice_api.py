@@ -355,6 +355,12 @@ class InvoiceViewSet(
         invoice = invoices.read_again(self.get_object())
         return self._respond(invoice)
 
+    @action(detail=True, methods=["post"], url_path="stop-reading")
+    def stop_reading(self, request: Request, pk: str | None = None) -> Response:
+        """Stop waiting for the reader and type the lines in."""
+        invoice = invoices.stop_reading(self.get_object())
+        return self._respond(invoice)
+
     @action(detail=True, methods=["post"])
     def cancel(self, request: Request, pk: str | None = None) -> Response:
         data = ReasonSerializer(data=request.data)
