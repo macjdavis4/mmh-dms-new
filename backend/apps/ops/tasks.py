@@ -11,7 +11,7 @@ from procrastinate.contrib.django import app
 
 from apps.core.context import acting_as
 
-from . import backup, paper
+from . import backup, failures, paper
 
 _RETRY = RetryStrategy(max_attempts=3, wait=600)
 
@@ -44,6 +44,14 @@ def nightly_paper_backup(timestamp: int) -> None:
 def nightly_media_replication(timestamp: int) -> None:
     with acting_as(source="job"):
         backup.run_media_replication()
+
+
+@app.periodic(cron="*/5 * * * *", periodic_id="record-failures")
+@app.task(queue="maintenance", queueing_lock="record-failures", lock="record-failures")
+def record_failures(timestamp: int) -> None:
+    """Failed jobs and backups into the audit log (apps/ops/failures.py)."""
+    with acting_as(source="job"):
+        failures.record_failures()
 
 
 @app.periodic(cron="0 8 * * 0", periodic_id="weekly-job-cleanup")

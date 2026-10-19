@@ -29,6 +29,8 @@ const ACTIONS: Record<string, string> = {
   "2fa_enabled": "Two-factor enabled",
   "2fa_disabled": "Two-factor removed",
   recovery_code_used: "Recovery code used",
+  job_failed: "Background job failed",
+  backup_failed: "Backup failed",
 };
 
 const PAGE_SIZE = 50;
@@ -58,7 +60,7 @@ function Changes({ entry }: { entry: AuditEntry }) {
 }
 
 function actionTone(action: string): string {
-  if (["login_failed", "locked_out", "soft_delete", "2fa_disabled"].includes(action)) {
+  if (["login_failed", "locked_out", "soft_delete", "2fa_disabled", "job_failed", "backup_failed"].includes(action)) {
     return "border-destructive/40 text-destructive";
   }
   if (action === "create" || action === "restore") return "border-success/40 text-success";
