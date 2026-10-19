@@ -284,3 +284,13 @@ A unit can be sold, come back and be sold again any number of times. It stays on
 
 - **Office-only access**: Cloudflare blocks everyone except the office/VPN address (except `/readyz` and `/healthz`). See *Network-only access* in `docs/MANUAL_STEPS.md`.
 - **Several roles per person**: any mix of sales, service and parts; admin and read-only stand alone. The database and the admin Users API enforce it. Follow-up release: make `roles` NOT EMPTY and drop the old `role` column.
+
+## Security audit (October 2026)
+
+Not a phase: a full security review with a ransomware focus. Report, fixes and decisions in [SECURITY_AUDIT](SECURITY_AUDIT.md); owner steps under "Security audit" in [MANUAL_STEPS](MANUAL_STEPS.md).
+
+- [x] 23 app fixes (2FA bypass through the admin back office, price leaks, rate-limit bypass, upload bombs, shared-tablet caching, hard session limits, 2FA-reset scam safeguards, and more), each with a test
+- [x] Locked off-site copy in Backblaze B2 (Object Lock) for database dumps, photos and scans; server log archive there too
+- [x] Full-access cloud keys only in an approval-gated `terraform` environment; deploys on limited keys
+- [x] Daily backup check from GitHub (DigitalOcean and B2 copies, logs still arriving); ransomware brake on the media copy; database owner checks on deploy; actions and plugins pinned
+- [ ] Owner: Parts 1–3 of the manual steps

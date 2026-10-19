@@ -98,6 +98,11 @@ Two database users, on purpose:
 
 After migrating, the deploy runs `manage.py grant_app_privileges mmh_app`, so new tables are usable by the app straight away. If the app ever logs `permission denied for table ...`, run that command by hand (with `admin.env` loaded) and redeploy.
 
+The deploy **stops** (and keeps the old version running) in two cases that would weaken this split:
+
+- `ADMIN_DATABASE_URL is missing ... refusing to migrate as the app user`: `/opt/mmh/admin.env` is empty or missing. Re-run the deploy; if it repeats, check the `ADMIN_DATABASE_URL` output in Terraform.
+- `mmh_app owns <tables>`: a migration once ran as the app user, so it could drop those tables. From the office, connect as `doadmin` (see [MANUAL_STEPS](MANUAL_STEPS.md), "Security audit", step 5) and run `REASSIGN OWNED BY mmh_app TO doadmin;`, then redeploy.
+
 ### Customers and units are switched off by mistake
 
 *Admin → Site settings → Feature flags*: turn `customers-units` back on. While it is off, those pages and their API answer "not found"; no data is touched.
@@ -234,6 +239,37 @@ python3 infra/scripts/verify_restore.py <key>.counts.json "postgres://doadmin:..
 
 The private key (`BACKUP_AGE_IDENTITY`) is in the password manager and on paper in the office safe.
 
+**C. From the locked off-site copy (Backblaze B2).** See the next section.
+
+### Restore from the locked off-site copy (Backblaze B2)
+
+Use this when the DigitalOcean copies are gone or can't be trusted (ransomware, or someone used our DigitalOcean keys to delete things). Nothing in the B2 bucket can be deleted or changed for 30 days, so the last 30 days of copies are always there.
+
+1. **Contain first.** Put the DMS in read-only mode, or shut the servers off if they're compromised. Rotate every secret (below), the DigitalOcean password and 2FA, and the GitHub tokens. Don't restore into an environment the attacker can still reach.
+2. Sign in to backblaze.com (owner account, with its 2FA). *B2 Cloud Storage → Buckets → (the offsite bucket) → Browse Files*. Open `production/db/` and the newest date. Download the newest `.dump.age` and its `.counts.json`.
+3. Decrypt and restore exactly as in **B** above (`age --decrypt ...`, then `pg_restore` into a new database, then `verify_restore.py`).
+4. **Photos and scans.** In B2, *App Keys → Add a New Application Key*: name `mmh-restore`, bucket = the offsite bucket, access **Read Only**. Then, on a computer with the AWS CLI:
+
+   ```bash
+   export AWS_ACCESS_KEY_ID=<keyID> AWS_SECRET_ACCESS_KEY=<applicationKey>
+   aws s3 sync --endpoint-url https://<the bucket's S3 endpoint> \
+     s3://<offsite bucket>/production/media/ ./media/
+   # Then upload ./media/ into the (new) media bucket with the Spaces keys:
+   aws s3 sync --endpoint-url https://nyc3.digitaloceanspaces.com ./media/ s3://<media bucket>/
+   ```
+
+   Delete the `mmh-restore` key in B2 when done.
+5. Rebuild the servers from Terraform (rebuild section above), point them at the restored database, deploy, test, then turn read-only mode off.
+
+A file that ransomware encrypted on our side is never copied over the good one: the nightly job only sends files it hasn't sent before, so the first (good) copy is the one in B2.
+
+### The server's logs (log archive)
+
+The app, worker and Caddy containers log to the server's journal, and the `logship` container (Vector) sends the journal, including SSH sign-ins, `sudo` and fail2ban, to the locked B2 bucket every 5 minutes: `<environment>/logs/YYYY/MM/DD/*.ndjson.gz`. They can't be deleted from there, so they show what happened even if someone wiped the server.
+
+- **Reading them:** in B2, *Browse Files → production/logs/<date>/*, download a file, and open it with any tool that reads `.gz` (each line is one log entry). On the server, `docker logs <container>` and `journalctl` still work as usual.
+- **"WARNING: the log archive (logship) did not start"** in a deploy log, or the daily Backup check saying logs stopped: on the server, `docker compose -p mmh -f /opt/mmh/current/docker-compose.prod.yml --profile logship logs --tail 50 logship`. If it says the journal is missing, run `sudo mkdir -p /var/log/journal && sudo systemd-tmpfiles --create --prefix /var/log/journal && sudo systemctl restart systemd-journald`, then redeploy. If it's an access error, check the `OFFSITE_*` values in GitHub (*Settings → Environments*).
+
 ### Background jobs show "failed" on the dashboard
 
 - Every failed background job and failed backup is written to the **audit log** within 5 minutes (*Audit log → Background job failed* or *Backup failed*), with the job name, how many tries it had, its inputs, and when it failed (or the backup's error).
@@ -241,15 +277,29 @@ The private key (`BACKUP_AGE_IDENTITY`) is in the password manager and on paper 
 
 ### Backup or restore test failed
 
-- A **GitHub issue labelled `urgent`** is opened automatically when the monthly restore test fails, and the admin dashboard shows "Last backup" in red if the nightly backup failed.
+- A **GitHub issue labelled `urgent`** is opened automatically when the monthly restore test fails, or when the **daily backup check** (*Actions → Backup check*) finds the newest backup more than 30 hours old or backups missing. The admin dashboard also shows "Last backup" in red if the nightly backup failed.
+- The Backup check also fails if last night's copy didn't reach the **locked B2 bucket**, or **server logs stopped arriving there** for more than 3 hours. Logs stopping can mean someone switched off the record of what they're doing: check the server (*The server's logs* above) before assuming it's a fault.
+- **Backups missing (not just late) is treated as a possible attack.** Before anything else: check *DigitalOcean → Settings → Security → Security history* and the GitHub audit log for activity you don't recognise. If anything looks wrong, rotate every secret (below) and the DigitalOcean password, then restore from point-in-time recovery.
 - Common causes: an expired `DIGITALOCEAN_TOKEN` or Spaces key, a changed age key, or the backup bucket being unreachable.
 - Check the worker log on the server (`docker compose ... logs worker`), then run a backup by hand: `manage.sh run_backup --force`.
 - Re-run *Actions → Restore test*. Close the issue once it passes.
 
+### Media copy refused ("files that already had a backup copy changed")
+
+The nightly copy of photos and scans to the second region stops, and copies nothing, when many files that were already backed up have changed at once. Uploads always get new names, so this normally never happens; ransomware encrypting the files would look exactly like this. The backup copies are left as they were.
+
+1. Open a few unit photos in the app. If they don't open or look wrong, treat it as an incident: put the site in read-only mode, rotate the Spaces keys, and restore the files from the backup bucket (its older versions are kept 90 days).
+2. If the change was deliberate (for example, files were re-processed on purpose), run the copy once by hand: `manage.sh run_backup --force --media --allow-mass-change`.
+
+### A temporary SSH rule was left open
+
+Each deploy opens SSH to the GitHub runner for a few minutes and closes it again. If closing fails, the run turns red with "Could not remove the temporary SSH rule". In *DigitalOcean → Networking → Firewalls → mmh-production (or staging) → Inbound rules*, delete every SSH (port 22) rule except your office address(es). Running Terraform `apply` for that environment also resets the rules.
+
 ### Someone is locked out
 
 - **Too many wrong passwords** (locked for 15 minutes): an admin can clear it at *Admin → Users → ⋯ → Unlock sign-in*.
-- **Lost phone (2FA)**: they can use a recovery code. Otherwise an admin clicks *Reset two-factor* and the person sets it up again at next sign-in.
+- **Lost phone (2FA)**: they can use a recovery code. Otherwise an admin clicks *Reset two-factor*: their old authenticator and recovery codes are deleted, they are signed out on every device, and they set 2FA up again at next sign-in. Do this straight away for a **stolen** phone or laptop too.
+- **Never reset 2FA because of a phone call, text or email alone.** "I lost my phone, can you reset my code?" is exactly how attackers get in. Reset only after seeing the person, or after hanging up and calling them back on a number we already had (not one they just gave you). The app asks which one you did, and every admin sees the reset on their dashboard for two weeks.
 - **The only admin lost their phone and their recovery codes**: SSH in and run `manage.sh reset_2fa their@email`.
 
 ### Rotate a secret

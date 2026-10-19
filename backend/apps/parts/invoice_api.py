@@ -380,7 +380,8 @@ class InvoiceViewSet(
             raise Http404 from exc
         response = FileResponse(handle, content_type=invoice.content_type)
         response["Content-Disposition"] = "inline"
-        response["Cache-Control"] = "private, max-age=3600"
+        # Supplier invoices show our costs: never kept in a shared tablet's cache.
+        response["Cache-Control"] = "private, no-store"
         response["X-Content-Type-Options"] = "nosniff"
         return response
 

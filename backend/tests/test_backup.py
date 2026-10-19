@@ -173,3 +173,40 @@ def test_backup_rows_cannot_be_hard_deleted() -> None:
     BackupRun.objects.create(kind="database")
     with pytest.raises(DatabaseError), transaction.atomic(), connection.cursor() as cur:
         cur.execute("DELETE FROM ops_backuprun")
+
+
+@pytest.mark.django_db
+def test_media_copy_refuses_to_overwrite_when_many_files_change_at_once(monkeypatch: Any) -> None:
+    """Ransomware encrypting the photos must not also overwrite the backup copies."""
+    from datetime import UTC, datetime
+
+    old = datetime(2026, 1, 1, tzinfo=UTC)
+    new = datetime(2026, 2, 1, tzinfo=UTC)
+    keys = [f"units/{i}.jpg" for i in range(30)]
+    copied: list[str] = []
+
+    class Src:
+        def get_paginator(self, name: str) -> FakeListing:
+            return FakeListing([{"Key": k, "Size": 99, "LastModified": new} for k in keys])
+
+        def get_object(self, Bucket: str, Key: str) -> dict[str, Any]:  # noqa: N803
+            return {"Body": b"encrypted"}
+
+    class Dest:
+        def get_paginator(self, name: str) -> FakeListing:
+            return FakeListing(
+                [{"Key": f"media/test/{k}", "Size": 10, "LastModified": old} for k in keys]
+            )
+
+        def upload_fileobj(self, body: Any, bucket: str, key: str) -> None:
+            copied.append(key)
+
+    monkeypatch.setattr(backup, "media_client", lambda: Src())
+    monkeypatch.setattr(backup, "backup_client", lambda: Dest())
+    with pytest.raises(backup.MediaChangedTooMuchError):
+        backup.run_media_replication()
+    assert copied == []
+    assert BackupRun.objects.get(kind=BackupRun.Kind.MEDIA).status == BackupRun.Status.FAILED
+    # After checking, an admin can let a deliberate change through.
+    backup.run_media_replication(allow_mass_change=True)
+    assert len(copied) == 30

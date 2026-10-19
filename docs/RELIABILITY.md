@@ -18,6 +18,7 @@ That allows about **7 hours 18 minutes** of downtime a month. Planned maintenanc
 | DigitalOcean backups unavailable | 24 hours | 2 to 4 hours | Nightly encrypted `pg_dump` in a second region (30 days) |
 | Primary region outage | 24 hours | half a day | Restore dump and media copy into a new region with the same Terraform |
 | Uploaded file overwritten or deleted | none | minutes | Spaces versioning, plus the nightly second-region copy |
+| Ransomware, or someone with our DigitalOcean keys deletes everything | 24 hours | half a day to a day | The **locked off-site copy** in Backblaze B2 ([RUNBOOK](RUNBOOK.md#restore-from-the-locked-off-site-copy-backblaze-b2)) |
 
 ## Safeguards built in
 
@@ -32,8 +33,11 @@ That allows about **7 hours 18 minutes** of downtime a month. Planned maintenanc
 - DigitalOcean Managed PostgreSQL: daily backups and 7-day point-in-time recovery.
 - Nightly at about 2 AM: an encrypted (`age`) `pg_dump` of a consistent snapshot to the backup bucket in **San Francisco**. Row counts are recorded from the same snapshot and kept 30 days. Deleted or overwritten backups are kept another 30 days by bucket versioning.
 - Nightly copy of all uploaded files to the second region. The media bucket is versioned too.
+- **Locked off-site copy** (Backblaze B2, outside DigitalOcean), nightly at about 3:45 AM: every encrypted database dump and every uploaded file. The bucket has Object Lock (compliance mode, 30 days), so for 30 days nothing in it can be deleted or changed by anyone, us included, and the key on our servers can add files but not list, read or delete them. This is the copy that survives if every DigitalOcean key is stolen.
+- **Server logs** (the app, Caddy, SSH sign-ins, sudo) are sent to the same locked bucket every 5 minutes, so an intruder can't erase the record.
 - Droplet backups (daily) for production, as a convenience. The Droplet holds no data.
 - **Monthly restore test** (GitHub Actions, the 3rd of each month): restores the newest dump into a scratch database, checks every table's row count against the backup's manifest, and fails if the newest backup is more than 48 hours old. A failure opens an `urgent` issue and emails the admins.
+- **Daily backup check** (GitHub Actions, outside our servers): the newest dump is under 30 hours old, none are missing, the locked B2 copy is current, and server logs are still arriving. A failure opens an `urgent` issue and emails the admins.
 
 **Availability**
 - Blue/green deploys with readiness checks and smoke tests; automatic rollback on failure. Tested locally with zero failed requests during a switch.
@@ -48,7 +52,7 @@ That allows about **7 hours 18 minutes** of downtime a month. Planned maintenanc
 - DigitalOcean Monitoring: CPU above 85%, memory above 90%, disk above 80%.
 - Sentry for application errors, backend and frontend.
 - JSON logs with a request ID on every line (the Cloudflare ray ID when present).
-- The admin dashboard shows database, schema, background job and last-backup status.
+- The admin dashboard shows database, schema, background job, last-backup and locked off-site copy status, and any two-factor resets in the last two weeks.
 
 ## Working when the system is down (Phase 13)
 

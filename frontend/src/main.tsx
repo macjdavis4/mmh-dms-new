@@ -18,7 +18,23 @@ const config = readRuntimeConfig();
 if (config.sentryDsn) {
   // Loaded only when error reporting is configured, to keep the first load small.
   void import("@sentry/react").then((Sentry) =>
-    Sentry.init({ dsn: config.sentryDsn, environment: config.env, release: config.version, tracesSampleRate: 0 }),
+    Sentry.init({
+      dsn: config.sentryDsn,
+      environment: config.env,
+      release: config.version,
+      tracesSampleRate: 0,
+      // Addresses can carry customer names and serials (search, filters):
+      // keep only the path in breadcrumbs.
+      beforeBreadcrumb: (crumb) => {
+        const data = crumb.data as { url?: unknown; to?: unknown; from?: unknown } | undefined;
+        if (data) {
+          for (const key of ["url", "to", "from"] as const) {
+            if (typeof data[key] === "string") data[key] = data[key].split("?")[0];
+          }
+        }
+        return crumb;
+      },
+    }),
   );
 }
 

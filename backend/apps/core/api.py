@@ -36,11 +36,16 @@ def RequiresFlag(key: str) -> type[BasePermission]:  # noqa: N802
 
 class SoftDeleteViewSetMixin:
     """DELETE soft-deletes; POST {id}/restore brings it back (same permission
-    as delete). `?include_deleted=1` lists removed rows too."""
+    as delete). `?include_deleted=1` lists removed rows too.
+
+    Only the list honours it: a removed record can't be opened, changed or
+    acted on (through any action) until it is restored."""
 
     model: type[SoftDeleteModel]
 
     def include_deleted(self) -> bool:
+        if getattr(self, "action", None) != "list":
+            return False
         return self.request.query_params.get("include_deleted") == "1"  # type: ignore[attr-defined,no-any-return]
 
     def base_queryset(self) -> Any:

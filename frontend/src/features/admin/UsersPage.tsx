@@ -1,4 +1,9 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
   KeyRound,
@@ -11,7 +16,7 @@ import {
   Trash2,
   UserPlus,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { useCurrentUser } from "@/app/guards";
@@ -40,7 +45,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { initials } from "@/components/shell/UserMenu";
 import { useDebounced } from "@/hooks/useDebounced";
@@ -60,7 +71,10 @@ const ROLE_BADGE: Record<Role, string> = {
 
 export function RoleBadge({ role }: { role: Role }) {
   return (
-    <Badge variant="outline" className={`border font-semibold ${ROLE_BADGE[role]}`}>
+    <Badge
+      variant="outline"
+      className={`border font-semibold ${ROLE_BADGE[role]}`}
+    >
       {ROLE_LABELS[role]}
     </Badge>
   );
@@ -77,12 +91,26 @@ export function RoleBadges({ roles }: { roles: readonly Role[] }) {
 }
 
 function StatusBadge({ user }: { user: AdminUser }) {
-  if (user.is_deleted) return <Badge variant="outline" className="text-muted-foreground">Removed</Badge>;
-  if (!user.is_active) return <Badge variant="outline" className="text-warning border-warning/50">Inactive</Badge>;
+  if (user.is_deleted)
+    return (
+      <Badge variant="outline" className="text-muted-foreground">
+        Removed
+      </Badge>
+    );
+  if (!user.is_active)
+    return (
+      <Badge variant="outline" className="text-warning border-warning/50">
+        Inactive
+      </Badge>
+    );
   return null;
 }
 
-function useUsers(params: { q: string; role: string; includeDeleted: boolean }) {
+function useUsers(params: {
+  q: string;
+  role: string;
+  includeDeleted: boolean;
+}) {
   const q = useDebounced(params.q);
   const search = new URLSearchParams();
   if (q) search.set("q", q);
@@ -91,7 +119,8 @@ function useUsers(params: { q: string; role: string; includeDeleted: boolean }) 
   search.set("page_size", "200");
   return useQuery({
     queryKey: ["admin", "users", search.toString()],
-    queryFn: () => api<Paginated<AdminUser>>(`/api/v1/admin/users?${search.toString()}`),
+    queryFn: () =>
+      api<Paginated<AdminUser>>(`/api/v1/admin/users?${search.toString()}`),
     placeholderData: keepPreviousData,
   });
 }
@@ -99,6 +128,16 @@ function useUsers(params: { q: string; role: string; includeDeleted: boolean }) 
 function errorMessage(err: unknown): string {
   return err instanceof ApiError ? err.message : "Something went wrong.";
 }
+
+type ResetConfirmation = "in_person" | "called_back";
+
+const RESET_CONFIRMATIONS: { value: ResetConfirmation; label: string }[] = [
+  { value: "in_person", label: "I saw them in person" },
+  {
+    value: "called_back",
+    label: "I called them back on a number we already had",
+  },
+];
 
 export function UsersPage() {
   const me = useCurrentUser();
@@ -108,33 +147,64 @@ export function UsersPage() {
   const [includeDeleted, setIncludeDeleted] = useState(false);
   const [editing, setEditing] = useState<AdminUser | "new" | null>(null);
   const [removing, setRemoving] = useState<AdminUser | null>(null);
+  const [resetting, setResetting] = useState<AdminUser | null>(null);
+  const [confirmedHow, setConfirmedHow] = useState<ResetConfirmation | null>(
+    null,
+  );
   const users = useUsers({ q, role, includeDeleted });
 
-  const invalidate = () => qc.invalidateQueries({ queryKey: ["admin", "users"] });
+  const invalidate = () =>
+    qc.invalidateQueries({ queryKey: ["admin", "users"] });
 
   const action = useMutation({
-    mutationFn: ({ user, op }: { user: AdminUser; op: "restore" | "reset-2fa" | "unlock" | "remove" }) =>
+    mutationFn: ({
+      user,
+      op,
+      body,
+    }: {
+      user: AdminUser;
+      op: "restore" | "reset-2fa" | "unlock" | "remove";
+      body?: Record<string, string>;
+    }) =>
       op === "remove"
         ? api<undefined>(`/api/v1/admin/users/${user.id}`, { method: "DELETE" })
-        : api<AdminUser>(`/api/v1/admin/users/${user.id}/${op}`, { method: "POST" }),
+        : api<AdminUser>(`/api/v1/admin/users/${user.id}/${op}`, {
+            method: "POST",
+            body,
+          }),
     onSuccess: (_data, { user, op }) => {
       void invalidate();
       const name = user.full_name || user.email;
       if (op === "remove") {
         toast.success(`${name} was removed`, {
           description: "They can no longer sign in.",
-          action: { label: "Undo", onClick: () => action.mutate({ user, op: "restore" }) },
+          action: {
+            label: "Undo",
+            onClick: () => action.mutate({ user, op: "restore" }),
+          },
         });
       } else if (op === "restore") {
         toast.success(`${name} was restored`);
       } else if (op === "reset-2fa") {
-        toast.success(`Two-factor reset for ${name}`, { description: "They'll set it up again next time they sign in." });
+        toast.success(`Two-factor reset for ${name}`, {
+          description:
+            "They were signed out everywhere and will set it up again next time they sign in.",
+        });
       } else {
         toast.success(`${name} can sign in again`);
       }
     },
     onError: (err) => toast.error(errorMessage(err)),
   });
+
+  // Resetting two-factor always goes through the "how did you confirm it's them" dialog.
+  const onRowAction = useCallback(
+    (user: AdminUser, op: "restore" | "reset-2fa" | "unlock") => {
+      if (op === "reset-2fa") setResetting(user);
+      else action.mutate({ user, op });
+    },
+    [action],
+  );
 
   const columns = useMemo<ColumnDef<AdminUser>[]>(
     () => [
@@ -152,13 +222,19 @@ export function UsersPage() {
               </Avatar>
               <div className="min-w-0">
                 <p className="truncate font-semibold">{u.full_name || "—"}</p>
-                <p className="text-muted-foreground truncate text-sm">{u.email}</p>
+                <p className="text-muted-foreground truncate text-sm">
+                  {u.email}
+                </p>
               </div>
             </div>
           );
         },
       },
-      { id: "role", header: "Roles", cell: ({ row }) => <RoleBadges roles={row.original.roles} /> },
+      {
+        id: "role",
+        header: "Roles",
+        cell: ({ row }) => <RoleBadges roles={row.original.roles} />,
+      },
       {
         id: "2fa",
         header: "Two-factor",
@@ -176,9 +252,17 @@ export function UsersPage() {
       {
         id: "last_login",
         header: "Last sign-in",
-        cell: ({ row }) => <span className="text-sm">{formatRelative(row.original.last_login)}</span>,
+        cell: ({ row }) => (
+          <span className="text-sm">
+            {formatRelative(row.original.last_login)}
+          </span>
+        ),
       },
-      { id: "status", header: () => <span className="sr-only">Status</span>, cell: ({ row }) => <StatusBadge user={row.original} /> },
+      {
+        id: "status",
+        header: () => <span className="sr-only">Status</span>,
+        cell: ({ row }) => <StatusBadge user={row.original} />,
+      },
       {
         id: "actions",
         header: () => <span className="sr-only">Actions</span>,
@@ -188,12 +272,12 @@ export function UsersPage() {
             isSelf={row.original.id === me.id}
             onEdit={() => setEditing(row.original)}
             onRemove={() => setRemoving(row.original)}
-            onAction={(op) => action.mutate({ user: row.original, op })}
+            onAction={(op) => onRowAction(row.original, op)}
           />
         ),
       },
     ],
-    [me.id, action],
+    [me.id, onRowAction],
   );
 
   return (
@@ -236,8 +320,15 @@ export function UsersPage() {
               </SelectContent>
             </Select>
             <div className="flex items-center gap-2">
-              <Switch id="show-removed" checked={includeDeleted} onCheckedChange={setIncludeDeleted} />
-              <Label htmlFor="show-removed" className="text-sm whitespace-nowrap">
+              <Switch
+                id="show-removed"
+                checked={includeDeleted}
+                onCheckedChange={setIncludeDeleted}
+              />
+              <Label
+                htmlFor="show-removed"
+                className="text-sm whitespace-nowrap"
+              >
                 Show removed
               </Label>
             </div>
@@ -253,7 +344,10 @@ export function UsersPage() {
           getRowId={(u) => u.id}
           empty={{
             title: q || role !== "all" ? "No users match" : "No users yet",
-            message: q || role !== "all" ? "Try a different search or role." : "Add the first staff member.",
+            message:
+              q || role !== "all"
+                ? "Try a different search or role."
+                : "Add the first staff member.",
           }}
           renderCard={(row) => {
             const u = row.original;
@@ -265,13 +359,18 @@ export function UsersPage() {
                   </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold">{u.full_name || u.email}</p>
-                  <p className="text-muted-foreground truncate text-sm">{u.email}</p>
+                  <p className="truncate font-semibold">
+                    {u.full_name || u.email}
+                  </p>
+                  <p className="text-muted-foreground truncate text-sm">
+                    {u.email}
+                  </p>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <RoleBadges roles={u.roles} />
                     <StatusBadge user={u} />
                     <span className="text-muted-foreground text-xs">
-                      {u.two_factor_enabled ? "2FA on" : "2FA off"} · {formatRelative(u.last_login)}
+                      {u.two_factor_enabled ? "2FA on" : "2FA off"} ·{" "}
+                      {formatRelative(u.last_login)}
                     </span>
                   </div>
                 </div>
@@ -280,7 +379,7 @@ export function UsersPage() {
                   isSelf={u.id === me.id}
                   onEdit={() => setEditing(u)}
                   onRemove={() => setRemoving(u)}
-                  onAction={(op) => action.mutate({ user: u, op })}
+                  onAction={(op) => onRowAction(u, op)}
                 />
               </div>
             );
@@ -300,18 +399,92 @@ export function UsersPage() {
           onClose={() => setEditing(null)}
           onSaved={(saved, created) => {
             void invalidate();
-            toast.success(created ? `${saved.full_name || saved.email} was added` : "Changes saved");
+            toast.success(
+              created
+                ? `${saved.full_name || saved.email} was added`
+                : "Changes saved",
+            );
             setEditing(null);
           }}
         />
       )}
 
-      <AlertDialog open={removing !== null} onOpenChange={(open) => !open && setRemoving(null)}>
+      <AlertDialog
+        open={resetting !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setResetting(null);
+            setConfirmedHow(null);
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove {removing?.full_name || removing?.email}?</AlertDialogTitle>
+            <AlertDialogTitle>
+              Reset two-factor for {resetting?.full_name || resetting?.email}?
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              They won't be able to sign in. Their history stays in the system, and you can restore them later.
+              Scammers phone or text pretending to be staff who lost their
+              phone. Never reset because of a call, text or email alone. Their
+              old codes stop working, and they're signed out on every device.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <fieldset className="flex flex-col gap-2">
+            <legend className="mb-2 text-sm font-semibold">
+              How did you make sure it's really them?
+            </legend>
+            {RESET_CONFIRMATIONS.map((option) => (
+              <label
+                key={option.value}
+                className="has-[:checked]:border-primary flex min-h-11 cursor-pointer items-center gap-3 rounded-md border px-3 py-2 text-sm"
+              >
+                <input
+                  type="radio"
+                  name="reset-confirmed"
+                  value={option.value}
+                  checked={confirmedHow === option.value}
+                  onChange={() => setConfirmedHow(option.value)}
+                  className="size-4"
+                />
+                {option.label}
+              </label>
+            ))}
+          </fieldset>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="h-11">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="h-11"
+              disabled={confirmedHow === null}
+              onClick={() => {
+                if (resetting && confirmedHow) {
+                  action.mutate({
+                    user: resetting,
+                    op: "reset-2fa",
+                    body: { confirmed: confirmedHow },
+                  });
+                }
+                setResetting(null);
+                setConfirmedHow(null);
+              }}
+            >
+              Reset two-factor
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={removing !== null}
+        onOpenChange={(open) => !open && setRemoving(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Remove {removing?.full_name || removing?.email}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              They won't be able to sign in. Their history stays in the system,
+              and you can restore them later.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -348,13 +521,20 @@ function RowActions({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label={`Actions for ${user.full_name || user.email}`}>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={`Actions for ${user.full_name || user.email}`}
+        >
           <MoreHorizontal className="size-5" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
         {user.is_deleted ? (
-          <DropdownMenuItem className="min-h-10" onSelect={() => onAction("restore")}>
+          <DropdownMenuItem
+            className="min-h-10"
+            onSelect={() => onAction("restore")}
+          >
             <RotateCcw className="size-4" /> Restore user
           </DropdownMenuItem>
         ) : (
@@ -365,18 +545,28 @@ function RowActions({
             <DropdownMenuItem className="min-h-10" onSelect={onEdit}>
               <KeyRound className="size-4" /> Set new password
             </DropdownMenuItem>
-            <DropdownMenuItem className="min-h-10" onSelect={() => onAction("unlock")}>
+            <DropdownMenuItem
+              className="min-h-10"
+              onSelect={() => onAction("unlock")}
+            >
               <Lock className="size-4" /> Unlock sign-in
             </DropdownMenuItem>
             {user.two_factor_enabled && !isSelf && (
-              <DropdownMenuItem className="min-h-10" onSelect={() => onAction("reset-2fa")}>
+              <DropdownMenuItem
+                className="min-h-10"
+                onSelect={() => onAction("reset-2fa")}
+              >
                 <ShieldOff className="size-4" /> Reset two-factor
               </DropdownMenuItem>
             )}
             {!isSelf && (
               <>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem variant="destructive" className="min-h-10" onSelect={onRemove}>
+                <DropdownMenuItem
+                  variant="destructive"
+                  className="min-h-10"
+                  onSelect={onRemove}
+                >
                   <Trash2 className="size-4" /> Remove user
                 </DropdownMenuItem>
               </>
@@ -387,4 +577,3 @@ function RowActions({
     </DropdownMenu>
   );
 }
-

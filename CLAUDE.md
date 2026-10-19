@@ -56,7 +56,7 @@ Mature, widely supported technology with long security support. Do not add new f
 - Background jobs must be idempotent and safe to retry.
 
 ## Roles and permissions
-Roles: `admin`, `sales`, `service`, `parts`, `read_only`. Enforce permissions server side on every endpoint. Cost, asking price, and sale price are visible to `admin` and `sales` only. Every new endpoint gets tests proving each role can do only what it should.
+Roles: `admin`, `sales`, `service`, `parts`, `read_only`. Enforce permissions server side on every endpoint. Unit cost, asking price, and sale price are visible to `admin` and `sales` only. Part costs (catalog, stock ledger, parts invoices, parts reports) are also visible to `parts`, who receive the invoices (owner's decision, October 2026). Every new endpoint gets tests proving each role can do only what it should.
 
 ## Data model: forklift unit (from our paper "Eagle 1-84" cards)
 Every field on the card must exist.

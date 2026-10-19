@@ -4,6 +4,7 @@ from typing import Any
 
 from django.db.models import Q
 
+from apps.core.api import flag_enabled
 from apps.search.registry import SearchResult
 
 from .models import Unit, normalize_serial
@@ -27,6 +28,8 @@ def every_word(query: str, fields: tuple[str, ...] = ("make", "model")) -> Q | N
 def search_units(user: Any, query: str, limit: int) -> list[SearchResult]:
     """Any serial on the unit (unit, engine, battery, attachments...), stock
     number, or model. Serials match ignoring case, spaces and dashes."""
+    if not flag_enabled("customers-units", user):
+        return []
     norm = normalize_serial(query)
     match = (
         Q(model__icontains=query)
