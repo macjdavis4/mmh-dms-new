@@ -24,3 +24,11 @@ def read_parts_invoice(invoice_id: str) -> None:
     Only acts on an invoice still marked as reading."""
     with acting_as(source="job"):
         invoices.read_invoice(invoice_id)
+
+
+@app.periodic(cron="*/5 * * * *", periodic_id="release-stuck-invoices")
+@app.task(queue="maintenance", queueing_lock="release-stuck-invoices")
+def release_stuck_invoices(timestamp: int) -> None:
+    """Invoices left on "reading" (lost job) go to "to check"."""
+    with acting_as(source="job"):
+        invoices.release_stuck()
