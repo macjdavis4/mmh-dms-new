@@ -9,7 +9,7 @@ order: 60
 Only admins see the **System health** card on the dashboard. It checks again every minute. Each line has a green tick or a red warning:
 
 - **Database** and **Database schema**: the system can reach its database and it's up to date.
-- **Background jobs**: jobs waiting, or failed ones in red.
+- **Background jobs**: jobs waiting, or failed ones in red. Each failure is also written to the [audit log](help:audit-log#failed-background-jobs-and-backups).
 - **Last backup**: the nightly database backup.
 - **Locked off-site copy**: the copy that can't be changed or deleted. It's green when a file went off-site in the last 30 hours.
 - **Paper backup**: the nightly [paper backup](help:paper-backup).

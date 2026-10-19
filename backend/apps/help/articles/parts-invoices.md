@@ -5,7 +5,7 @@ section: parts
 roles: admin, parts, sales
 flag: parts-invoices
 pages: /parts/invoices, /parts/invoices/:id
-keywords: supplier invoice, packing slip, receive invoice, upload invoice, take a photo, scan invoice, ocr, read invoice, backorder, back order, still to come, arrived, won't come, partly received, freight, core charge, type in invoice, cancel invoice, duplicate invoice
+keywords: stuck reading, reading the invoice, taking too long, stop reading, supplier invoice, packing slip, receive invoice, upload invoice, take a photo, scan invoice, ocr, read invoice, backorder, back order, still to come, arrived, won't come, partly received, freight, core charge, type in invoice, cancel invoice, duplicate invoice
 order: 60
 ---
 Invoices show our cost, so only admin, parts and sales can see them. Only admin and parts can upload, change and receive them.
@@ -20,6 +20,8 @@ Open **Parts invoices** in the menu, then:
 - **Type one in**: for a paper invoice with no scan.
 
 The system reads the invoice on our own server; nothing is sent to an outside service. Emailed PDFs are quick. Photos and scans can take up to a minute; the page updates by itself.
+
+If it takes longer than a minute, press **Stop and type the lines in** and enter the lines from the file yourself. After 15 minutes the system stops reading on its own and leaves the invoice for you to type in.
 
 ## 2. Check the lines
 
